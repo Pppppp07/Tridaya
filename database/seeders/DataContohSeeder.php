@@ -38,7 +38,7 @@ use Illuminate\Support\Facades\DB;
  * Data contoh yang sama persis dengan prototipe.
  *
  * Dibaca dari `database/data/data-contoh.json` — salinan
- * `Prototipe/alat/data-contoh.json`, yang juga menjadi `AWAL` dan `KABAR_AWAL`
+ * `Prototipe/alat/data-contoh.json`, yang juga menjadi `AWAL` dan `PEMBERITAHUAN_AWAL`
  * di prototipe. Data itu tidak diketik: ia dibangun dengan memutar tindakan
  * aplikasi prototipe sendiri, jadi setiap keadaannya memang bisa dicapai.
  * Menyalinnya di sini, bukan mengarang ulang, membuat kedua artefak
@@ -85,8 +85,8 @@ class DataContohSeeder extends Seeder
             foreach ($data['laporan'] as $lap) {
                 $this->laporan($lap);
             }
-            foreach ($data['kabar'] as $k) {
-                $this->kabar($k);
+            foreach ($data['pemberitahuan'] as $k) {
+                $this->pemberitahuan($k);
             }
 
             /* Catatan data contoh tidak punya urutan pencatatan — di prototipe
@@ -97,7 +97,56 @@ class DataContohSeeder extends Seeder
                 'keputusan_verifikasis', 'pengembalians'] as $tabel) {
                 DB::table($tabel)->update(['created_at' => null, 'updated_at' => null]);
             }
+
+            $this->logDariRiwayat();
         });
+    }
+
+    /**
+     * Log aktivitas awal (27 Sep): satu baris per baris riwayat berkas data
+     * contoh — padanan `logDariRiwayat` prototipe, jadi kedua artefak membuka
+     * Log aktivitas dengan isi yang sama. Pelakunya dicari menurut sebutan di
+     * riwayat: "Setba", "UKI", "Inspektorat" → akun pusatnya; nama pendek
+     * satuan kerja → penanggung jawabnya sekarang. Waktunya cuma tanggal
+     * (riwayat lama tidak menyimpan jam), alamat dan perangkatnya kosong.
+     * Sesudah ini, perbuatan baru dicatat App\Support\Aktivitas.
+     */
+    public function logDariRiwayat(): void
+    {
+        /* Sekali saja: kalau log berkas sudah ada, riwayatnya sudah tersalin. */
+        if (\App\Models\LogAktivitas::where('aksi', 'berkas')->exists()) {
+            return;
+        }
+        $pusat = [
+            'Setba'       => User::where('peran', PeranPengguna::SETBA->value)->where('aktif', true)->orderBy('id')->first(),
+            'UKI'         => User::where('peran', PeranPengguna::UKI->value)->where('aktif', true)->orderBy('id')->first(),
+            'Inspektorat' => User::where('peran', PeranPengguna::INSPEKTORAT->value)->where('aktif', true)->orderBy('id')->first(),
+        ];
+        $pj = User::where('peran', PeranPengguna::SATKER->value)->where('aktif', true)->with('satker')->get()
+            ->filter(fn ($u) => $u->satker)->keyBy(fn ($u) => $u->satker->nama_pendek);
+
+        $baris = [];
+        foreach (RiwayatBerkas::orderBy('id')->get() as $rw) {
+            $u = $pusat[$rw->label_aktor] ?? $pj[$rw->label_aktor] ?? null;
+            $baris[] = [
+                'waktu'       => $rw->waktu->copy()->startOfDay(),
+                'user_id'     => $u?->id,
+                'nama'        => $u?->name ?? $rw->label_aktor,
+                'peran'       => $u?->peran->value,
+                'satker_id'   => $u?->peran === PeranPengguna::SATKER ? $u->satker_id : null,
+                'aksi'        => 'berkas',
+                'kelompok'    => 'berkas',
+                'ringkasan'   => mb_substr((string) $rw->aksi, 0, 500),
+                'subjek_tipe' => 'rekomendasi',
+                'subjek_id'   => $rw->rekomendasi_id,
+                'rincian'     => json_encode(['atas_nama' => $rw->label_aktor], JSON_UNESCAPED_UNICODE),
+                'ip'          => null,
+                'agen'        => null,
+            ];
+        }
+        foreach (array_chunk($baris, 200) as $potong) {
+            \App\Models\LogAktivitas::insert($potong);
+        }
     }
 
     private function tgl(?string $s): ?string
@@ -122,11 +171,11 @@ class DataContohSeeder extends Seeder
             'dicatat_oleh' => $this->setba,
         ]);
 
-        if ($lap['berkasDok'] || $lap['tautanDok']) {
+        if ($lap['berkasDok'] || $lap['linkDok']) {
             Lampiran::create([
                 'laporan_id'    => $laporan->id,
                 'nama_asli'     => $lap['berkasDok'] ?: null,
-                'tautan'        => $lap['tautanDok'] ?: null,
+                'link'        => $lap['linkDok'] ?: null,
                 'label_jenis'   => 'Surat laporan pemeriksaan',
                 'label_oleh'    => 'Setba',
                 'surat_asli'    => true,
@@ -268,7 +317,7 @@ class DataContohSeeder extends Seeder
                 'tindakan_id'    => isset($d['tindakan']) ? ($tindakan[$d['tindakan']]->id ?? null) : null,
                 'nama_asli'      => $d['n'],
                 'label_jenis'    => $d['j'],
-                'tautan'         => ($d['tautan'] ?? '') ?: null,
+                'link'         => ($d['link'] ?? '') ?: null,
                 'label_oleh'     => $d['o'],
                 'surat_asli'     => (bool) ($d['suratAsli'] ?? false),
                 'diunggah_oleh'  => $d['o'] === 'Setba' ? $this->setba : null,
@@ -319,12 +368,12 @@ class DataContohSeeder extends Seeder
         /* ---- pemulihan ---- */
         foreach ($r['setoran'] as $st) {
             $s = $sasaran($st['satker'], $st['tindakan']);
-            $berkas = ($st['berkas'] ?? '') || ($st['tautan'] ?? '')
+            $berkas = ($st['berkas'] ?? '') || ($st['link'] ?? '')
                 ? Lampiran::create([
                     'sasaran_id'    => $s?->id,
                     'tindakan_id'   => $s?->tindakan_id,
                     'nama_asli'     => ($st['berkas'] ?? '') ?: null,
-                    'tautan'        => ($st['tautan'] ?? '') ?: null,
+                    'link'        => ($st['link'] ?? '') ?: null,
                     'label_jenis'   => 'Bukti setor',
                     'label_oleh'    => $s?->satker->namaPendek(),
                     'diunggah_pada' => $st['tanggal'],
@@ -356,7 +405,7 @@ class DataContohSeeder extends Seeder
                 'tanggal_catat'  => $this->tgl($sp['tanggalCatat']),
                 'perihal'        => $sp['perihal'] ?: null,
                 'catatan'        => $sp['catatan'] ?: null,
-                'tautan'         => $sp['tautan'] ?: null,
+                'link'         => $sp['link'] ?: null,
                 'dicatat_oleh'   => $this->setba,
             ]);
         }
@@ -452,7 +501,7 @@ class DataContohSeeder extends Seeder
                 'bukti'      => collect($df['bukti'])->map(fn ($b) => [
                     'nama'   => $b['n'],
                     'jenis'  => $b['j'] ?? '',
-                    'tautan' => $b['tautan'] ?? '',
+                    'link' => $b['link'] ?? '',
                     'untuk'  => isset($b['untuk'], $butir[$b['untuk']]) ? $butir[$b['untuk']]->id : null,
                 ])->all(),
                 'setoran'    => $df['setoran'],
@@ -473,7 +522,7 @@ class DataContohSeeder extends Seeder
         }
     }
 
-    private function kabar(array $k): void
+    private function pemberitahuan(array $k): void
     {
         $rek = $this->rek[$k['rekId']] ?? null;
         if (! $rek) {

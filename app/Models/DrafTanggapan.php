@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Isian tindak lanjut yang disimpan satuan kerja tanpa dikirim.
  *
- * Berkasnya tetap di meja satuan kerja. Draf yang mengendap lebih dari
+ * Berkasnya tetap di meja satuan kerja. Draf yang belum dikirim lebih dari
  * seminggu dan kewajibannya sudah terpenuhi dikirim sendiri oleh perintah
  * terjadwal `tlhp:kirim-draf` — pemulihan bisa bertahun-tahun, tapi berkas
  * yang sudah lengkap tidak boleh tertahan hanya karena lupa ditekan kirim.

@@ -232,6 +232,28 @@ class Rekomendasi extends Model
     }
 
     /**
+     * Keadaan yang DITAMPILKAN (27 Sep): satuan kerja (`$satkerId` terisi)
+     * membaca keadaan tindak lanjutnya sendiri, peran lain keadaan seluruh
+     * rekomendasi. Rekomendasi tetap belum memadai selama satuan kerja lain
+     * belum beres, tapi itu hitungan Setba dan Inspektorat — kepada satuan kerja
+     * yang bagiannya sudah memadai ia terbaca seperti kerjanya ditolak. Padanan
+     * keadaanTampil di prototipe.
+     */
+    public function keadaanUntuk(?int $satkerId): HasilTelaah
+    {
+        return $satkerId ? $this->hasilSatker($satkerId) : $this->keadaanUnor();
+    }
+
+    /** Status BPK yang DITAMPILKAN — padanan statusBpkTampil. */
+    public function statusBpkUntuk(?int $satkerId): StatusTindakLanjut
+    {
+        return $satkerId
+            ? self::rangkumBpk($this->daftarSasaran()->where('satker_id', $satkerId)
+                ->map(fn ($x) => $x->siptl_tanggal ? $x->status_bpk : null))
+            : $this->statusRek();
+    }
+
+    /**
      * Rangkuman sederet status BPK: yang paling belakang menentukan. Peringkat
      * dari kolom `Rank Status SiPTL` lembar pemantauan — SS 1, BS 2, BT 3; TD
      * tertutup seperti SS, dan rekomendasinya TD hanya kalau seluruhnya TD.
@@ -282,7 +304,7 @@ class Rekomendasi extends Model
         return $this->semuaBaris()->contains(fn ($x) => $x->perluUnggah($jenis));
     }
 
-    /** BPK tidak mengirim kabar apa pun — Setba yang berulang kali mengecek. */
+    /** BPK tidak mengirim pemberitahuan apa pun — Setba yang berulang kali mengecek. */
     public function perluCekBpk(): bool
     {
         $jenis = $this->jenis();
@@ -290,9 +312,18 @@ class Rekomendasi extends Model
         return $this->semuaBaris()->contains(fn ($x) => $x->perluCek($jenis));
     }
 
+    /** Ditolak BPK dan menunggu dikirim ulang ke satuan kerjanya. */
+    public function perluKirimUlangBpk(): bool
+    {
+        $jenis = $this->jenis();
+
+        return $this->semuaBaris()->contains(fn ($x) => $x->perluKirimUlang($jenis));
+    }
+
     public function kerjaSiptl(): bool
     {
-        return $this->perluUnggahSiptl() || $this->perluCekBpk();
+        return $this->perluUnggahSiptl() || $this->perluCekBpk()
+            || $this->perluKirimUlangBpk();
     }
 
     /**

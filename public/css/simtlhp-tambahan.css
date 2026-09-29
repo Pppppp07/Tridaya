@@ -2,66 +2,449 @@
    ATURAN KHUSUS LARAVEL
 
    simtlhp.css disalin utuh dari prototipe. Yang di sini hanya yang tidak
-   ada padanannya di sana: tombol yang di sini berupa tautan, formulir
+   ada padanannya di sana: tombol yang di sini berupa link, halaman
    masuk, pesan hasil kiriman, dan keterangan yang disembunyikan atribut
    `hidden` sampai skrip membukanya.
    ================================================================== */
 
 [hidden]{display:none !important;}
 
-/* Sama dengan index.html prototipe. */
-html,body{height:100%;margin:0;}
-
-/* Tautan yang tampil sebagai tombol atau baris. Prototipe memakai <button>
-   untuk semuanya; di sini yang berpindah halaman berupa tautan, supaya bisa
-   dibuka di tab baru dan tetap berfungsi tanpa skrip. */
-a.menu,a.btn,a.row,a.lonceng,a.berkas,a.item,a.taut,a.blokjudul,a.tujuan,a.tautrek{text-decoration:none;}
-a.menu,a.row,a.lonceng,a.item,a.tautrek{color:inherit;}
-a.berkas{color:inherit;}
-.tautbaris{color:inherit;text-decoration:none;}
-.tautbaris:hover{color:inherit;}
-.pengguna{cursor:default;}
-
-/* Kaki menu: siapa yang sedang masuk, dan tombol keluar. */
-.nav .peran .akunmasuk{display:grid;gap:6px;font-size:var(--t3);}
-.nav .peran .akunmasuk b{font-weight:600;color:var(--ink);line-height:1.35;}
-.nav .peran .akunmasuk span{display:flex;align-items:center;gap:5px;color:var(--ink-2);font-size:var(--t2);}
-.nav .peran .akunmasuk form{margin:2px 0 0;}
-@media (max-width:1120px){
-  .nav .peran .akunmasuk b,.nav .peran .akunmasuk span{display:none;}
-  .nav .peran .akunmasuk .btn{width:100%;padding:6px 4px;font-size:10px;}
+/* Identitas Tridaya — sumber vektor dan aturan pakai di TRIDAYA.md.
+   Manrope hanya untuk tulisan logo; tipografi antarmuka tetap Inter. */
+@font-face{
+  font-family:'Tridaya Manrope';font-style:normal;font-weight:200 800;font-display:swap;
+  src:url('../fonts/manrope-variable.ttf') format('truetype');
 }
+.tridaya-logo{display:flex;align-items:center;gap:6px;flex:none;min-width:0;}
+.tridaya-simbol{display:block;width:48px;height:48px;flex:none;object-fit:contain;}
+.tridaya-teks{min-width:0;}
+.tridaya-logo .tridaya-nama,.nav .brand .tridaya-nama{
+  display:block;margin:0;font-family:'Tridaya Manrope',sans-serif;font-size:32px;
+  font-weight:800;font-style:normal;font-synthesis:none;letter-spacing:-.04em;
+  line-height:1.2;color:#163D78;white-space:nowrap;
+}
+.tridaya-logo-gelap .tridaya-nama{color:#fff;}
+.nav .brand .tridaya-simbol{width:40px;height:40px;}
+.nav .brand .tridaya-nama{font-size:28px;}
+.nav-atas .tridaya-ponsel{margin-left:auto;}
+.nav-atas .tridaya-simbol{width:32px;height:32px;}
+@media(min-width:768px){
+  body.nav-ringkas .nav .brand .tridaya-teks{display:none;}
+  body.nav-ringkas .nav .brand .tridaya-logo{gap:0;}
+}
+
+/* Di prototipe `html, body, #root` setinggi layar, dan kerangkanya (.simt)
+   boleh memanjang mengikuti isi. Di sini kerangkanya body itu sendiri, jadi
+   body TIDAK boleh dipatok setinggi layar: dulu `html,body{height:100%}` —
+   body berhenti di 900 px, dan menu samping serta batang atas yang lengket di
+   dalamnya ikut tergulir begitu halaman melewati satu layar (22 Sep). */
+html{height:100%;}
+body{margin:0;min-height:100%;}
+
+/* Link yang tampil sebagai tombol atau baris. Prototipe memakai <button>
+   untuk semuanya; di sini yang berpindah halaman berupa link, supaya bisa
+   dibuka di tab baru dan tetap berfungsi tanpa skrip. */
+a.menu,a.btn,a.row,a.lonceng,a.berkas,a.item,a.link,a.fb-link,a.blokjudul,a.tujuan,a.linkrek,a.kb-buka{text-decoration:none;}
+a.menu,a.row,a.lonceng,a.item,a.linkrek,a.kb-buka{color:inherit;}
+a.berkas{color:inherit;}
+.linkbaris{color:inherit;text-decoration:none;}
+.linkbaris:hover{color:inherit;}
+/* Tombol pengguna di sini link ke Profil & pengaturan yang membuka menu akun
+   (28 Sep); dulu hanya keterangan, jadi penunjuknya biasa. */
+a.pengguna{color:inherit;}
+
+/* Sidebar ruang kerja Tridaya. Identitas, deskripsi, lalu menu; kaki kecil
+   menyimpan panduan. Bingkai menempel ke tepi layar dan header agar tidak
+   menyisakan celah dari kartu membulat; radius tetap pada menu dan laci ponsel.
+   Aturan ini khusus PHP, terpisah dari salinan prototipe. */
+@media screen{
+  .nav{width:280px;margin:0;padding:26px 20px 20px;gap:10px;
+    top:0;height:100vh;height:100dvh;
+    border:0;border-right:1px solid var(--line);border-radius:0;
+    background:var(--surface);scrollbar-width:thin;}
+  .nav .nav-ruang{margin:0;padding-right:34px;font-size:10px;line-height:1.5;
+    font-weight:600;color:#60738F;text-transform:uppercase;letter-spacing:.025em;}
+  .nav .brand{position:static;background:transparent;padding:10px 0 0;gap:10px;}
+  .nav .brand .tridaya-logo{gap:8px;}
+  .nav .brand .tridaya-simbol{width:48px;height:48px;}
+  .nav .brand .tridaya-nama{font-size:34px;}
+  .nav .nav-deskripsi{margin:10px 0 8px;padding-bottom:24px;border-bottom:1px solid #DCE4EF;
+    color:#60738F;font-size:13px;line-height:1.55;}
+  .nav .kontrol-nav{position:absolute;top:16px;right:12px;margin:0;}
+  .nav .ciut{width:32px;height:32px;border-radius:9px;color:#71829A;}
+  .nav .ciut:hover{background:#EAF0FB;color:#163D78;}
+  .nav .menu{min-height:50px;padding:11px 12px;gap:12px;border-radius:12px;
+    font-size:14px;font-weight:400;color:#60738F;}
+  .nav .menu:hover{background:#F3F6FB;color:#163D78;}
+  .nav .menu[aria-current]{background:#EAF0FB;color:#163D78;font-weight:600;}
+  .nav .nav-penanda{display:grid;place-items:center;flex:none;width:24px;height:24px;
+    border-radius:6px;background:#E4EAF3;color:#60738F;}
+  .nav .menu svg{opacity:1;}
+  .nav .menu[aria-current] .nav-penanda{background:#2864C6;color:#fff;}
+  .nav .menu .n{font-size:11px;color:#60738F;}
+  .nav .menu[aria-current] .n{color:#163D78;}
+  .nav .menu.genting .n{color:#fff;}
+  .nav .nav-kaki{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin-top:auto;padding-top:26px;}
+  .nav .nav-lembaga{margin:0;font-size:12px;line-height:1.55;font-weight:500;color:#60738F;}
+  .nav .nav-lembaga span{display:block;font-size:11px;font-weight:400;}
+  .nav .nav-panduan{display:grid;place-items:center;width:40px;height:40px;flex:none;
+    border-radius:11px;color:#60738F;text-decoration:none;}
+  .nav .nav-panduan:hover{color:#163D78;background:#EAF0FB;}
+}
+@media screen and (min-width:768px){
+  body.nav-ringkas .nav{width:88px;padding:16px 6px;gap:8px;}
+  body.nav-ringkas .nav .nav-ruang,body.nav-ringkas .nav .nav-deskripsi,
+  body.nav-ringkas .nav .nav-lembaga{display:none;}
+  body.nav-ringkas .nav .brand{justify-content:center;padding:0;}
+  body.nav-ringkas .nav .brand .tridaya-simbol{width:40px;height:40px;}
+  body.nav-ringkas .nav .kontrol-nav{position:static;justify-content:center;margin-bottom:4px;}
+  body.nav-ringkas .nav .menu{min-height:60px;gap:6px;padding:10px 4px;}
+  body.nav-ringkas .nav .menu .n{top:4px;right:5px;font-size:10px;}
+  body.nav-ringkas .nav .nav-kaki{justify-content:center;padding-top:16px;}
+}
+@media screen and (max-width:767.98px){
+  .nav{top:0;margin:0;width:min(320px,calc(100vw - 24px));height:100vh;height:100dvh;
+    padding:24px 20px 20px;border-radius:0 24px 24px 0;}
+  .nav .kontrol-nav{display:none;}
+  .nav .brand .tutup-nav{position:absolute;top:14px;right:12px;margin:0;
+    width:40px;height:40px;border:0;border-radius:10px;color:#60738F;}
+  .nav .brand .tutup-nav:hover{background:#EAF0FB;color:#163D78;}
+}
+@media screen and (max-height:620px){
+  .nav{padding-top:18px;padding-bottom:14px;gap:6px;}
+  .nav .brand{padding-top:4px;}
+  .nav .nav-deskripsi{margin-top:4px;padding-bottom:14px;}
+  .nav .menu{min-height:44px;padding-top:8px;padding-bottom:8px;}
+  .nav .nav-kaki{padding-top:16px;}
+}
+
+/* Tanpa skrip area kosong menu tidak bisa diklik — penunjuknya jangan
+   menjanjikan apa-apa. Kontrolnya tetap tersembunyi selama skrip tidak jalan. */
+.nav:has(> .kontrol-nav[hidden]){cursor:auto;}
+
+/* Panduan singkat: terbuka lewat #panduan walau skrip tidak jalan, dan lewat
+   kelas `tampil` yang dipasang skrip tanpa mengubah alamat halaman. */
+.tirai-panduan{display:none;}
+.tirai-panduan:target,.tirai-panduan.tampil{display:flex;}
+/* Jendela arsip rekomendasi: aturan yang sama — #arsip tanpa skrip, `tampil`
+   dengan skrip. Rupanya (.lembar.arsip, .arsip-berkas, .jml-arsip) dari
+   salinan prototipe. */
+.tirai-arsip{display:none;}
+.tirai-arsip:target,.tirai-arsip.tampil{display:flex;}
 
 /* Pesan hasil kiriman formulir, di atas isi halaman. */
 .pesanbingkai{padding-bottom:0 !important;}
 .pesanbingkai .pesan{margin:0;}
 
-/* ================= halaman masuk ================= */
-.masuk{margin:auto;width:100%;max-width:440px;padding:40px 20px;}
-.masuk .kotak{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
-  padding:28px;box-shadow:var(--bayang);}
-.masuk h1{margin:0 0 4px;font-size:19px;font-weight:700;letter-spacing:-.01em;}
-.masuk .sub{color:var(--ink-3);font-size:13px;margin:0 0 22px;}
-.masuk .akun{display:grid;gap:6px;margin-top:10px;max-height:360px;overflow-y:auto;}
-.masuk .akun button{display:flex;justify-content:space-between;gap:10px;text-align:left;
-  background:var(--surface);border:1px solid var(--line);border-radius:var(--r1);padding:8px 11px;font-size:13px;}
-.masuk .akun button:hover{border-color:var(--aksen-line);background:var(--aksen-bg);}
+/* ================= halaman masuk (ditata ulang 28 Sep) =================
+   Hanya ada di Laravel — prototipe tidak punya halaman masuk. Dipakai juga
+   Simulasi SSO dan Akses dibatasi (`.msk.tunggal`, satu kolom).
+
+   Tata letak: di layar lebar dua kolom — kiri pengenal aplikasi (merek,
+   tajuk, tiga butir), kanan kartu masuk dan, pada pemasangan demo, akun
+   contoh. Di bawah 1024 px satu kolom; di bawah 640 px pengenalnya tinggal
+   merek, supaya kartunya langsung terlihat di ponsel.
+
+   Latar bergerak (permintaan Hizkia 28 Sep): tiga gumpal warna melayang
+   pelan, jaring titik bergeser, butiran naik. Yang dianimasikan hanya
+   `transform` dan `opacity` — digeser kartu grafis, tidak digambar ulang
+   tiap bingkai, jadi ringan di komputer kantor. Tanpa skrip, tanpa gambar,
+   tanpa `filter`/`backdrop-filter`. Bagi yang memilih gerak dikurangi semuanya
+   diam (saklar umum di simtlhp.css) dan butirannya tidak tampil.
+
+   Keterbacaan mengikuti aturan umum: garis isian #8B95A5 (3 : 1), bingkai
+   kartu #B8C0CC, tulisan di atas latar paling pucat #4B5563. */
+
+/* ---------- latar ---------- */
+.msk-latar{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:linear-gradient(160deg,#F4F7FE 0%,#EDF1F9 52%,#F5F7FA 100%);}
+.msk-gumpal{position:absolute;display:block;border-radius:50%;will-change:transform;}
+.msk-gumpal.g1{width:60vmax;height:60vmax;left:-18vmax;top:-22vmax;
+  background:radial-gradient(closest-side,rgba(37,99,235,.24),rgba(37,99,235,.09) 55%,rgba(37,99,235,0));
+  animation:mskApung1 24s ease-in-out infinite alternate;}
+.msk-gumpal.g2{width:52vmax;height:52vmax;right:-20vmax;top:14vh;
+  background:radial-gradient(closest-side,rgba(14,165,233,.22),rgba(14,165,233,.08) 55%,rgba(14,165,233,0));
+  animation:mskApung2 30s ease-in-out infinite alternate;}
+.msk-gumpal.g3{width:56vmax;height:56vmax;left:18vw;bottom:-34vmax;
+  background:radial-gradient(closest-side,rgba(99,102,241,.18),rgba(99,102,241,.07) 55%,rgba(99,102,241,0));
+  animation:mskApung3 36s ease-in-out infinite alternate;}
+@keyframes mskApung1{to{transform:translate3d(16vw,12vh,0) scale(1.12);}}
+@keyframes mskApung2{to{transform:translate3d(-18vw,-10vh,0) scale(.88);}}
+@keyframes mskApung3{to{transform:translate3d(-12vw,-16vh,0) scale(1.16);}}
+
+/* Jaring titik: polanya berulang tiap 26 px, jadi digeser tepat satu petak
+   lalu diulang — sambungannya tidak terlihat. Memudar ke tepi layar. */
+.msk-jaring{position:absolute;inset:0;overflow:hidden;
+  -webkit-mask-image:radial-gradient(ellipse 70% 65% at 50% 45%,#000 25%,transparent 78%);
+          mask-image:radial-gradient(ellipse 70% 65% at 50% 45%,#000 25%,transparent 78%);}
+.msk-jaring > i{position:absolute;inset:-26px;display:block;will-change:transform;
+  background-image:radial-gradient(circle,rgba(30,64,175,.22) 1.1px,transparent 1.7px);
+  background-size:26px 26px;animation:mskJaring 13s linear infinite;}
+@keyframes mskJaring{to{transform:translate3d(26px,26px,0);}}
+
+/* Butiran: mulai di bawah layar, naik miring sambil memudar. Jeda negatif
+   supaya sejak awal sudah tersebar, bukan berangkat bersamaan. */
+.msk-butiran{position:absolute;inset:0;}
+.msk-butiran > i{position:absolute;bottom:-16px;display:block;width:5px;height:5px;border-radius:50%;
+  background:rgba(37,99,235,.42);box-shadow:0 0 10px 2px rgba(59,130,246,.22);opacity:0;
+  will-change:transform,opacity;animation:mskNaik 32s linear infinite;}
+.msk-butiran > i:nth-child(even){animation-name:mskNaik2;}
+.msk-butiran > i:nth-child(1){left:7%;animation-duration:34s;animation-delay:-4s;}
+.msk-butiran > i:nth-child(2){left:17%;width:3px;height:3px;animation-duration:27s;animation-delay:-17s;}
+.msk-butiran > i:nth-child(3){left:28%;width:6px;height:6px;animation-duration:41s;animation-delay:-9s;}
+.msk-butiran > i:nth-child(4){left:38%;width:4px;height:4px;animation-duration:31s;animation-delay:-24s;}
+.msk-butiran > i:nth-child(5){left:50%;animation-duration:37s;animation-delay:-2s;}
+.msk-butiran > i:nth-child(6){left:60%;width:3px;height:3px;animation-duration:26s;animation-delay:-13s;}
+.msk-butiran > i:nth-child(7){left:69%;width:6px;height:6px;animation-duration:43s;animation-delay:-30s;}
+.msk-butiran > i:nth-child(8){left:79%;width:4px;height:4px;animation-duration:29s;animation-delay:-6s;}
+.msk-butiran > i:nth-child(9){left:88%;animation-duration:35s;animation-delay:-21s;}
+.msk-butiran > i:nth-child(10){left:95%;width:3px;height:3px;animation-duration:30s;animation-delay:-11s;}
+@keyframes mskNaik{0%{transform:translate3d(0,0,0);opacity:0;}12%,80%{opacity:.9;}
+  100%{transform:translate3d(30px,-110vh,0);opacity:0;}}
+@keyframes mskNaik2{0%{transform:translate3d(0,0,0);opacity:0;}12%,80%{opacity:.9;}
+  100%{transform:translate3d(-30px,-110vh,0);opacity:0;}}
+@media (prefers-reduced-motion:reduce){.msk-butiran{display:none;}}
+/* Mode kontras tinggi Windows menimpa semua warna — hiasannya tak berguna. */
+@media (forced-colors:active){.msk-latar{display:none;}}
+
+/* ---------- tata letak ---------- */
+.msk{position:relative;z-index:1;flex:1 1 auto;min-width:0;width:100%;max-width:1200px;margin:0 auto;
+  min-height:100vh;min-height:100dvh;padding:40px 48px 24px;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,452px);grid-template-rows:1fr auto;
+  grid-template-areas:"sambut panel" "kaki kaki";column-gap:clamp(40px,7vw,120px);align-items:center;}
+.msk-sambut{grid-area:sambut;max-width:540px;padding:24px 0;}
+.msk-panel{grid-area:panel;display:grid;gap:16px;min-width:0;padding:24px 0;}
+/* Dengan akun contoh kolom kanan lebih tinggi dari layar: kedua kolom
+   dimulai dari atas, dan pengenalnya ikut menempel saat digulir. */
+.msk:has(.msk-contoh){align-items:start;}
+.msk:has(.msk-contoh) .msk-sambut{position:sticky;top:0;}
+.msk-kaki{grid-area:kaki;display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;
+  padding-top:28px;font-size:12px;color:#4B5563;}
+
+/* ---------- pengenal aplikasi ---------- */
+.msk-merek{display:flex;align-items:center;gap:12px;}
+.msk-merek .tridaya-logo{gap:10px;}
+.msk-merek .tridaya-simbol{width:64px;height:64px;}
+.msk-merek .tridaya-nama{font-size:40px;}
+.msk-tajuk{margin:44px 0 16px;font-size:clamp(30px,3.1vw,42px);line-height:1.14;font-weight:800;
+  letter-spacing:-.03em;color:var(--ink);text-wrap:balance;}
+.msk-ket{margin:0 0 32px;max-width:470px;font-size:15.5px;line-height:1.6;color:#374151;}
+.msk-butir{list-style:none;margin:0;padding:0;display:grid;gap:16px;}
+.msk-butir li{display:flex;align-items:flex-start;gap:14px;}
+.msk-butir .ic{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:10px;
+  background:rgba(255,255,255,.85);border:1px solid #D5DBE3;color:var(--aksen-kuat);
+  box-shadow:0 1px 2px rgba(16,24,40,.06);}
+.msk-butir li > span:last-child{padding-top:1px;font-size:13.5px;line-height:1.5;color:#4B5563;}
+.msk-butir b{display:block;font-size:14px;font-weight:600;color:var(--ink);}
+
+/* ---------- kartu ---------- */
+.msk-kartu{position:relative;background:var(--surface);border:1px solid #B8C0CC;border-radius:18px;
+  padding:36px 36px 28px;box-shadow:0 1px 2px rgba(16,24,40,.06),0 28px 56px -24px rgba(30,58,138,.30);}
+.msk-kartu h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.025em;line-height:1.2;color:var(--ink);}
+.msk-kartu .sub{margin:6px 0 26px;font-size:14px;line-height:1.55;color:#4B5563;}
+.msk-error{margin:-6px 0 20px;animation:simtMuncul .25s var(--kurva);}
+
+.msk-isian{margin-bottom:16px;}
+.msk-isian > label{display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:#374151;}
+.msk-kolom{position:relative;display:block;}
+.msk-kolom > svg{position:absolute;left:14px;top:50%;margin-top:-8px;color:#6B7280;pointer-events:none;
+  transition:color .15s;}
+.msk-kolom:focus-within > svg{color:var(--aksen);}
+.msk-kolom input{width:100%;min-height:46px;padding:11px 14px 11px 42px;border:1px solid #8B95A5;
+  border-radius:10px;background:var(--surface);font:inherit;font-size:14px;color:var(--ink);
+  transition:border-color .15s,box-shadow .15s;}
+.msk-kolom.ada-mata input{padding-right:50px;}
+.msk-kolom input::placeholder{color:#9AA3B2;}
+.msk-kolom input:hover{border-color:#6B7280;}
+.msk-kolom input:focus{outline:none;border-color:var(--aksen);box-shadow:0 0 0 3px rgba(37,99,235,.18);}
+.msk-kolom input[aria-invalid=true]{border-color:var(--bad);}
+.msk-kolom input[aria-invalid=true]:focus{box-shadow:0 0 0 3px rgba(220,38,38,.15);}
+/* Mata password — muncul hanya bila skripnya jalan. */
+.msk-mata{position:absolute;right:5px;top:50%;width:38px;height:38px;margin-top:-19px;border-radius:8px;
+  display:grid;place-items:center;color:#4B5563;transition:background-color .15s,color .15s;}
+.msk-mata:hover{background:var(--surface-3);color:var(--ink);}
+.msk-mata .tutup,.msk-mata[aria-pressed=true] .buka{display:none;}
+.msk-mata[aria-pressed=true] .tutup{display:block;}
+.msk-caps{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:12.5px;font-weight:600;color:#B45309;}
+.msk-caps svg{flex:none;}
+
+/* Tombol: SSO utama; Masuk dengan password jadi tombol kedua bila SSO ada.
+   Selama menunggu jawaban server berputar, dan tidak bisa ditekan dua kali. */
+.msk-tombol{width:100%;min-height:46px;border-radius:10px;font-size:14px;gap:9px;margin-top:4px;}
+.msk-tombol.kedua{background:var(--surface);border-color:#8B95A5;color:var(--ink);}
+.msk-tombol.kedua:hover{background:var(--surface-2);border-color:#6B7280;color:var(--ink);}
+.msk-tombol .msk-putar{display:none;}
+.msk-tombol[data-sibuk]{pointer-events:none;}
+.msk-tombol[data-sibuk] .msk-ikon{display:none;}
+.msk-tombol[data-sibuk] .msk-putar{display:block;animation:mskPutar .8s linear infinite;}
+@keyframes mskPutar{to{transform:rotate(360deg);}}
+
+.msk-atau{display:flex;align-items:center;gap:12px;margin:20px 0;font-size:12.5px;color:#4B5563;}
+.msk-atau::before,.msk-atau::after{content:"";flex:1;height:1px;background:#D5DBE3;}
+.msk-catatan{display:flex;align-items:flex-start;gap:8px;margin:24px 0 0;padding-top:18px;
+  border-top:1px solid var(--line);font-size:12.5px;line-height:1.5;color:#4B5563;}
+.msk-catatan svg{flex:none;margin-top:2px;color:#6B7280;}
+
+/* ---------- akun contoh (hanya pemasangan demo) ----------
+   Bingkai putus-putus: bagian ini bukan bagian aplikasi yang sungguhan. */
+.msk-contoh{background:rgba(255,255,255,.94);border:1px dashed #8B95A5;border-radius:16px;}
+.msk-contoh > summary{display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:15px;
+  list-style:none;cursor:pointer;}
+.msk-contoh > summary::-webkit-details-marker{display:none;}
+.msk-contoh > summary:hover{background:rgba(243,244,246,.8);}
+.msk-contoh > summary .ic{width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:8px;
+  background:var(--surface-3);color:#374151;}
+.msk-contoh > summary .judul{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink);}
+.msk-contoh > summary .n{padding:1px 8px;border-radius:999px;background:var(--surface-3);
+  font-size:12px;font-weight:600;color:#374151;font-variant-numeric:tabular-nums;}
+.msk-contoh > summary .pil{margin-left:auto;}
+.msk-contoh > summary .chev{flex:none;color:#4B5563;transition:transform .2s var(--kurva);}
+.msk-contoh[open] > summary .chev{transform:rotate(180deg);}
+.msk-contoh .isi{padding:0 16px 16px;}
+.msk-contoh .hint{margin:0;font-size:12.5px;color:#4B5563;}
+.msk-contoh .hint .mono{font-weight:600;color:var(--ink);}
+.msk-grup{margin-top:14px;}
+.msk-grup > .lbl{display:block;margin-bottom:8px;font-weight:600;color:#4B5563;}
+.msk-akun{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.msk-akun.gulir{max-height:232px;overflow-y:auto;overscroll-behavior:contain;
+  margin:-3px -6px -3px -3px;padding:3px 6px 3px 3px;}
+.msk-akun button{display:flex;align-items:center;gap:9px;min-width:0;min-height:50px;padding:7px 10px;
+  text-align:left;background:var(--surface);border:1px solid #B8C0CC;border-radius:10px;
+  transition:border-color .15s,background-color .15s,box-shadow .15s,transform .1s;}
+.msk-akun button:hover{border-color:var(--aksen);background:var(--aksen-bg);
+  box-shadow:0 2px 8px -3px rgba(37,99,235,.35);}
+.msk-akun button:active{transform:translateY(1px);}
+.msk-akun button[data-sibuk]{border-color:var(--aksen);background:var(--aksen-bg);}
+.msk-akun .rupa{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:50%;
+  background:var(--surface-3);color:#374151;font-size:10.5px;font-weight:700;letter-spacing:-.01em;
+  transition:background-color .15s,color .15s;}
+.msk-akun button:hover .rupa,.msk-akun button[data-sibuk] .rupa{background:var(--aksen);color:#fff;}
+.msk-akun .t{display:grid;min-width:0;line-height:1.3;}
+.msk-akun .t b{font-size:13px;font-weight:600;color:var(--ink);}
+.msk-akun .t small{overflow:hidden;font-size:12px;color:#4B5563;white-space:nowrap;text-overflow:ellipsis;}
+/* Unit kerja: satu kolom seperti daftar — nama unitnya sering panjang dan
+   kartu dua kolom jadi tidak rata tingginya. Orangnya di kanan. */
+.msk-akun.gulir{grid-template-columns:minmax(0,1fr);gap:6px;}
+.msk-akun.gulir button{min-height:44px;padding:6px 12px 6px 8px;}
+.msk-akun.gulir .t{flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;}
+.msk-akun.gulir .t small{flex:none;}
+
+/* ---------- Login developer (28 Sep) ----------
+   Halaman masuk sungguhan (/masuk) bersih seperti saat dipasang; selama
+   pengembangan ada kartu putus-putus di bawahnya menuju Login developer
+   (/masuk/pengembang) — email, password, dan akun contoh. Di sana judulnya
+   diberi keping "Pengembangan", dan jalan pulangnya link ke /masuk. */
+.msk-pengembang{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px dashed #8B95A5;
+  border-radius:16px;background:rgba(255,255,255,.94);color:inherit;text-decoration:none;
+  transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease;}
+.msk-pengembang:hover{border-color:var(--aksen);background:#fff;box-shadow:0 6px 18px -10px rgba(37,99,235,.45);}
+.msk-pengembang:focus-visible{outline:3px solid var(--aksen);outline-offset:2px;}
+.msk-pengembang .ic{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:9px;
+  background:var(--surface-3);color:#374151;}
+.msk-pengembang:hover .ic{background:var(--aksen-bg);color:var(--aksen-kuat);}
+.msk-pengembang .teks{flex:1;min-width:0;display:grid;gap:2px;}
+.msk-pengembang .teks b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:700;color:var(--ink);}
+.msk-pengembang .teks > span{font-size:12.5px;line-height:1.45;color:#4B5563;}
+.msk-pengembang .panah{flex:none;color:#4B5563;transition:transform .15s var(--kurva);}
+.msk-pengembang:hover .panah{color:var(--aksen);transform:translateX(2px);}
+.msk-mode{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;padding:3px 10px;border-radius:999px;
+  border:1px dashed #8B95A5;background:var(--surface-2);font-size:12px;font-weight:700;color:#374151;}
+.msk-kembali-masuk{margin:22px 0 0;padding-top:16px;border-top:1px solid var(--line);font-size:13px;}
+.msk-kembali-masuk a{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--aksen-kuat);text-decoration:none;}
+.msk-kembali-masuk a:hover{text-decoration:underline;}
+
+/* ---------- satu kolom: Simulasi SSO, Akses dibatasi ---------- */
+.msk.tunggal{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr auto;
+  grid-template-areas:"sambut" "panel" "kaki";max-width:760px;align-items:start;}
+.msk.tunggal .msk-sambut{display:flex;justify-content:center;max-width:none;padding:0;}
+.msk.tunggal .msk-panel{align-self:center;justify-self:center;width:100%;max-width:500px;}
+.msk.tunggal .msk-panel:has(> .lebar){max-width:680px;}
+.msk-ikon-atas{margin-bottom:16px;}
+.msk-teks{margin:16px 0 0;font-size:13.5px;line-height:1.6;color:#374151;}
+.msk-kembali{margin:22px 0 0;}
+
+/* ---------- tiba di layar ----------
+   Sama dengan halaman lain: hanya saat tiba (body[data-masuk], 0,7 detik),
+   tidak diputar ulang sesudah gagal masuk. Paling lambat selesai 650 ms. */
+@keyframes mskTiba{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+body[data-masuk] .msk-latar{animation:simtPudar .6s ease-out backwards;}
+body[data-masuk] .msk-sambut > *{animation:mskTiba .5s var(--kurva) backwards;}
+body[data-masuk] .msk-sambut > :nth-child(2){animation-delay:50ms;}
+body[data-masuk] .msk-sambut > :nth-child(3){animation-delay:100ms;}
+body[data-masuk] .msk-sambut > :nth-child(4){animation-delay:150ms;}
+body[data-masuk] .msk-panel > *{animation:mskTiba .5s var(--kurva) 60ms backwards;}
+body[data-masuk] .msk-panel > :nth-child(2){animation-delay:140ms;}
+
+/* ---------- layar laptop yang pendek (1366 × 768) ----------
+   Jarak-jaraknya dirapatkan supaya kartu lengkap — pesan salah, SSO, email,
+   password — tetap muat tanpa digulir. */
+@media (min-width:1024px) and (max-height:820px){
+  .msk{padding-top:24px;padding-bottom:16px;}
+  .msk-sambut,.msk-panel{padding:12px 0;}
+  .msk-kartu{padding:28px 32px 22px;}
+  .msk-kartu .sub{margin-bottom:20px;}
+  .msk-atau{margin:16px 0;}
+  .msk-catatan{margin-top:18px;padding-top:14px;}
+  .msk-tajuk{margin-top:32px;}
+  .msk-kaki{padding-top:16px;}
+}
+
+/* ---------- layar sempit ---------- */
+@media (max-width:1023px){
+  .msk{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr;
+    grid-template-areas:"sambut" "panel" "kaki";max-width:560px;padding:28px 20px 20px;align-items:start;}
+  .msk-sambut{max-width:none;padding:8px 0 0;}
+  .msk-tajuk{margin:28px 0 8px;font-size:28px;}
+  .msk-ket{margin:0;font-size:14.5px;}
+  .msk-butir{display:none;}
+  .msk-panel{padding:22px 0 0;}
+  .msk-kaki{align-self:end;justify-content:center;text-align:center;padding-top:32px;}
+}
+@media (max-width:639px){
+  .msk{padding:20px 16px 16px;}
+  .msk-sambut{display:flex;justify-content:center;padding:4px 0 0;}
+  .msk-tajuk,.msk-ket{display:none;}
+  .msk-panel{padding-top:18px;}
+  .msk-kartu{padding:26px 20px 22px;border-radius:16px;}
+  .msk-kartu h1{font-size:23px;}
+  .msk-kartu .sub{margin-bottom:22px;}
+  .msk-contoh > summary{padding:12px 14px;}
+  .msk-contoh .isi{padding:0 14px 14px;}
+}
+@media (max-width:359px){.msk-akun{grid-template-columns:minmax(0,1fr);}}
 
 /* ================= keping pemilih satuan kerja ================= */
-/* Padanan `KepingSatker` prototipe. Di sana warnanya ditulis lewat gaya sebaris
-   dengan nama peubah yang tidak pernah ada (--accent, --accent-soft), jadi
-   keping yang terpilih kehilangan latarnya dan tanda centangnya — putih di atas
-   putih — ikut tak terlihat. Di sini dipakai peubah yang benar, jadi yang
-   terpilih memang terlihat terpilih. */
-.kepingpilih{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;
-  border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:500;text-align:left;
-  border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);}
+/* Rupa dasarnya — bingkai 3 : 1, huruf 13px — dari .kepingpilih salinan
+   prototipe di simtlhp.css. Di sini hanya yang khas Laravel: kepingnya kotak
+   centang di dalam label, bukan tombol ber-aria-pressed, jadi keadaan
+   terpilihnya dibaca dari :checked. Tanda centangnya selalu dirender, jadi
+   disembunyikan selama belum dicentang. */
 .kepingpilih > input{position:absolute;opacity:0;width:0;height:0;}
-.kepingpilih > .kotak{width:13px;height:13px;border-radius:3px;flex:none;
-  display:grid;place-items:center;border:1.5px solid var(--line);
-  background:transparent;color:transparent;}
-.kepingpilih:hover{border-color:var(--aksen-line);}
+.kepingpilih > .kotak{color:transparent;}
 .kepingpilih:has(input:checked){border-color:var(--aksen);background:var(--aksen-bg);
-  color:var(--aksen);font-weight:700;}
+  color:var(--aksen-kuat);font-weight:700;}
 .kepingpilih:has(input:checked) > .kotak{border-color:var(--aksen);background:var(--aksen);color:#fff;}
 .kepingpilih:has(input:focus-visible){outline:2px solid var(--aksen);outline-offset:2px;}
+
+/* ================= pemberitahuan (26 Sep) ================= */
+/* Tombol tandai dibaca di sini dibungkus formulir (tetap bekerja tanpa
+   skrip); formulirnya yang jadi anak baris, jadi ia yang ditata. Di halaman
+   Pemberitahuan tombol "Tandai semua dibaca" juga di dalam formulir. */
+.kb-butir > .kb-tandai-f{display:flex;align-items:center;margin:0;}
+.kb-ringkas > form{margin:0 0 0 auto;}
+
+/* Catat laporan baru mengirim isiannya di belakang layar dan menukar isi
+   formulirnya di tempat (29 Sep, khusus Laravel — prototipe tidak punya
+   server). Selama jawabannya belum tiba cukup kursornya yang memberi tahu;
+   formulirnya tetap bisa diisi. */
+form[data-form-baru][aria-busy="true"]{cursor:progress;}
+
+/* Daftar Rekomendasi dan Daftar laporan menukar hasil filternya di tempat
+   (29 Sep, khusus Laravel). Jawaban yang lambat meredupkan tabelnya sedikit
+   — baru sesudah 150 ms, jadi jawaban yang cepat tidak berkedip. Yang
+   mengurangi animasi cukup diberi tanda di kursornya. */
+form[data-ganti-di-tempat][aria-busy="true"]{cursor:progress;}
+@media (prefers-reduced-motion: no-preference){
+  body:not([data-animasi="kurang"]) form[data-ganti-di-tempat][aria-busy="true"] ~ .tw{opacity:.55;transition:opacity .15s .15s;}
+}

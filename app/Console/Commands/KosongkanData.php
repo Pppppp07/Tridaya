@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Dipakai sebelum aplikasi diisi data sungguhan, atau sebelum diserahkan.
  * Dibuat sebagai perintah, bukan skrip sekali pakai: pengosongannya akan
- * diulang tiap kali data contoh dibuat lagi untuk peragaan, dan skrip yang
+ * diulang tiap kali data contoh dibuat lagi untuk demo, dan skrip yang
  * ditulis ulang tiap kali cepat atau lambat melewatkan satu tabel.
  *
  * Dua tingkat, dan bedanya penting:

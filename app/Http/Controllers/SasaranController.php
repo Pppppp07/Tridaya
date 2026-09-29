@@ -9,6 +9,7 @@ use App\Enums\HasilTelaah;
 use App\Enums\PeranPengguna;
 use App\Enums\PosisiBerkas;
 use App\Models\Sasaran;
+use App\Rules\LinkAman;
 use Illuminate\Http\Request;
 
 /**
@@ -26,12 +27,12 @@ class SasaranController extends Controller
             'Berkas tidak sedang menunggu diteruskan Setba.');
 
         /* Nomor, tanggal, dan perihal wajib — UKI menolak berkas yang datang
-           tanpa surat dari Setba. Tautan dan catatan boleh menyusul. */
+           tanpa surat dari Setba. Link dan catatan boleh menyusul. */
         $surat = $req->validate([
             'nomor'   => ['required', 'string', 'max:120'],
             'tanggal' => ['required', 'date', 'before_or_equal:today'],
             'perihal' => ['required', 'string', 'max:500'],
-            'tautan'  => ['nullable', 'string', 'max:500'],
+            'link'  => ['nullable', 'string', 'max:500', new LinkAman],
             'catatan' => ['nullable', 'string', 'max:500'],
         ], [
             'nomor.required' => 'Nomor, tanggal, dan perihal surat harus terisi.',
@@ -39,9 +40,9 @@ class SasaranController extends Controller
             'perihal.required' => 'Nomor, tanggal, dan perihal surat harus terisi.',
         ]);
 
-        Teruskan::jalankan($sasaran->tindakan->rekomendasi, $sasaran->load('satker', 'tindakan'), $surat + ['tautan' => null, 'catatan' => null]);
+        Teruskan::jalankan($sasaran->tindakan->rekomendasi, $sasaran->load('satker', 'tindakan'), $surat + ['link' => null, 'catatan' => null]);
 
-        return redirect()->route('rekomendasi.index');
+        return redirect()->route('rekomendasi.index', ['tuju' => $sasaran->tindakan->rekomendasi_id]);
     }
 
     public function putus(Request $req, Sasaran $sasaran)
@@ -67,7 +68,7 @@ class SasaranController extends Controller
             'batas_waktu'   => [! $uki && $hasil === HasilTelaah::BM ? 'required' : 'nullable', 'date', 'after_or_equal:today'],
             'perihal'       => ['nullable', 'string', 'max:500'],
             'berkas'        => ['nullable', 'string', 'max:255'],
-            'tautan'        => ['nullable', 'string', 'max:500'],
+            'link'        => ['nullable', 'string', 'max:500', new LinkAman],
             'nomor_lhv'     => ['nullable', 'string', 'max:120'],
             'tgl_lhv'       => ['nullable', 'date', 'before_or_equal:today'],
             'dokumen'       => ['array'],
@@ -91,7 +92,7 @@ class SasaranController extends Controller
             'tglSurat'       => $data['tgl_surat'] ?? '',
             'perihal'        => $data['perihal'] ?? '',
             'berkas'         => $data['berkas'] ?? '',
-            'tautan'         => $data['tautan'] ?? '',
+            'link'         => $data['link'] ?? '',
             'batasWaktu'     => ! $uki && $hasil === HasilTelaah::BM ? ($data['batas_waktu'] ?? '') : '',
             'dokumenDiminta' => $hasil === HasilTelaah::BM ? ($data['dokumen'] ?? []) : [],
             'nomorLhv'       => ! $uki ? ($data['nomor_lhv'] ?? '') : '',
@@ -102,7 +103,7 @@ class SasaranController extends Controller
                 'catatan' => $data['tanda_catatan'] ?? '']],
         ]);
 
-        return redirect()->route('rekomendasi.index');
+        return redirect()->route('rekomendasi.index', ['tuju' => $sasaran->tindakan->rekomendasi_id]);
     }
 
     public function kirimUlang(Request $req, Sasaran $sasaran)
@@ -120,6 +121,6 @@ class SasaranController extends Controller
         KirimUlang::jalankan($sasaran->tindakan->rekomendasi, $sasaran->load('satker', 'tindakan'),
             $data['keterangan'] ?? null, $data['dokumen'] ?? []);
 
-        return redirect()->route('rekomendasi.index');
+        return redirect()->route('rekomendasi.index', ['tuju' => $sasaran->tindakan->rekomendasi_id]);
     }
 }

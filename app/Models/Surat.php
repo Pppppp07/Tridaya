@@ -12,7 +12,7 @@ class Surat extends Model
 {
     protected $fillable = [
         'rekomendasi_id', 'sasaran_id', 'dari', 'ke', 'nomor',
-        'tanggal', 'tanggal_catat', 'perihal', 'catatan', 'tautan',
+        'tanggal', 'tanggal_catat', 'perihal', 'catatan', 'link',
         'lampiran_id', 'dicatat_oleh',
     ];
 

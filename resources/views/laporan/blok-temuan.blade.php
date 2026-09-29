@@ -1,5 +1,7 @@
 @php
   use App\Enums\HasilTelaah;
+  use App\Models\Laporan;
+  use App\Models\Temuan;
   use App\Support\Tampil;
 
   /* Satu temuan beserta rekomendasinya — padanan BlokTemuan. Selalu tertutup
@@ -10,9 +12,40 @@
   $kembali = (int) $tem->rekomendasi->sum(fn ($r) => $r->totalSetor());
   $memadai = $tem->rekomendasi->filter(fn ($r) => $r->keadaanUnor() === HasilTelaah::M)->count();
   $idIsi = 'temuan-'.$tem->id;
+
+  /* Keterangan temuannya berbaris ke bawah (27 Sep) — padanan daftar Fakta di
+     BlokTemuan, bentuk yang sama dengan Uraian temuan di rincian rekomendasi.
+     Angka uangnya memakai nama dan urutan Pemulihan dana tingkat laporan:
+     tagihan disebut kalau berbeda dari nilai temuannya, yang sudah dan belum
+     dipulihkan hanya kalau memang ada yang ditagih. Judul, butir, dan kode
+     tidak diulang — kepala bloknya sudah menyebutnya. */
+  $uang = $nilai > 0 && ! $tem->hanya_terperiksa;
+  $sisa = $ditagih - $kembali;
+  $angka = fn (string $teks) => '<b class="angkafakta">'.$teks.'</b>';
+  $faktaTemuan = [
+    ['l' => 'Kategori temuan', 'ket' => Temuan::ketKategori($jenis),
+      'v' => view('components.kategori-temuan', ['nama' => $tem->kategori?->nama])->render()],
+    ['l' => 'Kategori internal', 'ket' => Temuan::KET_KATEGORI_INTERN,
+      'v' => view('components.tag-kategori', ['kat' => $tem->kategoriIntern, 'polos' => true])->render()],
+    ['l' => 'Sebab', 'v' => e($tem->sebab ?: '—')],
+    ['l' => 'Akibat', 'v' => e($tem->akibat ?: '—')],
+    $uang ? ['l' => 'Nilai temuan', 'v' => $angka(Tampil::rupiah($nilai))] : null,
+    $uang && $ditagih > 0 && $ditagih !== $nilai
+      ? ['l' => 'Tagihan rekomendasi', 'ket' => Laporan::KET_TAGIHAN, 'v' => $angka(Tampil::rupiah($ditagih))] : null,
+    $uang && $ditagih < $nilai
+      ? ['l' => 'Administratif', 'c' => 'var(--jingga)', 'ket' => Laporan::KET_ADMINISTRATIF,
+          'v' => $angka(Tampil::rupiah($nilai - $ditagih))] : null,
+    $uang && $ditagih > 0
+      ? ['l' => 'Sudah dipulihkan', 'c' => 'var(--ok)', 'v' => $angka($kembali ? Tampil::rupiah($kembali) : 'Rp 0')] : null,
+    $uang && $ditagih > 0
+      ? ['l' => $sisa > 0 ? 'Sisa yang harus dipulihkan' : 'Sisa tagihan', 'c' => $sisa > 0 ? 'var(--bad)' : 'var(--ok)',
+          'v' => $angka($sisa > 0 ? Tampil::rupiah($sisa) : 'Sudah lunas')] : null,
+  ];
 @endphp
 
-<div class="temblok" data-temblok>
+{{-- data-temuan dan data-satker: sasaran pintasan (26 Sep) — nama satuan kerja
+     dan angka di kepala halaman membuka blok ini lalu menyorot barisnya. --}}
+<div class="temblok" data-temblok data-temuan="{{ $tem->id }}" data-satker="{{ $tem->satkers->pluck('id')->join('|') }}">
   <button type="button" class="kep" aria-expanded="false" aria-controls="{{ $idIsi }}" data-buka-temuan>
     <span class="panah" style="color:var(--ink-3);flex:none">›</span>
     <span class="mono" style="font-size:15px;font-weight:700;color:var(--ink-3);flex:none">{{ $i + 1 }}</span>
@@ -33,46 +66,7 @@
   </button>
 
   <div class="isi isitem" id="{{ $idIsi }}" data-isi-temuan>
-    <div class="katbaris">
-      <span class="lbl" style="margin:0">Kategori temuan</span>
-      <span class="tagkat">{{ $tem->kategori?->nama ?? 'belum dipilih' }}</span>
-      <span class="lbl" style="margin:0 0 0 6px">Kategori internal</span>
-      <x-tag-kategori :kat="$tem->kategoriIntern" />
-      <x-info :teks="[
-        $jenis->melewatiSiptl()
-          ? 'Kategori temuan: penggolongan dari BPK, tertulis apa adanya dari suratnya.'
-          : 'Kategori temuan: penggolongan dari Inspektorat, tertulis apa adanya dari suratnya.',
-        'Kategori internal: penggolongan BPSDM sendiri, dipakai mengelompokkan temuan sejenis untuk rekap ke dalam.',
-        'Keduanya diisi Setba pada saat mencatat Laporan Baru.',
-      ]" />
-    </div>
-
-    <div class="unsur">
-      <div class="unsur"><div class="lbl" style="margin-bottom:4px">Sebab</div><div style="font-size:13px">{{ $tem->sebab ?: '—' }}</div></div>
-      <div class="unsur"><div class="lbl" style="margin-bottom:4px">Akibat</div><div style="font-size:13px">{{ $tem->akibat ?: '—' }}</div></div>
-    </div>
-
-    @if($nilai > 0 && ! $tem->hanya_terperiksa)
-      <div class="uang">
-        <span class="bar dana"><i style="width:{{ min(100, $ditagih ? $kembali / $ditagih * 100 : 0) }}%"></i></span>
-        <div class="angka">
-          <div><b>{{ Tampil::rupiah($nilai) }}</b><span class="lbl">Nilai temuan</span></div>
-          @if($ditagih > 0 && $ditagih !== $nilai)
-            <div><b>{{ Tampil::rupiah($ditagih) }}</b><span class="lbl">Harus dikembalikan</span></div>
-          @endif
-          @if($ditagih > 0)
-            <div><b style="color:var(--ok)">{{ $kembali ? Tampil::rupiah($kembali) : 'Rp 0' }}</b><span class="lbl">Sudah kembali</span></div>
-            <div><b style="color:{{ $ditagih - $kembali > 0 ? 'var(--bad)' : 'var(--ok)' }}">{{ $ditagih - $kembali > 0 ? Tampil::rupiah($ditagih - $kembali) : 'Lunas' }}</b><span class="lbl">Belum kembali</span></div>
-          @endif
-          @if($ditagih < $nilai)
-            <div>
-              <b style="color:var(--jingga)">{{ Tampil::rupiah($nilai - $ditagih) }}</b>
-              <span class="lbl">Administratif <x-info teks="Bagian nilai temuan yang tidak perlu disetor — cukup dilengkapi dokumennya atau diperbaiki prosedurnya." /></span>
-            </div>
-          @endif
-        </div>
-      </div>
-    @endif
+    <x-fakta :isi="$faktaTemuan" />
 
     @if($tem->hanya_terperiksa)
       <div class="pesan" style="margin:0">
@@ -99,7 +93,8 @@
                  membuka rincian kecil di bawahnya; isinya mengulang sebagian
                  halaman rincian dengan lebih sedikit keterangan, dan yang
                  membacanya tetap harus membuka halamannya juga. --}}
-            <tr class="bukaan{{ $rek->perluPerhatian() ? ' awas' : '' }}"
+            <tr class="bukaan{{ $rek->perluPerhatian() ? ' awas' : '' }}" data-rek="{{ $rek->id }}"
+              data-satker="{{ $satker->pluck('id')->join('|') }}"
               data-href="{{ route('rekomendasi.show', ['rekomendasi' => $rek, 'dari' => 'laporan']) }}">
               <td class="num mono" style="font-size:12px">
                 <span class="panahbaris"><x-ikon n="ChevronRight" :s="13" /></span>

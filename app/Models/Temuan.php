@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatusTindakLanjut;
+use App\Enums\SumberLaporan;
 use Illuminate\Database\Eloquent\Model;
 
 class Temuan extends Model
@@ -31,6 +32,26 @@ class Temuan extends Model
     public function rekomendasi()    { return $this->hasMany(Rekomendasi::class)->orderBy('nomor_urut')->orderBy('id'); }
     public function kategori()       { return $this->belongsTo(KategoriTemuan::class, 'kategori_temuan_id'); }
     public function kategoriIntern() { return $this->belongsTo(Referensi::class, 'kategori_intern_id'); }
+
+    /* Keterangan dua kategori itu — satu bunyi untuk blok temuan di rincian
+       laporan dan Uraian temuan di rincian rekomendasi. Padanan
+       ketKategoriTemuan dan KET_KATEGORI_INTERN di prototipe. */
+    public static function ketKategori(SumberLaporan $jenis): array
+    {
+        return [
+            $jenis->melewatiSiptl()
+                ? 'Penggolongan dari BPK, mengikuti bagian laporan keuangan yang kena dampaknya.'
+                : 'Penggolongan dari Inspektorat, mengikuti sudut pemeriksaannya.',
+            'Tertulis apa adanya dari surat laporannya, jadi tidak bisa diubah sendiri.',
+            'Dipakai saat berkoordinasi dengan pemeriksa, dan saat menyusun rekap yang mereka minta.',
+        ];
+    }
+
+    public const KET_KATEGORI_INTERN = [
+        'Penggolongan kita sendiri, dipakai mengelompokkan temuan sejenis untuk rekap internal.',
+        'Tidak ada di surat pemeriksaannya — diisi dan disetel Setba saat mencatat Laporan Baru.',
+        'Daftarnya bisa ditambah dan diganti nama lewat menu Data master.',
+    ];
 
     /**
      * Nilai temuan: yang tertulis di suratnya, atau — kalau kosong — jumlah

@@ -8,7 +8,7 @@ use App\Models\Lampiran;
 class BerkasController extends Controller
 {
     /**
-     * Berkas tidak pernah disajikan lewat tautan langsung ke folder
+     * Berkas tidak pernah disajikan lewat link langsung ke folder
      * penyimpanan. Rute ini memeriksa dulu apakah yang meminta memang berhak
      * melihatnya, baru berkasnya dikirim.
      */
@@ -19,7 +19,7 @@ class BerkasController extends Controller
 
             /* Surat pemeriksaan asli tidak pernah sampai ke satuan kerja: satu
                surat memuat temuan seluruh satuan kerja, dan yang lain bukan
-               urusannya. Penyaring hak lihat sudah membuangnya dari tampilan;
+               urusannya. Filter hak lihat sudah membuangnya dari tampilan;
                ini penjaga terakhirnya, untuk yang menebak alamatnya sendiri. */
             abort_if($lampiran->surat_asli, 403,
                 'Surat pemeriksaan asli memuat temuan seluruh satuan kerja.');

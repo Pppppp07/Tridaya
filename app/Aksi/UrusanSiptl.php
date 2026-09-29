@@ -14,7 +14,7 @@ use App\Models\RiwayatStatus;
 use App\Models\Sasaran;
 use App\Models\TolakanBpk;
 use App\Support\Jejak;
-use App\Support\Kabar;
+use App\Support\Pemberitahuan;
 use App\Support\Tampil;
 use Illuminate\Support\Facades\DB;
 
@@ -32,7 +32,7 @@ class UrusanSiptl
 
     /**
      * Tanggal unggah dikunci sekali tercatat. Penolakannya di pengendali,
-     * SEBELUM apa pun ditulis — riwayat dan kabar yang terlanjur tercatat untuk
+     * SEBELUM apa pun ditulis — riwayat dan pemberitahuan yang terlanjur tercatat untuk
      * tanggal yang ditolak justru jadi catatan palsu.
      */
     public static function unggah(Rekomendasi $r, Sasaran $s, string $tanggal): void
@@ -52,7 +52,7 @@ class UrusanSiptl
             Jejak::rangkumStatus($r);
 
             Jejak::riwayat($r, 'Setba', $teks, $tanggal);
-            Kabar::tulis($r, $teks, self::UNTUK, 'r-siptl', [$s->satker_id], $s->tindakan);
+            Pemberitahuan::tulis($r, $teks, self::UNTUK, 'r-siptl', [$s->satker_id], $s->tindakan);
         });
     }
 
@@ -77,7 +77,7 @@ class UrusanSiptl
             ]);
 
             Jejak::riwayat($r, 'Setba', $teks, $tanggal ?: null);
-            Kabar::tulis($r, $teks, self::UNTUK, 'r-siptl', [$s->satker_id], $s->tindakan);
+            Pemberitahuan::tulis($r, $teks, self::UNTUK, 'r-siptl', [$s->satker_id], $s->tindakan);
         });
     }
 
@@ -152,7 +152,7 @@ class UrusanSiptl
             ]);
 
             Jejak::riwayat($r, 'Setba', $teks);
-            Kabar::tulis($r, $teks, self::UNTUK, 'r-riwayat', [$s->satker_id], $s->tindakan);
+            Pemberitahuan::tulis($r, $teks, self::UNTUK, 'r-riwayat', [$s->satker_id], $s->tindakan);
         });
     }
 }

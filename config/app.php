@@ -65,7 +65,11 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    /* WIB, bukan UTC: jam di Pemberitahuan dan riwayat dibaca orang di
+       Jakarta, dan tanggal yang dicatat sistem — termasuk tanggal unggah
+       SIPTL yang terkunci — tidak boleh mundur sehari untuk kegiatan antara
+       pukul 00.00 dan 07.00. Prototipe memakai jam browser (WIB). */
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
 
     /*
     |--------------------------------------------------------------------------

@@ -1,0 +1,515 @@
+[
+  {
+    "nip": "197201011996012001",
+    "nama": "Dian Puspitasari",
+    "jabatan": "Kepala Subbagian Keuangan",
+    "unit": "SETBA-BPSDM",
+    "unitNama": "Sekretariat Badan Pengembangan Sumber Daya Manusia",
+    "email": "dian.puspitasari@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197906122004031004",
+    "nama": "Hendra Kusuma",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "SETBA-BPSDM",
+    "unitNama": "Sekretariat Badan Pengembangan Sumber Daya Manusia",
+    "email": "hendra.kusuma@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198611232012012007",
+    "nama": "Nur Aisyah Putri",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "SETBA-BPSDM",
+    "unitNama": "Sekretariat Badan Pengembangan Sumber Daya Manusia",
+    "email": "nur.aisyah.putri@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199304062020031003",
+    "nama": "Arif Wibowo",
+    "jabatan": "Kepala Subbagian Tata Usaha",
+    "unit": "PUSAT-TALENTA",
+    "unitNama": "Pusat Pengelolaan Talenta",
+    "email": "arif.wibowo@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197809172006012006",
+    "nama": "Maya Anggraini",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "PUSAT-TALENTA",
+    "unitNama": "Pusat Pengelolaan Talenta",
+    "email": "maya.anggraini@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198502282009031002",
+    "nama": "Fajar Nugraha",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "PUSAT-TALENTA",
+    "unitNama": "Pusat Pengelolaan Talenta",
+    "email": "fajar.nugraha@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199207112017012005",
+    "nama": "Lestari Handayani",
+    "jabatan": "Kepala Subbagian Tata Usaha",
+    "unit": "PUSBANGKOM-SDACKPS",
+    "unitNama": "Pusat Pengembangan Kompetensi Sumber Daya Air, Cipta Karya dan Prasarana Strategis",
+    "email": "lestari.handayani@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197712222003031001",
+    "nama": "Bayu Saputra",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "PUSBANGKOM-SDACKPS",
+    "unitNama": "Pusat Pengembangan Kompetensi Sumber Daya Air, Cipta Karya dan Prasarana Strategis",
+    "email": "bayu.saputra@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198405052011011004",
+    "nama": "Rizky Ramadhan",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "PUSBANGKOM-SDACKPS",
+    "unitNama": "Pusat Pengembangan Kompetensi Sumber Daya Air, Cipta Karya dan Prasarana Strategis",
+    "email": "rizky.ramadhan@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199110162019031007",
+    "nama": "Agung Prasetyo",
+    "jabatan": "Kepala Subbagian Tata Usaha",
+    "unit": "PUSBANGKOM-BMPIPIW",
+    "unitNama": "Pusat Pengembangan Kompetensi Bina Marga, Pembiayaan Infrastruktur dan Pengembangan Infrastruktur Wilayah",
+    "email": "agung.prasetyo@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197603272000012003",
+    "nama": "Novita Sari",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "PUSBANGKOM-BMPIPIW",
+    "unitNama": "Pusat Pengembangan Kompetensi Bina Marga, Pembiayaan Infrastruktur dan Pengembangan Infrastruktur Wilayah",
+    "email": "novita.sari@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198308102008031006",
+    "nama": "Irfan Maulana",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "PUSBANGKOM-BMPIPIW",
+    "unitNama": "Pusat Pengembangan Kompetensi Bina Marga, Pembiayaan Infrastruktur dan Pengembangan Infrastruktur Wilayah",
+    "email": "irfan.maulana@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199001212016012002",
+    "nama": "Ratna Kumalasari",
+    "jabatan": "Kepala Subbagian Tata Usaha",
+    "unit": "PUSBANGKOM-MANAJEMEN",
+    "unitNama": "Pusat Pengembangan Kompetensi Manajemen",
+    "email": "ratna.kumalasari@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197506042002031005",
+    "nama": "Wahyu Setiadi",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "PUSBANGKOM-MANAJEMEN",
+    "unitNama": "Pusat Pengembangan Kompetensi Manajemen",
+    "email": "wahyu.setiadi@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198211152010011001",
+    "nama": "Dimas Aditya",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "PUSBANGKOM-MANAJEMEN",
+    "unitNama": "Pusat Pengembangan Kompetensi Manajemen",
+    "email": "dimas.aditya@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198904262013031004",
+    "nama": "Yudi Firmansyah",
+    "jabatan": "Kepala Subbagian Umum dan Keuangan",
+    "unit": "POLTEK-PU",
+    "unitNama": "Politeknik Pekerjaan Umum",
+    "email": "yudi.firmansyah@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197409091999012007",
+    "nama": "Anisa Rahmawati",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "POLTEK-PU",
+    "unitNama": "Politeknik Pekerjaan Umum",
+    "email": "anisa.rahmawati@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198102202007031003",
+    "nama": "Galih Permana",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "POLTEK-PU",
+    "unitNama": "Politeknik Pekerjaan Umum",
+    "email": "galih.permana@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198807032015012006",
+    "nama": "Wiwik Sulistyowati",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-PENILAIAN",
+    "unitNama": "Balai Penilaian Kompetensi",
+    "email": "wiwik.sulistyowati@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197312142001031002",
+    "nama": "Andika Putra",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-PENILAIAN",
+    "unitNama": "Balai Penilaian Kompetensi",
+    "email": "andika.putra@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198005252004012005",
+    "nama": "Rini Oktaviani",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-PENILAIAN",
+    "unitNama": "Balai Penilaian Kompetensi",
+    "email": "rini.oktaviani@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198710082012031001",
+    "nama": "Martin Simanjuntak",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-1-MEDAN",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah I Medan",
+    "email": "martin.simanjuntak@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "197203191998012004",
+    "nama": "Rosmawati Nasution",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-1-MEDAN",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah I Medan",
+    "email": "rosmawati.nasution@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197908022006031007",
+    "nama": "Rinaldi Siregar",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-1-MEDAN",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah I Medan",
+    "email": "rinaldi.siregar@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198601132014012003",
+    "nama": "Fitri Handayani",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-2-PALEMBANG",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah II Palembang",
+    "email": "fitri.handayani@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "199306242017031006",
+    "nama": "Rahmadi Saputra",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-2-PALEMBANG",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah II Palembang",
+    "email": "rahmadi.saputra@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197811072003012002",
+    "nama": "Yulia Kartika",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-2-PALEMBANG",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah II Palembang",
+    "email": "yulia.kartika@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198504182011031005",
+    "nama": "Budi Setiawan",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-3-JAKARTA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah III Jakarta",
+    "email": "budi.setiawan@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "199209012019012001",
+    "nama": "Intan Permatasari",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-3-JAKARTA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah III Jakarta",
+    "email": "intan.permatasari@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197702122005031004",
+    "nama": "Reza Firdaus",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-3-JAKARTA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah III Jakarta",
+    "email": "reza.firdaus@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198407232008011007",
+    "nama": "Dedi Kurniawan",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-4-BANDUNG",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah IV Bandung",
+    "email": "dedi.kurniawan@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "199112062016032003",
+    "nama": "Rina Wulandari",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-4-BANDUNG",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah IV Bandung",
+    "email": "rina.wulandari@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197605172002011006",
+    "nama": "Ujang Supriatna",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-4-BANDUNG",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah IV Bandung",
+    "email": "ujang.supriatna@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198310282010032002",
+    "nama": "Endang Lestari",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-5-YOGYAKARTA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah V Yogyakarta",
+    "email": "endang.lestari@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "199003112018011005",
+    "nama": "Bambang Sutrisno",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-5-YOGYAKARTA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah V Yogyakarta",
+    "email": "bambang.sutrisno@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197508221999031001",
+    "nama": "Aditya Nugroho",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-5-YOGYAKARTA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah V Yogyakarta",
+    "email": "aditya.nugroho@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198201052007011004",
+    "nama": "Eko Wahyudi",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-6-SURABAYA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VI Surabaya",
+    "email": "eko.wahyudi@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "198906162015032007",
+    "nama": "Dwi Rahayu",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-6-SURABAYA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VI Surabaya",
+    "email": "dwi.rahayu@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197411272001011003",
+    "nama": "Budi Setiawan",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-6-SURABAYA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VI Surabaya",
+    "email": "budi.setiawan2@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198104102009031006",
+    "nama": "Muhammad Rizani",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-7-BANJARMASIN",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VII Banjarmasin",
+    "email": "muhammad.rizani@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "198809212012012002",
+    "nama": "Nurul Hasanah",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-7-BANJARMASIN",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VII Banjarmasin",
+    "email": "nurul.hasanah@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197302041998031005",
+    "nama": "Ahmad Syarifudin",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-7-BANJARMASIN",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VII Banjarmasin",
+    "email": "ahmad.syarifudin@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198007152006012001",
+    "nama": "Irma Suryani",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-8-MAKASSAR",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VIII Makassar",
+    "email": "irma.suryani@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "198712262014031004",
+    "nama": "Andi Muh. Akbar",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-8-MAKASSAR",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VIII Makassar",
+    "email": "andi.muh.akbar@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197205092000011007",
+    "nama": "Haeruddin Ramli",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-8-MAKASSAR",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah VIII Makassar",
+    "email": "haeruddin.ramli@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197910202003031003",
+    "nama": "Yohanes Rumbiak",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "unit": "BALAI-9-JAYAPURA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah IX Jayapura",
+    "email": "yohanes.rumbiak@contoh.test",
+    "pj": true
+  },
+  {
+    "nip": "198603032011012006",
+    "nama": "Maria Wanggai",
+    "jabatan": "Penata Laporan Keuangan",
+    "unit": "BALAI-9-JAYAPURA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah IX Jayapura",
+    "email": "maria.wanggai@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199308142019031002",
+    "nama": "Stevanus Karubaba",
+    "jabatan": "Pengelola Barang Milik Negara",
+    "unit": "BALAI-9-JAYAPURA",
+    "unitNama": "Balai Pengembangan Kompetensi Pekerjaan Umum dan Perumahan Rakyat Wilayah IX Jayapura",
+    "email": "stevanus.karubaba@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197801252005012005",
+    "nama": "Sri Wahyuni",
+    "jabatan": "Analis Pemantauan Tindak Lanjut Hasil Pemeriksaan",
+    "unit": "SETBA-BPSDM",
+    "unitNama": "Sekretariat Badan Pengembangan Sumber Daya Manusia",
+    "email": "setba@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198506082013031001",
+    "nama": "Teguh Santoso",
+    "jabatan": "Auditor Kepatuhan Internal",
+    "unit": "UKI-BPSDM",
+    "unitNama": "Unit Kepatuhan Internal Badan Pengembangan Sumber Daya Manusia",
+    "email": "uki@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199211192016012004",
+    "nama": "Maria Ulfah",
+    "jabatan": "Auditor Ahli Madya",
+    "unit": "ITJEN",
+    "unitNama": "Inspektorat Jenderal",
+    "email": "inspektorat@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197704022002031007",
+    "nama": "Bambang Hermawan",
+    "jabatan": "Sekretaris Badan",
+    "unit": "BPSDM",
+    "unitNama": "Badan Pengembangan Sumber Daya Manusia",
+    "email": "pimpinan@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198409132010011003",
+    "nama": "Yoga Pratama",
+    "jabatan": "Pranata Komputer Ahli Muda",
+    "unit": "PUSDATIN",
+    "unitNama": "Pusat Data dan Teknologi Informasi",
+    "email": "dti@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199102242018031006",
+    "nama": "Andi Kurniawan",
+    "jabatan": "Pranata Komputer Ahli Madya",
+    "unit": "PUSDATIN",
+    "unitNama": "Pusat Data dan Teknologi Informasi",
+    "email": "admin@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "197607072004012002",
+    "nama": "Siti Rahmawati",
+    "jabatan": "Auditor Ahli Muda",
+    "unit": "ITJEN",
+    "unitNama": "Inspektorat Jenderal",
+    "email": "siti.rahmawati@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "198312182007031005",
+    "nama": "Joko Susilo",
+    "jabatan": "Auditor Kepatuhan Internal",
+    "unit": "UKI-BPSDM",
+    "unitNama": "Unit Kepatuhan Internal Badan Pengembangan Sumber Daya Manusia",
+    "email": "joko.susilo@contoh.test",
+    "pj": false
+  },
+  {
+    "nip": "199005012015012001",
+    "nama": "Dewi Kartikasari",
+    "jabatan": "Pranata Komputer Ahli Pertama",
+    "unit": "PUSDATIN",
+    "unitNama": "Pusat Data dan Teknologi Informasi",
+    "email": "dewi.kartikasari@contoh.test",
+    "pj": false
+  }
+]

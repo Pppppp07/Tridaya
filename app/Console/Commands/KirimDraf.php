@@ -18,18 +18,18 @@ use Illuminate\Console\Command;
  *
  * Di prototipe ini dijalankan sekali saat aplikasinya dibuka; di sini
  * pekerjaan terjadwal harian (routes/console.php), dan sekali sesudah data
- * contoh disemai. Kabarnya dikirim tanpa pelaku, jadi belum terbaca oleh siapa
+ * contoh disemai. Pemberitahuannya dikirim tanpa pelaku, jadi belum terbaca oleh siapa
  * pun — termasuk Setba, yang justru harus meninjau berkasnya (W16).
  */
 class KirimDraf extends Command
 {
     protected $signature = 'tlhp:kirim-draf';
 
-    protected $description = 'Mengirim ke Setba draf tanggapan yang mengendap dan kewajibannya sudah tuntas';
+    protected $description = 'Mengirim ke Setba draf tanggapan yang lama belum dikirim dan kewajibannya sudah tuntas';
 
     public function handle(): int
     {
-        $batas = now()->startOfDay()->subDays(Kemajuan::HARI_ENDAP);
+        $batas = now()->startOfDay()->subDays(Kemajuan::HARI_KIRIM_OTOMATIS);
         $n = 0;
 
         $draf = DrafTanggapan::with('sasaran.satker', 'sasaran.tindakan.rekomendasi')

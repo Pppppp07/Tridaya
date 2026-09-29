@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\PeranPengguna;
 use App\Enums\PosisiBerkas;
 use App\Models\Rekomendasi;
+use App\Support\DasborKeadaan;
 use App\Support\RiwayatTindakLanjut;
 use App\Support\Terlihat;
 use Illuminate\Http\Request;
@@ -13,10 +14,11 @@ use Illuminate\Http\Request;
  * Halaman Rincian rekomendasi — padanan komponen `Rincian`.
  *
  * Satu lajur: laporan dan temuannya, lalu tindak lanjut — kepala rekomendasi,
- * satu tiket per bentuk tindak lanjut berisi tabel satuan kerjanya, urusan
- * SIPTL, riwayat status, dan arsip. Panel kerja duduk di dalam baris satuan
- * kerjanya; siapa boleh mengerjakan apa dihitung di sini dan diperiksa lagi di
- * pengendali aksinya.
+ * satu tiket per bentuk tindak lanjut berisi tabel satuan kerjanya (termasuk
+ * urusan SIPTL-nya, sejak kartu tersendirinya lebur ke tabel itu 17 Sep),
+ * riwayat status, dan arsip. Tiap kartu tertutup sejak awal. Panel kerja duduk
+ * di dalam baris satuan kerjanya; siapa boleh mengerjakan apa dihitung di sini
+ * dan diperiksa lagi di pengendali aksinya.
  */
 class RincianController extends Controller
 {
@@ -37,7 +39,7 @@ class RincianController extends Controller
             'surat.sasaran', 'lampiran', 'riwayat', 'alasanTd', 'sifat',
         ]);
 
-        /* Diperiksa di peladen, bukan disembunyikan di tampilan. */
+        /* Diperiksa di server, bukan disembunyikan di tampilan. */
         abort_unless($terlihat->bolehLihatRekomendasi($rekomendasi), 403,
             'Rekomendasi ini tidak ditujukan ke satuan kerja Anda.');
 
@@ -51,10 +53,21 @@ class RincianController extends Controller
             ->values();
 
         /* Kembali ke tempat asalnya: halaman laporan kalau datang dari sana,
-           selain itu layar awal perannya. */
-        $kembali = $req->query('dari') === 'laporan'
-            ? route('laporan.show', $tem->laporan)
-            : ($u->peran === PeranPengguna::PIMPINAN ? route('ringkasan') : route('rekomendasi.index'));
+           Ringkasan — dengan filter, kartu, dan tabel yang sama — kalau dibuka
+           dari angka atau tabelnya, selain itu layar awal perannya. Keadaan
+           Ringkasan dibaca ulang lewat DasborKeadaan, jadi yang bisa dibawa
+           cuma alamat Ringkasan itu sendiri. */
+        /* Sejak 26 Sep baris rekomendasi ini ikut ditunjuk di sana — blok
+           temuannya dibuka di halaman laporan, barisnya disorot di daftar
+           Rekomendasi (padanan `titip` di onKembali prototipe). */
+        $kembali = match ($req->query('dari')) {
+            'laporan'   => route('laporan.show', [$tem->laporan, 'temuan' => $tem->id, 'rek' => $rekomendasi->id]),
+            'ringkasan' => $this->kembaliKeRingkasan((string) $req->query('ring', '')),
+            /* Dibuka dari Log aktivitas (DTI) — kembali ke sana (27 Sep). */
+            'log'       => route('log'),
+            default     => $u->peran === PeranPengguna::PIMPINAN ? route('ringkasan')
+                : route('rekomendasi.index', ['tuju' => $rekomendasi->id]),
+        };
 
         return view('rekomendasi.show', [
             'r'         => $rekomendasi,
@@ -99,13 +112,25 @@ class RincianController extends Controller
                 'ket' => 'Nomor surat ini yang dirujuk Inspektorat saat menerbitkan CHV.'.$ikut],
             $pos === PosisiBerkas::INSPEKTORAT => ['label' => 'Catat hasil verifikasi Inspektorat',
                 'ket' => 'Setba yang mengetik, tapi yang tercatat sebagai penilai tetap Inspektorat -- disalin apa adanya dari surat CHV.'.$ikut],
+            /* Urusan SIPTL, per baris. Sejak unggahan, status, dan catatan BPK
+               jadi milik tiap baris — dan sejak kartu Urusan SIPTL lebur ke tabel
+               tindak lanjut (17 Sep) — pekerjaannya memang pekerjaan baris itu.
+               Putusan BPK dicatat sekali tiap unggahan, jadi satu baris cuma
+               pernah punya satu dari ketiganya. */
+            $pos === PosisiBerkas::TUNTAS && $x->perluUnggah($jenis) => ['label' => 'Catat unggahan ke SIPTL',
+                'ket' => 'Unggah berkasnya di aplikasi SIPTL, lalu catat tanggal unggahnya di sini.'],
+            $pos === PosisiBerkas::TUNTAS && $x->perluCek($jenis) => ['label' => 'Catat hasil pemantauan BPK',
+                'ket' => 'Cek statusnya di SIPTL. Putusan BPK dicatat sekali untuk unggahan ini.'],
+            $pos === PosisiBerkas::TUNTAS && $x->perluKirimUlang($jenis) => ['label' => 'Kirim ulang ke satuan kerja',
+                'ket' => 'Ditolak BPK. Kirim ulang ke satuan kerja untuk diperbaiki, lalu unggah lagi.'],
             default => null,
         };
     }
 
     /**
      * Keadaan urusan SIPTL dalam satu kalimat — dihitung dari barisnya, bukan
-     * dipilih dari satu status. Null: kartunya tidak digambar.
+     * dipilih dari satu status. Duduk di bawah bilah rincian tindak lanjut.
+     * Null: kalimatnya tidak digambar.
      *
      * @return array{nada:string, kalimat:string}|null
      */
@@ -132,8 +157,10 @@ class RincianController extends Controller
         }
 
         $naik = $baris->filter(fn ($x) => $x->perluUnggah($jenis))->count();
-        $ditolak = $baris->filter(fn ($x) => $x->status_bpk?->value === 'BS' && $x->siptl_tanggal)->count();
-        $ditunggu = $baris->filter(fn ($x) => $x->perluCek($jenis))->count() - $ditolak;
+        $ditolak = $baris->filter(fn ($x) => $x->perluKirimUlang($jenis))->count();
+        /* Yang ditolak tidak lagi terhitung di sini: `perluCek` cuma memuat
+           baris yang masih BT, jadi tidak ada yang perlu dikurangkan. */
+        $ditunggu = $baris->filter(fn ($x) => $x->perluCek($jenis))->count();
         $dikerjakanUlang = $baris->filter(fn ($x) => ! $x->tuntas()
             && $r->tolakanBpk->contains(fn ($t) => ! $t->sasaran_id || $t->sasaran_id === $x->id))->count();
 
@@ -167,5 +194,13 @@ class RincianController extends Controller
             : implode(', ', array_slice($bagian, 0, -1)).', dan '.end($bagian).'.';
 
         return ['nada' => $ditolak ? 'jingga' : ($naik ? '' : 'kuning'), 'kalimat' => mb_strtoupper(mb_substr($kalimat, 0, 1)).mb_substr($kalimat, 1)];
+    }
+
+    /** Alamat Ringkasan dari keadaan yang dibawa `ring` (isi alamat Ringkasan). */
+    private function kembaliKeRingkasan(string $ring): string
+    {
+        parse_str($ring, $q);
+
+        return DasborKeadaan::alamat(DasborKeadaan::dari(Request::create('/', 'GET', is_array($q) ? $q : [])));
     }
 }

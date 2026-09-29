@@ -5,190 +5,205 @@
   /* Satuan kerja mengisi tindak lanjut satu baris — padanan PanelBalai.
      Isian dimuat dari draf yang tersimpan, bukan dari kosong: itu yang
      membuatnya bisa disunting lagi. Hitungan tombol dan kalimat bilah
-     dikerjakan skrip; penjaganya tetap di TanggapanController. */
+     dikerjakan skrip; penjaganya tetap di TanggapanController. Sejak 25 Sep
+     berbentuk panel kerja (`x-panel-kerja`): baris berlabel di kiri, bintang
+     pada yang wajib. */
   $draf = $x->draf;
   $bukti = collect($draf?->bukti ?? []);
   $setoran = collect($draf?->setoran ?? []);
   $item = $r->permintaanUntuk($x->satker_id, $x->tindakan_id)->flatMap->item->where('terpenuhi', false)->values();
   $dana = $r->progresDana($x->satker_id, $x->tindakan_id);
   $angsur = $r->rencanaAngsur();
-  $endap = $draf ? ['umur' => \App\Models\Rekomendasi::selisih($draf->terakhir)] : null;
-  if ($endap) {
-    $endap['sisa'] = max(0, Kemajuan::HARI_ENDAP - $endap['umur']);
-    $endap['jatuh'] = $endap['umur'] >= Kemajuan::HARI_ENDAP;
+  $kirimDraf = $draf ? ['umur' => \App\Models\Rekomendasi::selisih($draf->terakhir)] : null;
+  if ($kirimDraf) {
+    $kirimDraf['sisa'] = max(0, Kemajuan::HARI_KIRIM_OTOMATIS - $kirimDraf['umur']);
+    $kirimDraf['jatuh'] = $kirimDraf['umur'] >= Kemajuan::HARI_KIRIM_OTOMATIS;
+    $kirimDraf['hari'] = Kemajuan::HARI_KIRIM_OTOMATIS;
   }
   $bentukLain = $r->tindakan->filter(fn ($tk) => $r->semuaBaris()->contains(fn ($y) => $y->tindakan_id === $tk->id && $y->satker_id === $x->satker_id))->count() > 1;
   $berkasLama = $r->lampiran->filter(fn ($d) => $d->label_oleh === $x->satker->namaPendek()
     && (! $d->tindakan_id || $d->tindakan_id === $x->tindakan_id))->map(fn ($d) => $d->nama_asli)->values();
   $idx = 0;
+  /* Dikirim ulang untuk pemberkasan ulang: siapa yang menolak, alasannya,
+     batas waktunya, dan keterangan Setba — berbaris seperti isian lain,
+     tepat di atas isian perbaikannya. Dokumen yang diminta tidak diulang di
+     sana: ia sudah jadi daftar yang harus dilampiri di bawah. */
+  $kembali = $x->kembali_dari || $x->batas_perbaikan;
   $lewat = $x->batas_perbaikan && $x->batas_perbaikan->copy()->startOfDay()->lt(now()->startOfDay());
+  /* Isian pemulihan nilai terbuka sendiri kalau sudah ada barisnya — draf
+     yang dimuat ulang tidak boleh menyembunyikan isian yang sudah ditulis. */
+  $bukaPulih = $r->pemulihan->count() + $setoran->count() > 0;
+  $k = $x->id;
 @endphp
 
-<form method="post" action="{{ route('tanggapan.simpan', $x) }}" class="tindakan dibaris" data-panel-balai
+<form method="post" action="{{ route('tanggapan.simpan', $x) }}" data-panel-balai
   data-target="{{ $dana['target'] ?? 0 }}" data-masuk="{{ $dana['masuk'] ?? 0 }}"
   data-angsur-rencana="{{ $angsur['rencana'] ?? 0 }}" data-angsur-kunci="{{ ($angsur['kunci'] ?? false) ? 1 : 0 }}"
   data-angsur-sudah="{{ $r->pemulihan->count() }}" data-setoran-lama="{{ $r->pemulihan->count() }}"
   data-bentuk="{{ $x->tindakan?->namaBentuk() }}" data-bentuk-lain="{{ $bentukLain ? 1 : 0 }}"
   data-berkas-lama='@json($berkasLama)'
-  data-endap='@json($endap)'>
+  data-kirim-draf='@json($kirimDraf)'>
   @csrf
   <input type="hidden" name="tanggal" value="{{ $draf?->tanggal?->toDateString() ?? now()->toDateString() }}">
 
-  <div class="judul">
-    <x-ikon n="ClipboardCheck" :s="16" />
-    Isi tindak lanjut{{ $x->tindakan?->bentuk ? ' — '.$x->tindakan->namaBentuk() : '' }}
-    <x-info teks="Isian ini khusus untuk bentuk tindak lanjut tersebut. Bentuk lain pada rekomendasi yang sama punya isiannya sendiri." />
-  </div>
+  <x-panel-kerja ikon="ClipboardCheck" judul="Isi tindak lanjut" wajib
+    info="Isian ini khusus untuk bentuk tindak lanjut tersebut. Bentuk lain pada rekomendasi yang sama punya isiannya sendiri.">
+    <x-slot:kalimat>@if($x->tindakan?->bentuk)Tindak lanjut <b>{{ $x->tindakan->namaBentuk() }}</b> dari unit Anda, dikirim ke Setba.@else{{ 'Tindak lanjut unit Anda, dikirim ke Setba.' }}@endif</x-slot:kalimat>
 
-  @if($x->kembali_dari || $x->batas_perbaikan)
-    <div class="akibat{{ $lewat ? ' bad' : '' }}" style="margin-top:0;margin-bottom:12px">
-      <x-ikon n="AlertTriangle" :s="15" />
-      <span>
-        Ditolak {{ $x->kembali_dari ?: 'Inspektorat' }}, dikirim ulang Setba untuk pemberkasan
-        {{ 'ulang' }}@if($x->batas_perbaikan) — perbaiki paling lambat <b>{{ Tampil::tgl($x->batas_perbaikan) }}</b>{{ $lewat ? ' (sudah lewat)' : '' }}@endif.
-        @if($x->alasan_perbaikan) Alasan: {{ $x->alasan_perbaikan }}@endif
-        @if($x->keterangan_setba)<span style="display:block;margin-top:4px">Keterangan Setba: {{ $x->keterangan_setba }}</span>@endif
-        @if($x->dokumen_diminta)<span style="display:block;margin-top:4px">Dokumen yang diminta: {{ implode(', ', $x->dokumen_diminta) }} — lampirkan di daftar dokumen di bawah.</span>@endif
-      </span>
-    </div>
-  @endif
-
-  <div class="isianberkas">
-    <label class="isibaris">
-      <span class="lbl">Apa yang sudah dikerjakan</span>
-      <textarea name="uraian" placeholder="Jelaskan tindakan yang sudah diambil pada tahap ini." data-uraian>{{ $draf?->uraian }}</textarea>
-      <div class="hint">Kalimat ini yang dibaca Setba lebih dulu, sebelum membuka berkasnya.</div>
-    </label>
-
-    <div class="isibaris">
-      <div class="kepalaisi">
-        <span class="lbl">Dokumen yang diminta</span>
-        @if($item->isNotEmpty())<span class="tanda" data-sisa-dok>{{ $item->count() }} dari {{ $item->count() }} belum diunggah</span>@endif
-      </div>
-
-      <div class="fld" style="margin-bottom:0">
-        @if($item->isNotEmpty())
-          <ul class="ceklis">
-            @foreach($item as $i)
-              @php $b = $bukti->first(fn ($y) => (int) ($y['untuk'] ?? 0) === $i->id); $n = $idx++; @endphp
-              <li data-butir="{{ $i->id }}">
-                <span style="flex:none;margin-top:1px" data-tanda-butir>
-                  <span data-ikon-ada @if(! $b) hidden @endif style="color:var(--ok)"><x-ikon n="CheckCircle2" :s="16" /></span>
-                  <span data-ikon-belum @if($b) hidden @endif style="color:var(--ink-3)"><x-ikon n="Circle" :s="16" /></span>
-                </span>
-                <span style="flex:1;min-width:0">
-                  <span @class(['sudah' => (bool) $b]) data-nama-butir>{{ $i->nama }}</span>
-                  <span style="display:block;margin-top:7px" data-isi-butir @if(! $b) hidden @endif>
-                    <span class="duo">
-                      <label class="fld"><span class="lbl">Judul berkas</span>
-                        <input type="text" name="bukti[{{ $n }}][nama]" value="{{ $b['nama'] ?? '' }}" placeholder="{{ $i->nama }}" @if(! $b) disabled @endif data-bukti-nama></label>
-                      <label class="fld"><span class="lbl">Tautan berkas</span>
-                        <input type="text" class="mono" name="bukti[{{ $n }}][tautan]" value="{{ $b['tautan'] ?? '' }}" placeholder="https://…" @if(! $b) disabled @endif data-bukti-tautan></label>
-                    </span>
-                    <input type="hidden" name="bukti[{{ $n }}][jenis]" value="{{ $i->nama }}" @if(! $b) disabled @endif>
-                    <input type="hidden" name="bukti[{{ $n }}][untuk]" value="{{ $i->id }}" @if(! $b) disabled @endif>
-                  </span>
-                </span>
-                <button type="button" class="btn btn-s" data-hapus-butir @if(! $b) hidden @endif><x-ikon n="X" :s="12" /> Hapus</button>
-                <button type="button" class="btn btn-s" data-tambah-butir @if($b) hidden @endif><x-ikon n="ExternalLink" :s="13" /> Tambah tautan</button>
-              </li>
-            @endforeach
-          </ul>
-        @endif
-
-        <div data-berkas-lepas data-mulai="{{ $idx + 100 }}">
-          @foreach($bukti->filter(fn ($y) => empty($y['untuk'])) as $b)
-            @php $n = $idx++; @endphp
-            <div style="display:flex;align-items:flex-start;gap:10px;margin-top:10px" data-lepas>
-              <span style="flex:1;min-width:0">
-                <span class="duo">
-                  <label class="fld"><span class="lbl">Judul berkas</span>
-                    <input type="text" name="bukti[{{ $n }}][nama]" value="{{ $b['nama'] ?? '' }}" placeholder="Contoh: Bukti setor dan Nota Konfirmasi KPPN" data-bukti-nama></label>
-                  <label class="fld"><span class="lbl">Tautan berkas</span>
-                    <input type="text" class="mono" name="bukti[{{ $n }}][tautan]" value="{{ $b['tautan'] ?? '' }}" placeholder="https://…" data-bukti-tautan></label>
-                </span>
-                <input type="hidden" name="bukti[{{ $n }}][jenis]" value="{{ $b['jenis'] ?? 'Bukti dukung' }}">
-              </span>
-              <button type="button" class="btn btn-s" style="margin-top:22px" data-hapus-lepas><x-ikon n="X" :s="12" /> Hapus</button>
-            </div>
-          @endforeach
-        </div>
-        <template data-templat-lepas>
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-top:10px" data-lepas>
-            <span style="flex:1;min-width:0">
-              <span class="duo">
-                <label class="fld"><span class="lbl">Judul berkas</span>
-                  <input type="text" name="bukti[__i__][nama]" placeholder="Contoh: Bukti setor dan Nota Konfirmasi KPPN" data-bukti-nama></label>
-                <label class="fld"><span class="lbl">Tautan berkas</span>
-                  <input type="text" class="mono" name="bukti[__i__][tautan]" placeholder="https://…" data-bukti-tautan></label>
-              </span>
-              <input type="hidden" name="bukti[__i__][jenis]" value="Bukti dukung">
-            </span>
-            <button type="button" class="btn btn-s" style="margin-top:22px" data-hapus-lepas><x-ikon n="X" :s="12" /> Hapus</button>
-          </div>
-        </template>
-
-        <button type="button" class="btn btn-s" style="margin-top:12px" data-tambah-lepas>
-          <x-ikon n="Plus" :s="13" /> {{ $item->isNotEmpty() ? 'Tambah tautan lain' : 'Tambah tautan berkas' }}
-        </button>
-        <div class="hint" style="color:var(--jingga);margin-top:8px" data-bukti-kurang hidden></div>
-      </div>
-    </div>
-
-    @if($dana)
-      <button type="button" class="btn btn-lebar" data-buka-pulih @if($setoran->isNotEmpty()) hidden @endif>
-        <x-ikon n="Wallet" :s="15" /> Pemulihan nilai
-        <span class="ket">{{ Tampil::rupiah($dana['target']) }} belum dicatat pemulihannya</span>
-      </button>
-
-      <div class="isibaris" data-isi-pulih @if($setoran->isEmpty()) hidden @endif>
-        <div class="kepalaisi">
-          <span class="lbl">Pemulihan nilai</span>
-          @if($angsur)<span class="tanda" data-tanda-angsur></span>@endif
-        </div>
-        <div class="fld" style="margin-bottom:0">
-          <div style="margin-bottom:12px">
-            <div class="prog">
-              <span class="bar dana"><i data-bar-pulih style="width:0%"></i></span>
-              <b data-bakal>Rp 0</b><span>dari {{ Tampil::rupiah($dana['target']) }}</span>
-            </div>
-            <div class="hint" style="color:var(--bad)" data-lebih hidden></div>
-          </div>
-
-          <div data-daftar-setor data-mulai="{{ $setoran->count() }}">
-            @foreach($setoran as $n => $st)
-              @include('rekomendasi.bagian.baris-setor', ['n' => $n, 'st' => $st])
-            @endforeach
-          </div>
-          <template data-templat-setor>
-            @include('rekomendasi.bagian.baris-setor', ['n' => '__i__', 'st' => []])
-          </template>
-
-          <button type="button" class="btn" data-tambah-setor><x-ikon n="Plus" :s="14" /> Tambah baris pemulihan</button>
-          <div class="hint" style="margin-top:7px" data-kuota-habis hidden>
-            Rencana {{ $angsur['rencana'] ?? 0 }} angsuran sudah terpakai seluruhnya. Minta Setba menyesuaikan rencananya bila masih ada setoran lain.
-          </div>
-          <div class="hint" style="margin-top:7px;color:var(--warn)" data-lewat-rencana hidden>
-            Melebihi rencana {{ $angsur['rencana'] ?? 0 }} angsuran — tetap dicatat.
-          </div>
-          <div class="hint" style="margin-top:7px;color:var(--bad)" data-setor-kurang hidden></div>
-        </div>
-      </div>
+    @if($kembali)
+      <div class="fb-subkep kerja-subkep"><b>Dikembalikan untuk pemberkasan ulang</b></div>
+      <x-baris-isi label="Ditolak">
+        <div class="kerja-teks">{{ $x->kembali_dari ?: 'Inspektorat' }}, lalu dikirim ulang Setba.</div>
+      </x-baris-isi>
+      @if($x->alasan_perbaikan)
+        <x-baris-isi label="Alasan"><div class="kerja-teks">{{ $x->alasan_perbaikan }}</div></x-baris-isi>
+      @endif
+      @if($x->batas_perbaikan)
+        <x-baris-isi label="Batas perbaikan">
+          <div class="kerja-teks">{{ Tampil::tgl($x->batas_perbaikan) }}@if($lewat)<span class="kerja-meta lewat">sudah lewat</span>@endif</div>
+        </x-baris-isi>
+      @endif
+      @if($x->keterangan_setba)
+        <x-baris-isi label="Keterangan Setba"><div class="kerja-teks">{{ $x->keterangan_setba }}</div></x-baris-isi>
+      @endif
+      <div class="fb-subkep kerja-subkep"><b>Laporan perbaikan</b></div>
     @endif
-  </div>
 
-  <div class="bilah">
-    <button type="submit" class="btn" name="aksi" value="draf" data-simpan-draf>
-      <x-ikon n="Check" :s="14" /> {{ $draf ? 'Perbarui draf' : 'Simpan draf' }}
-    </button>
-    <x-info teks="Berkas tidak pindah ke mana-mana. Isinya masih bisa diubah sampai Anda menekan Kirim." />
-    <button type="submit" class="btn btn-p" name="aksi" value="kirim" data-kirim-setba data-pastikan='{}'>
-      <x-ikon n="Send" :s="14" /> Kirim ke Setba
-    </button>
-    <span class="ket" data-ket-bilah></span>
-  </div>
+    {{-- Uraian di paling atas. Kalimat inilah yang dibaca Setba lebih dulu,
+         sebelum ia membuka berkasnya — jadi ia juga yang ditulis lebih dulu. --}}
+    <x-baris-isi label="Apa yang sudah dikerjakan" :untuk="'uraian-'.$k" wajib
+      info="Kalimat ini yang dibaca Setba lebih dulu, sebelum membuka berkasnya.">
+      <textarea id="uraian-{{ $k }}" rows="3" name="uraian" aria-required="true"
+        placeholder="Jelaskan tindakan yang sudah diambil pada tahap ini." data-uraian>{{ $draf?->uraian }}</textarea>
+    </x-baris-isi>
 
-  <div class="pesan" style="margin-top:12px;margin-bottom:0" data-pesan-endap hidden>
-    <x-ikon n="Clock" :s="16" /><span data-teks-endap></span>
-  </div>
+    {{-- Link langsung pada butirnya. Satu tindakan, bukan centang lalu unggah
+         di tempat lain. Butir terpenuhi begitu link-nya lengkap. --}}
+    @if($item->isNotEmpty())
+      <x-baris-isi label="Dokumen yang diminta" gabung wajib kosong :kunci="'dok-'.$k" :info="[
+        'Setiap dokumen dilampirkan sebagai link: judul berkas dan alamatnya.',
+        'Berkas baru bisa dikirim kalau seluruhnya sudah terlampir.',
+      ]">
+        <ul class="ceklis kerja-dok">
+          @foreach($item as $i)
+            @php $b = $bukti->first(fn ($y) => (int) ($y['untuk'] ?? 0) === $i->id); $n = $idx++; @endphp
+            <li data-butir="{{ $i->id }}" @class(['buka' => (bool) $b])>
+              <span class="tanda" data-tanda-butir><x-ikon n="CheckCircle2" :s="16" data-ikon-ada hidden /><x-ikon n="Circle" :s="16" data-ikon-belum /></span>
+              <span class="isi">
+                <span class="nama">{{ $i->nama }}</span>
+                <span class="fb-dua" data-isi-butir @if(! $b) hidden @endif>
+                  <input type="text" name="bukti[{{ $n }}][nama]" value="{{ $b['nama'] ?? '' }}" aria-label="Judul berkas {{ $i->nama }}"
+                    placeholder="Judul, mis. {{ $i->nama }}" @if(! $b) disabled @endif data-bukti-nama>
+                  <input type="text" class="mono" name="bukti[{{ $n }}][link]" value="{{ $b['link'] ?? '' }}" aria-label="Link berkas {{ $i->nama }}"
+                    placeholder="Link, mis. https://…" @if(! $b) disabled @endif data-bukti-link>
+                </span>
+                <input type="hidden" name="bukti[{{ $n }}][jenis]" value="{{ $i->nama }}" @if(! $b) disabled @endif data-bukti-lain>
+                <input type="hidden" name="bukti[{{ $n }}][untuk]" value="{{ $i->id }}" @if(! $b) disabled @endif data-bukti-lain>
+              </span>
+              <button type="button" class="fb-x" aria-label="Hapus link {{ $i->nama }}" data-hapus-butir @if(! $b) hidden @endif><x-ikon n="X" :s="14" /></button>
+              <button type="button" class="btn btn-s" data-tambah-butir @if($b) hidden @endif><x-ikon n="ExternalLink" :s="13" /> Tambah link</button>
+            </li>
+          @endforeach
+        </ul>
+        <span class="fb-catatan" data-sisa-dok>{{ $item->count() }} dari {{ $item->count() }} belum dilampirkan</span>
+        <span class="fb-catatan salah" data-minta-kurang hidden></span>
+      </x-baris-isi>
+    @endif
+
+    <x-baris-isi :label="$item->isNotEmpty() ? 'Link lain' : 'Link berkas'" gabung :kunci="'lepas-'.$k"
+      :info="$item->isNotEmpty() ? 'Bukti lain di luar dokumen yang diminta.' : 'Bukti tindak lanjut yang dikirim ke Setba.'">
+      <div class="fb-dok" data-berkas-lepas>
+        @foreach($bukti->filter(fn ($y) => empty($y['untuk'])) as $b)
+          @php $n = $idx++; @endphp
+          <div class="fb-dok-brs" data-lepas>
+            <span style="flex:1;min-width:0">
+              <span class="fb-dua">
+                <input type="text" name="bukti[{{ $n }}][nama]" value="{{ $b['nama'] ?? '' }}" aria-label="Judul berkas"
+                  placeholder="Judul, mis. Bukti setor dan Nota Konfirmasi KPPN" data-bukti-nama>
+                <input type="text" class="mono" name="bukti[{{ $n }}][link]" value="{{ $b['link'] ?? '' }}" aria-label="Link berkas"
+                  placeholder="Link, mis. https://…" data-bukti-link>
+              </span>
+              <input type="hidden" name="bukti[{{ $n }}][jenis]" value="{{ $b['jenis'] ?? 'Bukti dukung' }}">
+            </span>
+            <button type="button" class="fb-x" aria-label="Hapus link" data-hapus-lepas><x-ikon n="X" :s="14" /></button>
+          </div>
+        @endforeach
+        <button type="button" class="fb-link" data-tambah-lepas>
+          <x-ikon n="Plus" :s="13" /> {{ $item->isNotEmpty() ? 'Tambah link lain' : 'Tambah link berkas' }}
+        </button>
+      </div>
+      <template data-templat-lepas>
+        <div class="fb-dok-brs" data-lepas>
+          <span style="flex:1;min-width:0">
+            <span class="fb-dua">
+              <input type="text" name="bukti[__i__][nama]" aria-label="Judul berkas"
+                placeholder="Judul, mis. Bukti setor dan Nota Konfirmasi KPPN" data-bukti-nama>
+              <input type="text" class="mono" name="bukti[__i__][link]" aria-label="Link berkas"
+                placeholder="Link, mis. https://…" data-bukti-link>
+            </span>
+            <input type="hidden" name="bukti[__i__][jenis]" value="Bukti dukung">
+          </span>
+          <button type="button" class="fb-x" aria-label="Hapus link" data-hapus-lepas><x-ikon n="X" :s="14" /></button>
+        </div>
+      </template>
+      <span class="fb-catatan salah" data-lepas-kurang hidden></span>
+    </x-baris-isi>
+
+    {{-- Bukan langkah bernomor yang selalu berdiri di formulir. Kata Bang
+         Kamal: "setelah uraian, buka... pemulihan nilai? Kalau dia pemulihan
+         nilai, klik-klik pemulihan nilai, muncul form ini." --}}
+    @if($dana)
+      <x-baris-isi label="Pemulihan nilai" gabung :kunci="'pulih-'.$k"
+        :info="$angsur ? 'Rencana '.$angsur['rencana'].' angsuran'.(($angsur['kunci'] ?? false) ? ', dikunci pada jumlah itu' : '').'.' : 'Setoran ke kas negara, atau perbaikan fisik dan pengembalian barang.'">
+        <div class="kerja-setor-kep">
+          <span class="bar dana"><i data-bar-pulih style="width:0%"></i></span>
+          <b class="mono" data-bakal>Rp 0</b>
+          <span>dari {{ Tampil::rupiah($dana['target']) }}</span>
+          @if($angsur)<span class="fb-catatan" data-tanda-angsur hidden></span>@endif
+        </div>
+        <span class="fb-catatan salah" data-lebih hidden></span>
+        {{-- Langsung dengan baris pertamanya: yang menekan memang mau mencatat. --}}
+        <button type="button" class="fb-link" data-buka-pulih @if($bukaPulih) hidden @endif>
+          <x-ikon n="Wallet" :s="14" /> Catat pemulihan nilai
+        </button>
+        <div class="kerja-setor" data-isi-pulih @if(! $bukaPulih) hidden @endif>
+          @foreach($setoran->values() as $n => $st)
+            @include('rekomendasi.bagian.baris-setor', ['n' => $n, 'st' => $st])
+          @endforeach
+          <button type="button" class="fb-link" data-tambah-setor>
+            <x-ikon n="Plus" :s="13" /> Tambah baris pemulihan
+          </button>
+          <span class="fb-catatan" data-kuota-habis hidden>
+            Rencana {{ $angsur['rencana'] ?? 0 }} angsuran sudah terpakai seluruhnya. Minta Setba menyesuaikan rencananya bila masih ada setoran lain.
+          </span>
+          <span class="fb-catatan" data-lewat-rencana hidden>Melebihi rencana {{ $angsur['rencana'] ?? 0 }} angsuran — tetap dicatat.</span>
+          <span class="fb-catatan salah" data-setor-kurang hidden></span>
+        </div>
+        <template data-templat-setor>
+          @include('rekomendasi.bagian.baris-setor', ['n' => '__i__', 'st' => []])
+        </template>
+      </x-baris-isi>
+    @endif
+
+    {{-- Hitungan mundur kiriman otomatis hanya ditampilkan saat benar-benar
+         berjalan — selama kewajibannya belum tuntas, yang perlu dibaca adalah
+         keterangan kekurangan di bilah bawah. --}}
+    <x-baris-lajur data-pesan-kirim-draf hidden>
+      <div class="kerja-awas tenang" data-kotak-kirim-draf>
+        <x-ikon n="Clock" :s="15" /><span data-teks-kirim-draf></span>
+      </div>
+    </x-baris-lajur>
+
+    <x-slot:aksi>
+      {{-- Dua tombol, dua maksud berbeda: menyimpan tidak memindahkan berkas,
+           mengirim memindahkannya. --}}
+      <button type="submit" class="btn" name="aksi" value="draf" data-simpan-draf>
+        <x-ikon n="Check" :s="14" /> {{ $draf ? 'Perbarui draf' : 'Simpan draf' }}
+      </button>
+      <x-info teks="Berkas tidak pindah ke mana-mana. Isinya masih bisa diubah sampai Anda menekan Kirim." />
+      <button type="submit" class="btn btn-p" name="aksi" value="kirim" data-kirim-setba data-pastikan='{}'>
+        <x-ikon n="Send" :s="14" /> Kirim ke Setba
+      </button>
+    </x-slot:aksi>
+  </x-panel-kerja>
 </form>

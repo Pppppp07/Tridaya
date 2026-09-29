@@ -17,7 +17,7 @@ Dibangun menggunakan **Laravel 13** &middot; **PHP 8.3+** &middot; **MySQL 8** (
 - **Hak lihat satuan kerja dijaga sampai ke kalimatnya**: satuan kerja hanya melihat barisnya sendiri; nama satuan kerja lain di dalam kalimat disamarkan, dan surat pemeriksaan asli tidak pernah sampai kepadanya.
 - **Catat laporan baru** tiga langkah, dengan draf yang tersimpan di basis data.
 - **Ringkasan** berisi dua blok status, dua tabel rekap, dan peta data yang bisa diatur sendiri (dikelompokkan menurut apa, dihitung apa, digambar dalam bentuk apa).
-- **Kiriman otomatis**: draf satuan kerja yang mengendap lebih dari tujuh hari dikirim sendiri bila kewajibannya sudah tuntas (`tlhp:kirim-draf`, terjadwal harian).
+- **Kiriman otomatis**: draf satuan kerja yang belum dikirim lebih dari tujuh hari dikirim sendiri bila kewajibannya sudah tuntas (`tlhp:kirim-draf`, terjadwal harian).
 
 ---
 
@@ -50,9 +50,9 @@ Cukup klik dua kali berkas:
    ```bash
    php artisan serve
    ```
-   Buka di peramban: `http://127.0.0.1:8000`
+   Buka di browser: `http://127.0.0.1:8000`
 
-### Peragaan memakai tanggal tetap
+### Demo memakai tanggal tetap
 
 Data contoh disusun untuk **17 Agustus 2026**, sama dengan prototipenya. Tanggalnya dipatok lewat `.env`:
 
@@ -67,9 +67,9 @@ Kosongkan `SIMTLHP_HARI_INI` untuk pemakaian sungguhan. Untuk mengosongkan data 
 
 ## Akun Pengujian (Demo)
 
-Semua akun pengujian menggunakan kata sandi bawaan: **`rahasia123`**
+Semua akun pengujian menggunakan password bawaan: **`rahasia123`**
 
-| Surel | Peran | Hak Akses Utama |
+| Email | Peran | Hak Akses Utama |
 |---|---|---|
 | `setba@contoh.test` | Sekretariat Badan | Mencatat laporan baru, meneruskan berkas, mengurus SIPTL, data master |
 | `uki@contoh.test` | Unit Kepatuhan Internal | Menelaah kecukupan bukti |
@@ -78,9 +78,9 @@ Semua akun pengujian menggunakan kata sandi bawaan: **`rahasia123`**
 | `admin@contoh.test` | Administrator | Sama seperti Setba |
 | `medan@contoh.test` dan 15 lainnya | Satuan kerja | Mengisi tindak lanjut untuk satuan kerjanya sendiri |
 
-Surel satuan kerja memakai nama pendeknya: `sekretariat`, `talenta`, `sdackps`, `bmpipiw`, `manajemen`, `politeknik`, `penilaian`, `medan`, `palembang`, `jakarta`, `bandung`, `yogyakarta`, `surabaya`, `banjarmasin`, `makassar`, `jayapura`.
+Email satuan kerja memakai nama pendeknya: `sekretariat`, `talenta`, `sdackps`, `bmpipiw`, `manajemen`, `politeknik`, `penilaian`, `medan`, `palembang`, `jakarta`, `bandung`, `yogyakarta`, `surabaya`, `banjarmasin`, `makassar`, `jayapura`.
 
-> **Perhatian**: Akun pengujian di atas hanya untuk simulasi lokal. Hapus blok akun contoh di `resources/views/masuk.blade.php` dan ganti seluruh sandi sebelum dipakai sungguhan.
+> **Perhatian**: Akun pengujian di atas hanya untuk simulasi lokal. Hapus blok akun contoh di `resources/views/masuk.blade.php` dan ganti seluruh password sebelum dipakai sungguhan.
 
 ---
 

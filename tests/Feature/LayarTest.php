@@ -31,18 +31,18 @@ class LayarTest extends TestCase
             'setba' => ['setba@contoh.test'],
             'uki' => ['uki@contoh.test'],
             'inspektorat' => ['inspektorat@contoh.test'],
-            'satker' => ['medan@contoh.test'],
+            'satker' => ['medan'],
         ];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('peranBiasa')]
-    public function test_layar_utama_terbuka(string $surel): void
+    public function test_layar_utama_terbuka(string $email): void
     {
-        $this->masuk($surel);
+        $this->masuk($email);
 
         $this->get('/rekomendasi')->assertOk();
         $this->get('/laporan')->assertOk();
-        $this->get('/kabar')->assertOk();
+        $this->get('/pemberitahuan')->assertOk();
         $this->get('/cari?q=aset')->assertOk();
     }
 
@@ -66,11 +66,11 @@ class LayarTest extends TestCase
     public function test_ringkasan_dan_data_master_hanya_untuk_yang_berhak(): void
     {
         $this->masuk('setba@contoh.test');
-        $this->get('/ringkasan')->assertOk()->assertSee('Menurut BPK · SIPTL');
+        $this->get('/ringkasan')->assertOk()->assertSee('Ringkasan utama');
         $this->get('/data-master')->assertOk()->assertSee('Kategori internal');
-        $this->get('/laporan/baru')->assertOk()->assertSee('Data surat');
+        $this->get('/laporan/baru')->assertOk()->assertSee('Surat laporan');
 
-        $this->masuk('medan@contoh.test');
+        $this->masuk('medan');
         $this->get('/data-master')->assertForbidden();
         $this->get('/laporan/baru')->assertForbidden();
 
@@ -85,23 +85,51 @@ class LayarTest extends TestCase
         $this->get('/ringkasan')->assertRedirect(route('masuk'));
     }
 
+    /**
+     * Kepala daftar Rekomendasi dan Daftar laporan ditukar di tempat oleh
+     * skrip (29 Sep). Enter di kotak carinya memakai tombol bawaan tanpa
+     * nama — bukan keping pertama, yang diam-diam melepas pilihan jenis
+     * laporan atau keadaan yang sedang menyala.
+     */
+    public function test_filter_daftar_ditukar_di_tempat_dan_enter_tidak_melepas_pilihan(): void
+    {
+        $this->masuk('setba@contoh.test');
+
+        /* Halaman yang diminta skrip untuk ditukar sebagian tidak memakai
+           pop-up pemberitahuan — kalau dipakai, pemberitahuannya tercatat
+           sudah dimunculkan padahal tidak pernah tampil. */
+        $this->get('/rekomendasi?keadaan=tunggu', ['X-Requested-With' => 'XMLHttpRequest'])
+            ->assertOk()->assertSee('data-ganti-di-tempat', false)->assertDontSee('data-popup', false);
+        \App\Support\Rangka::lupakan();
+        $this->get('/rekomendasi')->assertOk()->assertSee('data-popup', false);
+
+        foreach (['/rekomendasi', '/laporan'] as $alamat) {
+            \App\Support\Rangka::lupakan();
+            $html = $this->get($alamat)->assertOk()->getContent();
+            $this->assertMatchesRegularExpression('/<form id="filter"[^>]*\sdata-ganti-di-tempat/', $html);
+            $this->assertSame(1, preg_match('/<form id="filter".*?<\/form>/s', $html, $form));
+            $this->assertSame(1, preg_match('/<button type="submit"[^>]*>/', $form[0], $pertama));
+            $this->assertStringNotContainsString('name=', $pertama[0], "Tombol kirim pertama di $alamat harus tanpa nama.");
+        }
+    }
+
     public function test_angka_keranjang_setba_sama_dengan_yang_diperagakan(): void
     {
         $halaman = $this->masuk('setba@contoh.test')->get('/rekomendasi');
 
         $halaman->assertOk()
-            ->assertSee('Perlu saya kerjakan')
+            ->assertSee('Perlu dikerjakan')
             ->assertSee('Sedang menunggu')
             ->assertSee('Urusan SIPTL');
 
-        /* 19 dari 44 rekomendasi menunggu Setba pada data contoh — angka yang
+        /* 19 dari 49 rekomendasi menunggu Setba pada data contoh — angka yang
            sama tertulis di menu dan di keranjang pertama. */
         $this->assertSame(19, $this->perluDikerjakan('setba@contoh.test'));
     }
 
-    private function perluDikerjakan(string $surel): int
+    private function perluDikerjakan(string $email): int
     {
-        $u = $this->akun($surel);
+        $u = $this->akun($email);
         $terlihat = \App\Support\Terlihat::untuk($u);
 
         return $terlihat->rekomendasi()->with(\App\Http\Controllers\RekomendasiController::MUAT_DAFTAR)->get()

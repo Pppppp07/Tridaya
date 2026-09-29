@@ -23,8 +23,11 @@ use Tests\TestCase;
  * tidak bisa dipercaya — dan yang paling berbahaya, salahnya tidak kelihatan
  * sampai ada orang yang membaca angkanya sungguh-sungguh.
  *
- * Angkanya sama persis dengan yang diperagakan prototipe: 24 laporan, 26
- * temuan, 44 rekomendasi, 85 penugasan.
+ * Angkanya sama persis dengan yang diperagakan prototipe: 26 laporan, 29
+ * temuan, 49 rekomendasi, 102 penugasan. Sejak 21 Sep, 22 penugasan di
+ * antaranya belum disentuh satuan kerjanya sama sekali — sebelumnya cuma 5,
+ * dan Hizkia mencatat data contohnya "rata rata yang sudah menunggu dan
+ * selesai".
  */
 class DataContohTest extends TestCase
 {
@@ -38,13 +41,17 @@ class DataContohTest extends TestCase
 
     public function test_ukurannya_sama_dengan_prototipe(): void
     {
-        $this->assertSame(24, Laporan::count());
-        $this->assertSame(26, Temuan::count());
-        $this->assertSame(44, Rekomendasi::count());
-        $this->assertSame(85, Sasaran::count());
+        $this->assertSame(26, Laporan::count());
+        $this->assertSame(29, Temuan::count());
+        $this->assertSame(49, Rekomendasi::count());
+        $this->assertSame(102, Sasaran::count());
         $this->assertSame(16, Satker::count());
-        /* Lima akun peran ditambah satu akun tiap satuan kerja. */
-        $this->assertSame(21, User::count());
+        /* Enam akun peran pusat (Setba, UKI, Inspektorat, Pimpinan, DTI,
+           Admin) ditambah satu akun tiap satuan kerja. */
+        $this->assertSame(22, User::count());
+        /* Semuanya terhubung ke pegawai di direktori — masuk lewat SSO
+           mengenali orang dari NIP. */
+        $this->assertSame(0, User::whereNull('nip')->count());
     }
 
     public function test_tidak_ada_tanggal_di_masa_depan(): void
@@ -102,7 +109,7 @@ class DataContohTest extends TestCase
 
     public function test_penyapu_draf_sudah_berjalan_sekali(): void
     {
-        /* Penyemai memanggil `tlhp:kirim-draf`, jadi draf yang mengendap lewat
+        /* Penyemai memanggil `tlhp:kirim-draf`, jadi draf yang belum dikirim lewat
            tujuh hari sudah terkirim — sama seperti prototipe yang menyapunya
            saat aplikasi dibuka. */
         $sapuan = Notifikasi::where('aksi', 'like', 'Terkirim otomatis%')->count();

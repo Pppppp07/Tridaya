@@ -3,15 +3,15 @@
 namespace App\Support;
 
 use App\Enums\PeranPengguna;
-use App\Enums\PosisiBerkas;
 use App\Enums\SumberLaporan;
 use App\Models\Rekomendasi;
 use App\Models\Verifikasi;
 use Illuminate\Support\Collection;
 
 /**
- * Kartu "Riwayat status tindak lanjut" — padanan `susunRiwayat` dan
- * `RiwayatStatusTL` prototipe.
+ * Riwayat status tindak lanjut — padanan `susunRiwayat` dan `RiwayatBaris`
+ * prototipe. Sejak 21 Sep isinya tab "Riwayat" di tiap baris tabel tindak
+ * lanjut (riwayat-baris.blade.php), bukan kartu tersendiri.
  *
  * Tujuh catatan yang bentuknya berbeda-beda disamakan jadi satu bentuk baris:
  * perubahan status per baris (dikelompokkan menurut aksi), surat validasi,
@@ -23,6 +23,10 @@ use Illuminate\Support\Collection;
  */
 class RiwayatTindakLanjut
 {
+    /** Kolom Sumber kartu riwayat: kode => [kelas, nama]. */
+    public const SUMBER = ['UKI' => ['uki', 'UKI'], 'ITJEN' => ['itjen', 'Itjen'], 'SIPTL' => ['siptl', 'SIPTL'],
+        'KEMBALI' => ['balik', 'Kembali'], 'SATKER' => ['satker', 'Satker'], 'SETBA' => ['setba', 'Setba']];
+
     /** @return list<array> butir riwayat, terbaru di atas */
     public static function susun(Rekomendasi $r, PeranPengguna $peran, ?int $satkerId): array
     {
@@ -235,6 +239,36 @@ class RiwayatTindakLanjut
         return $out;
     }
 
+    /**
+     * Kolom Catatan terakhir di tabel tindak lanjut — kolom Catatan pada baris
+     * "Terbaru" kartu riwayat pasangan ini. Padanan `catatanTerakhir`
+     * prototipe. Kata Hizkia (21 Sep): "catatannya berdasarkan catatan riwayat
+     * tindak lanjut saja".
+     *
+     * Sumbernya yang disebut, bukan pengetiknya: putusan Inspektorat diketik
+     * Setba, dan "Setba" di bawah catatan Inspektorat terbaca seolah catatan
+     * Setba.
+     *
+     * @param  list<array>  $kartu  hasil kartu()
+     * @return array{teks:string, ket:string}|null  null = belum ada peristiwa
+     */
+    public static function catatanTerakhir(array $kartu, string $kunci): ?array
+    {
+        $b = collect($kartu)->firstWhere('kunci', $kunci)['baris'][0] ?? null;
+        if (! $b) {
+            return null;
+        }
+
+        return [
+            'teks' => (string) ($b['catatan'] ?? ''),
+            'ket' => collect([
+                self::SUMBER[$b['sumber']][1] ?? $b['sumber'],
+                ! empty($b['tanggal']) ? Tampil::tgl($b['tanggal']) : '',
+                ($b['lingkup'] ?? '') === 'rek' ? 'seluruh rekomendasi' : '',
+            ])->filter()->join(' · '),
+        ];
+    }
+
     public static function menutupPeriode(string $sumber, ?string $dari, ?string $ke, SumberLaporan $jenis): bool
     {
         return $jenis->melewatiSiptl()
@@ -243,9 +277,9 @@ class RiwayatTindakLanjut
     }
 
     /**
-     * Isi kartu untuk tiap lingkup — pasangan bentuk tindak lanjut dan satuan
-     * kerja. Tiap lingkup punya periodenya sendiri, jadi dihitung terpisah;
-     * tampilan menampilkan satu, skrip menukarnya.
+     * Isi tab Riwayat untuk tiap lingkup — pasangan bentuk tindak lanjut dan
+     * satuan kerja, sama dengan satu baris tabel tindak lanjut. Tiap lingkup
+     * punya periodenya sendiri, jadi dihitung terpisah.
      *
      * @return list<array>
      */
@@ -259,7 +293,7 @@ class RiwayatTindakLanjut
         ])->values();
         $banyak = $lingkupan->count() > 1;
 
-        return $lingkupan->map(function ($aktif) use ($semua, $banyak, $jenis, $lingkupan) {
+        return $lingkupan->map(function ($aktif) use ($semua, $banyak, $jenis) {
             $baris = $banyak
                 ? array_values(array_filter($semua, fn ($b) => ($b['lingkup'] ?? '') === 'rek'
                     || (! empty($b['kunci']) ? $b['kunci'] === $aktif['kunci'] : ($b['satker_id'] ?? null) === $aktif['satker']->id)))
@@ -316,17 +350,9 @@ class RiwayatTindakLanjut
                 return $j;
             };
 
-            $x = $aktif['x'];
-            $sekarang = $aktif['posisi']->label();
-            if ($aktif['posisi'] === PosisiBerkas::TUNTAS && $lewatSiptl) {
-                $sekarang = match (true) {
-                    ! $x->siptl_tanggal => 'Menunggu diunggah Setba ke SIPTL',
-                    $x->status_bpk?->value === 'SS' => 'Selesai — sudah sesuai menurut BPK',
-                    $x->status_bpk?->value === 'TD' => 'Selesai — BPK menyatakan tidak dapat ditindaklanjuti',
-                    $x->status_bpk?->value === 'BS' => 'Belum sesuai menurut BPK — menunggu dikirim ulang Setba',
-                    default => 'Menunggu penilaian BPK',
-                };
-            }
+            /* "Posisi saat ini" dulu dihitung di sini untuk kartu riwayat. Tab
+               Riwayat tidak menyebutnya lagi: alur tahap di atas tab sudah
+               menandainya (21 Sep). */
 
             $babak = [];
             for ($k = $periodeKini; $k >= 1; $k--) {
@@ -336,15 +362,10 @@ class RiwayatTindakLanjut
                     'jalur' => $k !== $periodeKini && $isi ? $jalurPeriode($k) : []];
             }
 
-            $namaLingkup = $lingkupan->filter(fn ($y) => $y['satker']->id === $aktif['satker']->id)->count() > 1 && $aktif['bentuk']
-                ? $aktif['satker']->namaPendek().' · '.$aktif['bentuk']
-                : $aktif['satker']->namaPendek();
-
             return [
                 'kunci' => $aktif['kunci'], 'satker' => $aktif['satker'], 'bentuk' => $aktif['bentuk'],
-                'nama' => $namaLingkup, 'baris' => $baris, 'periodeKini' => $periodeKini,
-                'jalur' => $jalurPeriode($periodeKini), 'sekarang' => $sekarang,
-                'selesai' => $x->presentasi($jenis)['selesai'], 'babak' => $babak,
+                'baris' => $baris, 'periodeKini' => $periodeKini,
+                'jalur' => $jalurPeriode($periodeKini), 'babak' => $babak,
                 'adaSurat' => collect($baris)->contains(fn ($b) => ! empty($b['nomor']) || ! empty($b['berkas'])
                     || ! empty($b['nomorLhv']) || ! empty($b['tglLhv'])),
             ];

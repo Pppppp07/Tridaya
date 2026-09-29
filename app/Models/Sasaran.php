@@ -98,11 +98,39 @@ class Sasaran extends Model
         return $jenis->melewatiSiptl() && $this->tuntas() && ! $this->siptl_tanggal;
     }
 
-    /** Sudah diunggah, dan BPK belum memutus tuntas untuk baris ini. */
+    /**
+     * Sudah diunggah, dan BPK belum memutus apa pun atas unggahan ITU.
+     *
+     * Putusan BPK dicatat sekali tiap unggahan. Kata Hizkia: "perubahan status
+     * SS dan BS itu hanya boleh dilakukan sekali setelah proses Upload SIPTL."
+     * Jadi baris ber-BS tidak lagi menunggu penilaian — penilaiannya sudah
+     * turun, dan yang berikutnya mengirimnya kembali ke satuan kerja.
+     */
     public function perluCek(SumberLaporan $jenis): bool
     {
         return $jenis->melewatiSiptl() && $this->siptl_tanggal
-            && ! in_array($this->status_bpk, [StatusTindakLanjut::SS, StatusTindakLanjut::TD], true);
+            && ($this->status_bpk ?? StatusTindakLanjut::BT) === StatusTindakLanjut::BT;
+    }
+
+    /**
+     * BPK memutus Belum Sesuai atas unggahan ini. Yang berikutnya bukan
+     * mengecek SIPTL lagi: berkasnya dikirim kembali ke satuan kerja,
+     * diperbaiki, lalu diunggah ulang — barulah BPK punya sesuatu yang baru
+     * untuk dinilai.
+     */
+    public function perluKirimUlang(SumberLaporan $jenis): bool
+    {
+        return $jenis->melewatiSiptl() && $this->siptl_tanggal
+            && $this->status_bpk === StatusTindakLanjut::BS;
+    }
+
+    /**
+     * Putusan BPK masih boleh dicatat untuk baris ini: sebelum berkasnya naik
+     * (yang dicatat tanggalnya) atau sesudah naik selama statusnya masih BT.
+     */
+    public function bolehCatatSiptl(SumberLaporan $jenis): bool
+    {
+        return $this->perluUnggah($jenis) || $this->perluCek($jenis);
     }
 
     /* ================================================================
@@ -145,52 +173,55 @@ class Sasaran extends Model
        ================================================================ */
 
     /**
-     * Siapa yang memegang, apa yang sedang terjadi, dan langkah berikutnya.
-     * Hanya bahasa: perpindahan berkas dan keputusan tetap milik pengendalinya.
+     * Siapa yang memegang dan apa yang sedang terjadi. Hanya bahasa:
+     * perpindahan berkas dan keputusan tetap milik pengendalinya.
      *
-     * @return array{pemegang:string, judul:string, langkah:string, selesai:bool}
+     * Kalimat "langkah berikutnya" dibuang 21 Sep — kata Hizkia, "keterangan
+     * langkah berikutnya dihilangkan saja". Tabel tindak lanjut kini membaca
+     * catatan terbaru dari riwayatnya (RiwayatTindakLanjut::catatanTerakhir).
+     *
+     * @return array{pemegang:string, judul:string, selesai:bool}
      */
     public function presentasi(SumberLaporan $jenis): array
     {
         $alur = [
-            'satker'         => ['Satuan kerja', 'Menyiapkan tanggapan', 'Lengkapi bukti dan tanggapan, lalu kirim ke Setba.'],
-            'setba_tinjau'   => ['Setba', 'Meninjau kelengkapan tanggapan', 'Periksa kelengkapan berkas, lalu teruskan ke UKI dengan surat pengantar.'],
-            'uki'            => ['UKI', 'Menunggu telaah UKI', 'UKI menelaah bukti dan mencatat hasil validasi beserta suratnya.'],
-            'setba_teruskan' => ['Setba', 'Meneruskan hasil validasi UKI', 'Teruskan berkas ke Inspektorat dengan surat permohonan verifikasi.'],
-            'inspektorat'    => ['Inspektorat', 'Menunggu hasil verifikasi', 'Catat putusan Inspektorat berdasarkan CHV dan LHV yang diterima.'],
-            'setba_kembali'  => ['Setba', 'Menyiapkan pengembalian berkas', 'Periksa alasan penolakan dan dokumen yang diminta, lalu kirim ulang ke satuan kerja.'],
+            'satker'         => ['Satuan kerja', 'Menyiapkan tanggapan'],
+            'setba_tinjau'   => ['Setba', 'Meninjau kelengkapan tanggapan'],
+            'uki'            => ['UKI', 'Menunggu telaah UKI'],
+            'setba_teruskan' => ['Setba', 'Meneruskan hasil validasi UKI'],
+            'inspektorat'    => ['Inspektorat', 'Menunggu hasil verifikasi'],
+            'setba_kembali'  => ['Setba', 'Menyiapkan pengembalian berkas'],
         ];
         $pos = $this->pos();
         $isi = $alur[$pos->value] ?? null;
         $selesai = false;
 
         if ($pos === PosisiBerkas::SATKER && $this->kembali_dari) {
-            $isi = ['Satuan kerja', 'Perlu memperbaiki tanggapan', 'Perbaiki sesuai catatan penolakan dan permintaan Setba, lalu kirim kembali.'];
+            $isi = ['Satuan kerja', 'Perlu memperbaiki tanggapan'];
         }
         if ($pos === PosisiBerkas::TUNTAS) {
             if (! $jenis->melewatiSiptl()) {
-                $isi = ['Selesai', 'Verifikasi Inspektorat selesai', 'Hasil verifikasi dan bukti tetap tersedia untuk pemantauan.'];
+                $isi = ['Selesai', 'Verifikasi Inspektorat selesai'];
                 $selesai = true;
             } elseif (! $this->siptl_tanggal) {
-                $isi = ['Setba', 'Siap dicatat ke SIPTL', 'Unggah berkas di aplikasi SIPTL, lalu catat tanggal unggah pada bagian Urusan SIPTL.'];
+                $isi = ['Setba', 'Siap dicatat ke SIPTL'];
             } elseif (in_array($this->status_bpk, [StatusTindakLanjut::SS, StatusTindakLanjut::TD], true)) {
-                $isi = ['Selesai', $this->status_bpk === StatusTindakLanjut::SS ? 'Sudah sesuai menurut BPK' : 'Tidak dapat ditindaklanjuti menurut BPK',
-                    'Hasil BPK dan surat pendukung dapat ditelusuri pada riwayat.'];
+                $isi = ['Selesai', $this->status_bpk === StatusTindakLanjut::SS ? 'Sudah sesuai menurut BPK' : 'Tidak dapat ditindaklanjuti menurut BPK'];
                 $selesai = true;
             } elseif ($this->status_bpk === StatusTindakLanjut::BS) {
-                $isi = ['Setba', 'Menindaklanjuti hasil BPK', 'Periksa catatan BPK pada Urusan SIPTL. Pengembalian hanya untuk kewajiban satker yang perlu diperbaiki.'];
+                $isi = ['Setba', 'Menindaklanjuti hasil BPK'];
             } else {
-                $isi = ['BPK / SIPTL', 'Menunggu penilaian BPK', 'Setba memantau SIPTL dan mencatat hasil BPK saat tersedia.'];
+                $isi = ['BPK / SIPTL', 'Menunggu penilaian BPK'];
             }
         }
 
-        [$pemegang, $judul, $langkah] = $isi ?? ['Belum diketahui', 'Posisi berkas belum tercatat', 'Periksa catatan perjalanan berkas.'];
+        [$pemegang, $judul] = $isi ?? ['Belum diketahui', 'Posisi berkas belum tercatat'];
 
-        return compact('pemegang', 'judul', 'langkah', 'selesai');
+        return compact('pemegang', 'judul', 'selesai');
     }
 
     /* ================================================================
-       SARINGAN
+       FILTER
        ================================================================ */
 
     public function scopeMilik($q, ?int $satkerId)

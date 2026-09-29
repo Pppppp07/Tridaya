@@ -42,7 +42,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_hanya_barisnya_sendiri_yang_terlihat(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $rek = $this->rekBersama($pengguna->satker_id);
 
         /* Yang dipakai layar: baris milik satuan kerja yang sedang masuk saja,
@@ -58,7 +58,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_rincian_tidak_menyebut_satuan_kerja_lain(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $rek = Rekomendasi::with('sasaran.satker')->get()
             ->first(fn ($r) => $r->daftarSasaran()->contains('satker_id', $pengguna->satker_id)
                 && $r->daftarSasaran()->pluck('satker_id')->unique()->count() > 1);
@@ -77,7 +77,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_surat_pemeriksaan_asli_tidak_sampai_ke_satuan_kerja(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $rek = Rekomendasi::with('sasaran')->get()
             ->first(fn ($r) => $r->daftarSasaran()->contains('satker_id', $pengguna->satker_id));
 
@@ -97,7 +97,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_berkas_satuan_kerja_lain_ditolak(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $lain = Lampiran::whereNotNull('sasaran_id')->where('surat_asli', false)->get()
             ->first(fn ($b) => $b->sasaran?->satker_id !== $pengguna->satker_id);
         $this->assertNotNull($lain);
@@ -107,7 +107,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_rekomendasi_yang_bukan_urusannya_tidak_bisa_dibuka(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $bukan = Rekomendasi::with('sasaran')->get()
             ->first(fn ($r) => ! $r->daftarSasaran()->contains('satker_id', $pengguna->satker_id));
 
@@ -116,7 +116,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_gerak_berkas_milik_satuan_kerja_lain_ditolak(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $baris = Sasaran::with('satker')->get()
             ->first(fn ($x) => $x->satker_id !== $pengguna->satker_id);
 
@@ -127,7 +127,7 @@ class HakAksesSatkerTest extends TestCase
 
     public function test_daftar_laporan_hanya_memuat_yang_menyangkutnya(): void
     {
-        $pengguna = $this->akun('medan@contoh.test');
+        $pengguna = $this->akun('medan');
         $daftar = Terlihat::untuk($pengguna)->daftarLaporan();
 
         foreach ($daftar as $lap) {

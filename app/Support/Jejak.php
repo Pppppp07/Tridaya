@@ -33,16 +33,28 @@ class Jejak
         return ($t ? Carbon::parse($t) : now())->copy()->startOfDay();
     }
 
-    /** Satu baris riwayat aktivitas rekomendasi. */
+    /**
+     * Satu baris riwayat aktivitas rekomendasi — dan, sejak 27 Sep, satu baris
+     * log aktivitas dengan kalimat yang sama. Riwayat memakai tanggal
+     * peristiwanya (tanggal surat boleh mundur); log memakai waktu kejadian
+     * sebenarnya, beserta akun, alamat, dan perangkat yang menekan tombolnya.
+     * Keduanya di dalam transaksi pemanggilnya: gagal satu, batal semua.
+     */
     public static function riwayat(Rekomendasi $r, string $oleh, string $teks, $tanggal = null): RiwayatBerkas
     {
-        return RiwayatBerkas::create([
+        $baris = RiwayatBerkas::create([
             'rekomendasi_id' => $r->id,
             'waktu'          => self::tanggal($tanggal),
             'aktor_id'       => auth()->id(),
             'label_aktor'    => $oleh,
             'aksi'           => $teks,
         ]);
+        Aktivitas::catat('berkas', $teks, ['subjek' => $r, 'rincian' => array_filter([
+            'atas_nama' => $oleh,
+            'tanggal_peristiwa' => $tanggal ? self::tanggal($tanggal)->toDateString() : null,
+        ])]);
+
+        return $baris;
     }
 
     /**

@@ -17,7 +17,7 @@ class LaporanController extends Controller
     public function index(Request $req)
     {
         $lingkup = Lingkup::dari($req);
-        /* Disaring di hulu, bukan di tampilan. */
+        /* Difilter di hulu, bukan di tampilan. */
         $semua = Terlihat::untuk()->daftarLaporan()
             ->filter(fn ($l) => Lingkup::berlaku($lingkup, $l->sumber))
             ->each(fn ($l) => $l->angkaTersimpan = $l->angka())

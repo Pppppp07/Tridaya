@@ -8,7 +8,7 @@ use App\Models\Rekomendasi;
 use App\Models\Sasaran;
 use App\Models\Surat;
 use App\Support\Jejak;
-use App\Support\Kabar;
+use App\Support\Pemberitahuan;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 class Teruskan
 {
-    /** @param array{nomor:string, tanggal:string, perihal:string, tautan:?string, catatan:?string} $surat */
+    /** @param array{nomor:string, tanggal:string, perihal:string, link:?string, catatan:?string} $surat */
     public static function jalankan(Rekomendasi $r, Sasaran $s, array $surat): void
     {
         $dari = $s->pos();
@@ -44,14 +44,14 @@ class Teruskan
                 'nomor'          => $surat['nomor'],
                 'tanggal'        => $surat['tanggal'],
                 'perihal'        => $surat['perihal'] ?: null,
-                'tautan'         => ($surat['tautan'] ?? '') ?: null,
+                'link'         => ($surat['link'] ?? '') ?: null,
                 'catatan'        => ($surat['catatan'] ?? '') ?: null,
                 'dicatat_oleh'   => auth()->id(),
             ]);
 
             Jejak::riwayat($r, 'Setba', $teks, $surat['tanggal']);
 
-            Kabar::tulis($r, $teks,
+            Pemberitahuan::tulis($r, $teks,
                 [$ke === PosisiBerkas::UKI ? PeranPengguna::UKI : PeranPengguna::INSPEKTORAT, PeranPengguna::SATKER],
                 'r-perkembangan', [$s->satker_id], $s->tindakan);
         });

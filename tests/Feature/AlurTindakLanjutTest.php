@@ -47,6 +47,18 @@ class AlurTindakLanjutTest extends TestCase
         return Sasaran::with('tindakan.rekomendasi', 'satker')->find($this->baris->id);
     }
 
+    /**
+     * Sesudah tindakan, daftar Rekomendasi dibuka dengan baris rekomendasinya
+     * ditunjuk (`tuju`, 26 Sep) — keranjangnya ikut pindah kalau berkasnya
+     * sudah pindah keranjang.
+     */
+    private function keDaftar(?Sasaran $x = null): string
+    {
+        $x ??= $this->segar();
+
+        return route('rekomendasi.index', ['tuju' => $x->tindakan->rekomendasi_id]);
+    }
+
     /** Kirim dari satuan kerja, berikut bukti untuk tiap dokumen yang diminta. */
     private function kirimDariSatker(): void
     {
@@ -56,7 +68,7 @@ class AlurTindakLanjutTest extends TestCase
 
         $bukti = $rek->permintaanUntuk($baris->satker_id, $baris->tindakan_id)
             ->flatMap->item->where('terpenuhi', false)
-            ->map(fn ($i) => ['nama' => 'Bukti '.$i->nama, 'tautan' => 'https://contoh.test/'.$i->id,
+            ->map(fn ($i) => ['nama' => 'Bukti '.$i->nama, 'link' => 'https://contoh.test/'.$i->id,
                 'jenis' => $i->nama, 'untuk' => $i->id])
             ->values()->all();
 
@@ -66,7 +78,7 @@ class AlurTindakLanjutTest extends TestCase
                 'uraian' => 'Tindak lanjut sudah dilaksanakan sesuai bunyi rekomendasi.',
                 'bukti' => $bukti,
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
     }
 
     private function teruskan(): void
@@ -77,7 +89,7 @@ class AlurTindakLanjutTest extends TestCase
                 'tanggal' => now()->toDateString(),
                 'perihal' => 'Penyampaian tindak lanjut untuk ditelaah',
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
     }
 
     public function test_rantai_penuh_sampai_tuntas_dan_siptl(): void
@@ -99,7 +111,7 @@ class AlurTindakLanjutTest extends TestCase
                 'catatan' => 'Bukti yang dilampirkan belum bernomor.',
                 'dokumen' => ['Surat bernomor'],
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
         $baris = $this->segar();
         $this->assertSame(PosisiBerkas::SETBA_KEMBALI, $baris->pos());
         $this->assertNotEmpty($baris->alasan_perbaikan);
@@ -110,7 +122,7 @@ class AlurTindakLanjutTest extends TestCase
                 'keterangan' => 'Mohon dilengkapi nomor suratnya.',
                 'dokumen' => ['Surat bernomor'],
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
         $this->assertSame(PosisiBerkas::SATKER, $this->segar()->pos());
 
         /* 5. Putaran kedua: kirim, teruskan, lalu UKI menyatakan memadai. */
@@ -123,7 +135,7 @@ class AlurTindakLanjutTest extends TestCase
                 'tgl_surat' => now()->toDateString(),
                 'catatan' => 'Bukti lengkap dan sesuai rekomendasi.',
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
         $this->assertSame(PosisiBerkas::SETBA_TERUSKAN, $this->segar()->pos());
 
         /* 6. Setba meneruskan ke Inspektorat, Inspektorat memutus. */
@@ -137,7 +149,7 @@ class AlurTindakLanjutTest extends TestCase
                 'tgl_surat' => now()->toDateString(),
                 'catatan' => 'Tindak lanjut sudah sesuai.',
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
 
         $baris = $this->segar();
         $this->assertSame(PosisiBerkas::TUNTAS, $baris->pos());
@@ -146,7 +158,7 @@ class AlurTindakLanjutTest extends TestCase
         /* 7. Urusan SIPTL: unggah dulu, baru statusnya. */
         $this->masuk('setba@contoh.test')
             ->post(route('siptl.unggah', $baris), ['tanggal' => now()->toDateString()])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
         $this->assertNotNull($this->segar()->siptl_tanggal);
 
         /* Tanggal unggah tidak bisa diganggu gugat sesudah tercatat. */
@@ -159,7 +171,15 @@ class AlurTindakLanjutTest extends TestCase
                 'status' => 'BS',
                 'catatan' => 'Bukti setor belum mencantumkan NTPN.',
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
+        $this->assertSame(StatusTindakLanjut::BS, $this->segar()->status_bpk);
+
+        /* Putusan BPK dicatat SEKALI tiap unggahan. Sesudah tercatat, statusnya
+           terkunci — termasuk lewat alamat langsung, bukan cuma tombolnya yang
+           hilang dari layar. */
+        $this->masuk('setba@contoh.test')
+            ->post(route('siptl.status', $this->segar()), ['status' => 'SS'])
+            ->assertStatus(422);
         $this->assertSame(StatusTindakLanjut::BS, $this->segar()->status_bpk);
 
         /* 8. BPK menolak: berkas dikirim ulang ke satuan kerjanya. */
@@ -170,8 +190,67 @@ class AlurTindakLanjutTest extends TestCase
                 'alasan' => 'BPK meminta NTPN dicantumkan.',
                 'dokumen' => ['Bukti setor dengan NTPN'],
             ])
-            ->assertRedirect(route('rekomendasi.index'));
+            ->assertRedirect($this->keDaftar());
         $this->assertSame(PosisiBerkas::SATKER, $this->segar()->pos());
+    }
+
+    /**
+     * Kata Hizkia: "perubahan status SS dan BS itu hanya boleh dilakukan sekali
+     * setelah proses Upload SIPTL." Sudah Sesuai mengakhiri pemantauan baris
+     * itu; Belum Sesuai menunggu dikirim ulang lebih dulu.
+     */
+    public function test_putusan_bpk_cuma_sekali_tiap_unggahan(): void
+    {
+        $sudah = Sasaran::whereIn('status_bpk', ['SS', 'BS'])->whereNotNull('siptl_tanggal')->get();
+        $this->assertGreaterThan(0, $sudah->count(), 'data contoh harus punya baris yang sudah diputus BPK');
+
+        foreach ($sudah as $baris) {
+            $lama = $baris->status_bpk;
+            $this->masuk('setba@contoh.test')
+                ->post(route('siptl.status', $baris), ['status' => 'SS', 'catatan' => 'coba ubah'])
+                ->assertStatus(422);
+            $this->assertSame($lama, $baris->fresh()->status_bpk);
+        }
+
+        /* Yang masih BT tetap boleh dicatat — penguncian berlaku sesudah
+           putusannya ada, bukan sesudah berkasnya naik. */
+        $belum = Sasaran::where('status_bpk', 'BT')->whereNotNull('siptl_tanggal')->first();
+        $this->assertNotNull($belum, 'data contoh harus punya baris yang menunggu penilaian BPK');
+        $this->masuk('setba@contoh.test')
+            ->post(route('siptl.status', $belum), ['status' => 'SS'])
+            ->assertRedirect($this->keDaftar($belum));
+        $this->assertSame(StatusTindakLanjut::SS, $belum->fresh()->status_bpk);
+
+        /* ...dan sesudah itu ia ikut terkunci. */
+        $this->masuk('setba@contoh.test')
+            ->post(route('siptl.status', $belum->fresh()), ['status' => 'BS', 'catatan' => 'coba ubah'])
+            ->assertStatus(422);
+    }
+
+    public function test_baris_yang_sudah_diputus_tidak_lagi_punya_form_status(): void
+    {
+        $baris = Sasaran::where('status_bpk', 'SS')->whereNotNull('siptl_tanggal')->firstOrFail();
+        $rek = $baris->tindakan->rekomendasi;
+
+        $isi = $this->masuk('setba@contoh.test')
+            ->get(route('rekomendasi.show', $rek))->assertOk()->getContent();
+
+        /* Formnya tidak digambar sama sekali, dan rincian barisnya bilang kenapa. */
+        $this->assertStringNotContainsString(route('siptl.status', $baris), $isi);
+        $this->assertStringContainsString('Putusan ini sudah terkunci. Pemantauan tindak lanjut ini selesai.', strip_tags($isi));
+    }
+
+    public function test_baris_belum_sesuai_hanya_menyisakan_kirim_ulang(): void
+    {
+        $baris = Sasaran::where('status_bpk', 'BS')->whereNotNull('siptl_tanggal')->firstOrFail();
+        $rek = $baris->tindakan->rekomendasi;
+
+        $isi = $this->masuk('setba@contoh.test')
+            ->get(route('rekomendasi.show', $rek))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString(route('siptl.status', $baris), $isi);
+        $this->assertStringContainsString(route('siptl.ulangBpk', $rek), $isi);
+        $this->assertStringContainsString('Statusnya baru bisa dinilai lagi sesudah berkasnya dikirim ulang', strip_tags($isi));
     }
 
     public function test_yang_bukan_pemegangnya_ditolak(): void

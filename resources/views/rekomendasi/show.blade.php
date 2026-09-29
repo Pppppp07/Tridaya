@@ -11,13 +11,20 @@
   $balai = $peran === P::SATKER;
   $jenis = $lap->sumber;
   $baris = $r->daftarSasaran();
+  $arsip = $r->lampiran;
 @endphp
 
 <div class="body">
   <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
-    <a class="taut" href="{{ $kembali }}"><x-ikon n="ArrowLeft" :s="16" /> Kembali</a>
+    <a class="link" href="{{ $kembali }}"><x-ikon n="ArrowLeft" :s="16" /> Kembali</a>
     <div style="flex:1"></div>
-    <a class="btn" href="{{ route('laporan.show', $lap) }}"><x-ikon n="Files" :s="15" /> Lihat laporan lengkap</a>
+    {{-- `id` bagian lama kartunya: pemberitahuan yang menunjuk arsip mendarat di
+         tombol ini. Tanpa skrip, link-nya membuka jendelanya lewat #arsip. --}}
+    <a class="btn" href="#arsip" id="r-arsip" data-buka-arsip aria-haspopup="dialog">
+      <x-ikon n="Paperclip" :s="15" /> Arsip rekomendasi <span class="jml-arsip">{{ $arsip->count() }}</span>
+    </a>
+    {{-- Membuka blok temuannya dan menyorot baris rekomendasi ini (26 Sep). --}}
+    <a class="btn" href="{{ route('laporan.show', [$lap, 'temuan' => $tem->id, 'rek' => $r->id]) }}"><x-ikon n="Files" :s="15" /> Lihat laporan lengkap</a>
   </div>
 
   <div class="babak">
@@ -28,11 +35,12 @@
 
   <div class="card lipatsatu" style="margin-bottom:20px">
     {{-- ---- laporan asal ---- --}}
-    <div>
-      <div class="judulkartu">
-        <span class="ic-kotak"><x-ikon n="Files" :s="17" /></span>
-        <h3>Laporan asal</h3>
-      </div>
+    <x-lipat :kartu="false" judul="Laporan asal" ikon="Files" id-isi="lipat-laporan-isi">
+      <x-slot:ringkas>
+        <span class="mono">{{ $lap->nomor }}</span>
+        <span>{{ $jenis->penerbit() }}</span>
+        <span>Diterima {{ Tampil::tgl($lap->tgl_terima) }}</span>
+      </x-slot:ringkas>
       @php
         $asli = $lap->suratAsli();
         $faktaLaporan = [
@@ -44,33 +52,42 @@
              seluruh temuan pada seluruh satuan kerja. */
           ! $balai ? ['l' => 'Berkas surat asli', 'v' => $asli
               ? view('components.berkas', ['b' => $asli, 'jenis' => 'Surat laporan pemeriksaan', 'oleh' => 'Setba', 'tanggal' => $lap->tgl_terima])->render()
-              : '<span class="belumada">belum ditautkan</span>'] : null,
+              : '<span class="belumada">belum dihubungkan</span>'] : null,
         ];
       @endphp
       <x-fakta :isi="$faktaLaporan" />
-    </div>
+    </x-lipat>
 
     {{-- ---- uraian temuan ---- --}}
-    <div class="ruas">
-      <div class="judulkartu">
-        <span class="ic-kotak abu"><x-ikon n="FileText" :s="17" /></span>
-        <h3>Uraian temuan</h3>
-      </div>
+    <x-lipat :kartu="false" class="ruas" judul="Uraian temuan" ikon="FileText" nada="abu" id-isi="lipat-temuan-isi">
+      <x-slot:ringkas>
+        <span class="potong">{{ $tem->judul }}</span>
+        <x-kategori-temuan :nama="$tem->kategori?->nama" />
+        @if($tem->kategoriIntern)<x-tag-kategori :kat="$tem->kategoriIntern" :polos="true" />@endif
+        @if($saudara->isNotEmpty())<span>{{ $saudara->count() }} rekomendasi lain dari temuan ini</span>@endif
+      </x-slot:ringkas>
       @php
+        /* Identitas temuannya ikut berbaris bersama keterangan temuan yang
+           lain. Dulu berdiri di kepala rekomendasi, lalu sempat jadi blok
+           tersendiri di sini — kata Hizkia (20 Sep): "judul temuannya akan
+           lebih baik dibuat berderet atau menjadi baris kebawah disamakan
+           dengan informasi temuan lainnya". */
         $faktaTemuan = [
-          ['l' => 'Kategori temuan', 'ket' => [
-              $jenis->melewatiSiptl()
-                ? 'Penggolongan dari BPK, mengikuti bagian laporan keuangan yang kena dampaknya.'
-                : 'Penggolongan dari Inspektorat, mengikuti sudut pemeriksaannya.',
-              'Tertulis apa adanya dari surat laporannya, jadi tidak bisa diubah sendiri.',
-              'Dipakai saat berkoordinasi dengan pemeriksa, dan saat menyusun rekap yang mereka minta.',
+          ['l' => 'Judul temuan', 'v' => e($tem->judul)],
+          /* Ditulis seperti di surat: satu baris, dipisah garis miring. */
+          /* Urutan namanya mengikuti urutan isinya: nomor surat dulu, kode
+             sistem menyusul. Keduanya beda asal, dan itu disebut di
+             keterangannya — kode TMN- tidak ada di surat mana pun. */
+          ['l' => 'Nomor/Kode temuan', 'ket' => [
+              $tem->nomor_pada_surat.' — nomor temuan pada suratnya, disalin apa adanya. Inilah yang disebut saat berkoordinasi dengan pemeriksa.',
+              $tem->kode.' — kode arsip temuan di sistem ini, dirakit saat laporannya dicatat. Bukan bagian dari surat.',
+              'Penomoran resmi rekomendasinya sendiri ada di kepala rekomendasi: Ref LHP dan Ref IDT.',
             ],
-            'v' => '<span class="nilaikat"><i style="background:var(--aksen)"></i><span>'.e($tem->kategori?->nama).'</span></span>'],
-          $tem->kategoriIntern ? ['l' => 'Kategori internal', 'ket' => [
-              'Penggolongan kita sendiri, dipakai mengelompokkan temuan sejenis untuk rekap internal.',
-              'Tidak ada di surat pemeriksaannya — diisi dan disetel Setba saat mencatat Laporan Baru.',
-              'Daftarnya bisa ditambah dan diganti nama lewat menu Data master.',
-            ], 'v' => view('components.tag-kategori', ['kat' => $tem->kategoriIntern, 'polos' => true])->render()] : null,
+            'mono' => true, 'v' => e($tem->nomor_pada_surat.'/'.$tem->kode)],
+          ['l' => 'Kategori temuan', 'ket' => \App\Models\Temuan::ketKategori($jenis),
+            'v' => view('components.kategori-temuan', ['nama' => $tem->kategori?->nama])->render()],
+          $tem->kategoriIntern ? ['l' => 'Kategori internal', 'ket' => \App\Models\Temuan::KET_KATEGORI_INTERN,
+            'v' => view('components.tag-kategori', ['kat' => $tem->kategoriIntern, 'polos' => true])->render()] : null,
           ['l' => 'Sebab', 'v' => e($tem->sebab)],
           ['l' => 'Akibat', 'v' => e($tem->akibat)],
           $saudara->isNotEmpty() ? ['l' => 'Rekomendasi lain', 'ket' => [
@@ -81,7 +98,7 @@
         ];
       @endphp
       <x-fakta :isi="$faktaTemuan" />
-    </div>
+    </x-lipat>
   </div>
 
   <div class="babak">
@@ -91,46 +108,99 @@
   </div>
 
   @if($baris->isNotEmpty())
-    <div id="r-tindaklanjut" class="wadahtl" style="border:1px solid var(--line-2);border-radius:10px;overflow:hidden">
+    <div id="r-tindaklanjut" class="wadahtl">
       @include('rekomendasi.bagian.kepala')
 
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--line-2);flex-wrap:wrap">
-        <span class="lbl" style="margin:0">{{ $balai ? 'Yang harus saya kerjakan' : 'Rincian tindak lanjut' }}</span>
-        <div style="flex:1"></div>
-        <span style="font-size:12.5px;font-weight:700">
-          {{ $baris->filter(fn ($x) => $x->hasil === HasilTelaah::M)->count() }} dari {{ $baris->count() }} {{ mb_strtolower(HasilTelaah::M->nama($jenis)) }}
-        </span>
-        <x-cap-hasil :jenis="$jenis" :hasil="$r->keadaanUnor()" />
-        <x-info :teks="$balai ? [
-          'Yang ditampilkan hanya kewajiban satuan kerja ini. Rekomendasi yang sama bisa membebani satuan kerja lain, dan bagian mereka bukan urusan di sini.',
-          'Satu satuan kerja yang kena dua tindak lanjut memikul dua kewajiban, dan keduanya harus tuntas sendiri-sendiri.',
-        ] : [
-          'Rekomendasi baru dinilai '.mb_strtolower(HasilTelaah::M->nama($jenis)).' kalau seluruh penugasan di dalamnya sudah '.mb_strtolower(HasilTelaah::M->nama($jenis)).'.',
-          'Dua dari tiga selesai tetap terhitung '.mb_strtolower(HasilTelaah::BM->nama($jenis)).' — tapi yang belum tetap disebut namanya di sini supaya bisa dikejar.',
-          'Satu satuan kerja yang kena dua tindak lanjut terhitung dua penugasan, karena keduanya memang harus tuntas sendiri-sendiri.',
-        ]" />
+      {{-- Kepala rincian tindak lanjut — padanan `kepalatl` di prototipe. Kata
+           Hizkia (17 Sep): "kontraskan tampilan container nya … judul ini itu
+           maksudnya judul untuk bagian mana ya?", lalu "tidak terlalu banyak
+           distraksi … mengikuti tema atau kontras yang serasi dengan section
+           utamanya". Identitasnya dibawa bentuk kepalanya, bukan warnanya: judul
+           berlencana dengan kalimat penjelas, hitungan bernama bergaya ringkasan
+           kepala rekomendasi, dan kalimat SIPTL bernama. --}}
+      @php
+        $beres = $baris->filter(fn ($x) => $x->hasil === HasilTelaah::M)->count();
+        $adaBpk = $jenis->melewatiSiptl() && $baris->contains(fn ($x) => $x->siptl_tanggal);
+        $sesuaiBpk = $baris->filter(fn ($x) => $x->siptl_tanggal && in_array($x->status_bpk?->value, ['SS', 'TD'], true))->count();
+        /* Satuan kerja membaca keadaan tindak lanjutnya sendiri di kedua
+           lencana (27 Sep) — dulu lencana BPK sudah begitu, lencana Inspektorat
+           belum, jadi "1 dari 1 memadai" bersanding BM. */
+        $milik = $balai ? $u->satker_id : null;
+        $stBpk = $r->statusBpkUntuk($milik);
+        $keadaanSiptl = \App\Http\Controllers\RincianController::keadaanSiptl($r, $peran, $u->satker_id);
+      @endphp
+      <div class="kepalatl">
+          <div class="kepalatl-judul">
+            <span class="ic-kotak"><x-ikon n="ListChecks" :s="17" /></span>
+            <b>
+              Rincian tindak lanjut
+              <x-info :teks="array_merge($balai ? [
+                'Yang ditampilkan hanya kewajiban satuan kerja ini. Rekomendasi yang sama bisa membebani satuan kerja lain, dan bagian mereka bukan urusan di sini.',
+                'Satu satuan kerja yang kena dua tindak lanjut memikul dua kewajiban, dan keduanya harus tuntas sendiri-sendiri.',
+              ] : [
+                'Rekomendasi baru dinilai '.mb_strtolower(HasilTelaah::M->nama($jenis)).' kalau seluruh penugasan di dalamnya sudah '.mb_strtolower(HasilTelaah::M->nama($jenis)).'.',
+                'Dua dari tiga selesai tetap terhitung '.mb_strtolower(HasilTelaah::BM->nama($jenis)).' — tapi yang belum tetap disebut namanya di sini supaya bisa dikejar.',
+                'Satu satuan kerja yang kena dua tindak lanjut terhitung dua penugasan, karena keduanya memang harus tuntas sendiri-sendiri.',
+              ], $jenis->melewatiSiptl() ? [
+                'Hitungan kedua milik BPK: berapa tindak lanjut yang sudah dinyatakan sesuai lewat SIPTL. Tiap baris diunggah dan dinilai sendiri-sendiri.',
+                'Status SIPTL rekomendasinya dirangkum dari baris-barisnya: yang paling belakang menentukan. Aturan itu diambil dari lembar pemantauan — kolom Rank Status SiPTL dan Max Rank per Reff IDT.',
+              ] : [])" />
+            </b>
+            <span>{{ $balai
+              ? 'Kewajiban satuan kerja Anda pada rekomendasi ini. Buka tiketnya untuk mengisi tindak lanjut.'
+              : 'Satu tiket untuk tiap bentuk tindak lanjut. Buka tiketnya untuk melihat satuan kerja yang mengerjakannya.' }}</span>
+          </div>
+        {{-- Keterangannya berderet ke bawah — kata Hizkia (17 Sep), "teks teksnya
+             pada rincian tindak lanjut dibuat berderet kebawah saja". Nama redup
+             di kiri, isi di kanan, sejajar tulisan judul. --}}
+        <dl class="kepalatl-daftar">
+          <dt>Verifikasi Inspektorat</dt>
+          <dd>
+            <b>{{ $beres }} dari {{ $baris->count() }} {{ mb_strtolower(HasilTelaah::M->nama($jenis)) }}</b>
+            <x-cap-hasil :jenis="$jenis" :hasil="$r->keadaanUntuk($milik)" />
+          </dd>
+          {{-- Sumbu kedua, milik BPK — hanya LHP, dan hanya begitu ada yang naik. --}}
+          @if($adaBpk)
+            <dt>Penilaian BPK · SIPTL</dt>
+            <dd>
+              <b>{{ $sesuaiBpk }} dari {{ $baris->count() }} sesuai</b>
+              <span class="cap {{ $stBpk->cap() }}" title="{{ $stBpk->pendek() }}">{{ $stBpk->value }}</span>
+            </dd>
+          @endif
+          {{-- Keadaan urusan SIPTL dalam satu kalimat — dulu kalimat pembuka kartu
+               Urusan SIPTL. --}}
+          @if($keadaanSiptl)
+            <dt>Keadaan SIPTL</dt>
+            <dd>{{ $keadaanSiptl['kalimat'] }}</dd>
+          @endif
+        </dl>
       </div>
 
       @foreach($r->tindakan as $k => $tk)
         @include('rekomendasi.bagian.tiket', ['tk' => $tk, 'k' => $k])
       @endforeach
 
-      @if($r->nilaiRek() > 0 && ! $balai)
-        <div style="display:flex;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line-2);background:var(--surface-2)">
-          <span class="lbl" style="margin:0">Jumlah</span>
-          <div style="flex:1"></div>
-          <span class="mono" style="font-size:13px;font-weight:700">{{ Tampil::rupiah($r->nilaiRek()) }}</span>
-        </div>
-      @endif
+
     </div>
   @endif
 
-  @include('rekomendasi.bagian.urusan-siptl')
+  {{-- Di sini dulu berdiri kartu Urusan SIPTL. Seluruhnya lebur ke tabel tindak
+       lanjut di atas (17 Sep): kalimatnya di bawah bilah rincian, statusnya di
+       kolom SIPTL, putusan dan catatannya di rincian baris, pekerjaannya di tab
+       Kerjakan, dan pembagian uangnya di kaki tabel. --}}
 
-  <div id="r-perkembangan" class="bagian">
-    @include('rekomendasi.bagian.riwayat-status')
-  </div>
+  {{-- Di sini dulu berdiri kartu "Riwayat status tindak lanjut" beserta tombol
+       pemilih satuan kerjanya. Sejak 21 Sep isinya tab "Riwayat" di baris
+       satuan kerja pada tabel tindak lanjut di atas (riwayat-baris.blade.php) —
+       kata Hizkia, "ditampilkan kedalam table tindak lanjut satuan kerja sesuai
+       dengan satuan kerjanya". --}}
 
-  @include('rekomendasi.bagian.arsip-jejak')
+  {{-- Kartu "Riwayat aktivitas" dulu berdiri di sini, bersama kartu Arsip.
+       Keduanya keluar dari kaki halaman (18 Sep): Arsip jadi jendela dari
+       tombol di bilah atas, Riwayat aktivitas dibuang — riwayat tiap satuan
+       kerja sudah ada di tab Riwayat barisnya, dan catatan tingkat
+       rekomendasi bisa menyebut satuan kerja lain. Prototipe menyusul 25 Sep. --}}
+
+  @include('rekomendasi.bagian.modal-arsip')
 </div>
 @endsection

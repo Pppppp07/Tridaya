@@ -14,7 +14,7 @@ use App\Models\Sasaran;
 use App\Models\Telaah;
 use App\Models\Verifikasi;
 use App\Support\Jejak;
-use App\Support\Kabar;
+use App\Support\Pemberitahuan;
 use App\Support\Tampil;
 use Illuminate\Support\Facades\DB;
 
@@ -34,7 +34,7 @@ class PutusPeriksa
 {
     /**
      * @param  array{catatan:?string, nomor:?string, tglSurat:?string, perihal:?string, berkas:?string,
-     *               tautan:?string, batasWaktu:?string, dokumenDiminta:list<string>, nomorLhv:?string,
+     *               link:?string, batasWaktu:?string, dokumenDiminta:list<string>, nomorLhv:?string,
      *               tglLhv:?string, tanda:list<array{satker_id:int, hasil:?string, catatan:?string}>}  $isi
      */
     public static function jalankan(Rekomendasi $r, Sasaran $s, PeranPengguna $peran, HasilTelaah $hasil, array $isi): void
@@ -123,7 +123,7 @@ class PutusPeriksa
                     'rekomendasi_id' => $r->id,
                     'nama_asli'      => trim($isi['berkas']),
                     'label_jenis'    => 'Dokumen perbaikan',
-                    'tautan'         => ($isi['tautan'] ?? '') ?: null,
+                    'link'         => ($isi['link'] ?? '') ?: null,
                     'label_oleh'     => $otoritas,
                     'diunggah_oleh'  => auth()->id(),
                     'diunggah_pada'  => Jejak::tanggal(),
@@ -196,13 +196,13 @@ class PutusPeriksa
 
             Jejak::riwayat($r, $pengetik, $teks, ($isi['tglSurat'] ?? '') ?: null);
 
-            /* Kabarnya milik satuan kerja yang diputus. Penolakan dikabarkan ke
+            /* Pemberitahuannya milik satuan kerja yang diputus. Penolakan diberitahukan ke
                satuan kerja cukup status dan tempatnya: alasan dan dokumennya
                sampai saat Setba mengirim ulang. */
             $untuk = $hasil === HasilTelaah::BM ? [PeranPengguna::SETBA] : [PeranPengguna::SETBA, PeranPengguna::SATKER];
-            Kabar::tulis($r, $teks, $untuk, 'r-riwayat', $kenaSini, $s->tindakan);
+            Pemberitahuan::tulis($r, $teks, $untuk, 'r-riwayat', $kenaSini, $s->tindakan);
             if ($hasil === HasilTelaah::BM) {
-                Kabar::tulis($r,
+                Pemberitahuan::tulis($r,
                     ($uki ? 'Validasi UKI' : 'Verifikasi Inspektorat').": {$kata} — berkas di Setba untuk pemberkasan ulang. "
                     .'Alasan dan dokumen yang diminta menyusul saat Setba mengirim ulang.',
                     [PeranPengguna::SATKER], 'r-riwayat', $kenaSini, $s->tindakan);

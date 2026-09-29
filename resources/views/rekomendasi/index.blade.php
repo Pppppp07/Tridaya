@@ -18,10 +18,16 @@
 @endphp
 
 <div class="body">
-  {{-- Seluruh saringan satu formulir GET: alamatnya bisa disimpan dan dibagi,
+  {{-- Seluruh filter satu formulir GET: alamatnya bisa disimpan dan dibagi,
        dan semuanya tetap bekerja tanpa skrip. Isian tersembunyi di depan
-       supaya tombol yang ditekan menimpanya. --}}
-  <form id="saring" method="get" action="{{ route('rekomendasi.index') }}" class="kepalatabel">
+       supaya tombol yang ditekan menimpanya. `data-ganti-di-tempat` (29 Sep):
+       dengan skrip, hasilnya ditukar di tempat tanpa memuat ulang halaman. --}}
+  <form id="filter" method="get" action="{{ route('rekomendasi.index') }}" class="kepalatabel" data-ganti-di-tempat>
+    {{-- Tombol bawaan untuk Enter di kotak cari: tanpa nama, jadi tidak
+         membawa pilihan apa pun (29 Sep). Tanpa ini browser memakai tombol
+         kirim pertama — keping "Semua" jenis laporan — dan pilihan LHP/LHA
+         yang sedang menyala ikut terlepas. --}}
+    <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Cari</button>
     <input type="hidden" name="keadaan" value="{{ $keadaanKini ?? 'semua' }}">
     <input type="hidden" name="urut" value="{{ $urut === 'mendesak' ? 'mendesak' : $urut.':'.$arah }}">
 
@@ -48,14 +54,14 @@
       @endforeach
     </div>
 
-    <div class="barissaring">
+    <div class="barisfilter">
       <span class="cari" style="flex:1;min-width:220px">
         <x-ikon n="Search" :s="14" />
-        <input type="text" name="q" value="{{ $q }}" data-saring-langsung
+        <input type="text" name="q" value="{{ $q }}" data-filter-langsung
           placeholder="Cari nomor LHP, kode, temuan, rekomendasi, Ref IDT">
       </span>
-      {{-- Penyaring satuan kerja tidak diberikan kepada satuan kerja: baginya
-           ia tidak menyaring apa pun, dan isinya membocorkan daftar satuan
+      {{-- Filter satuan kerja tidak diberikan kepada satuan kerja: baginya
+           ia tidak memfilter apa pun, dan isinya membocorkan daftar satuan
            kerja lain. --}}
       @if($peran !== P::SATKER)
         <select name="sk" data-kirim>
@@ -79,32 +85,37 @@
     <div class="hint" data-hitung-tampil>
       <span data-n-tampil>{{ $hasil->count() }}</span> rekomendasi tampil
       <b style="color:var(--bad)" @if(! $perlu) hidden @endif data-perlu> · <span data-n-perlu>{{ $perlu }}</span> perlu perhatian</b>
-      @if($hasil->count() !== $daftar->count())<span> · disaring dari {{ $daftar->count() }}</span>@endif
+      @if($hasil->count() !== $daftar->count())<span> · difilter dari {{ $daftar->count() }}</span>@endif
     </div>
 
     @if($keadaanKini === 'siptl')
       <div class="hint">
         {{ $hasil->filter->perluUnggahSiptl()->count() }} perlu diunggah
         · {{ $hasil->filter->perluCekBpk()->count() }} menunggu penilaian BPK
+        · {{ $hasil->filter->perluKirimUlangBpk()->count() }} ditolak BPK
         <x-info :teks="[
           'Kumpulan pekerjaan yang dikerjakan di SIPTL — aplikasi milik BPK, di luar sistem ini.',
           'Perlu diunggah: berkasnya diunggah di SIPTL, lalu tanggalnya dicatat di sini.',
           'Menunggu penilaian BPK: BPK tidak mengirim pemberitahuan apa pun, jadi statusnya dicek berkala di SIPTL lalu dicatat di sini.',
+          'Ditolak BPK: putusannya Belum Sesuai dan sudah tercatat. Yang tersisa mengirim berkasnya ulang ke satuan kerja, lalu mengunggahnya lagi — putusan berikutnya dicatat sesudah itu.',
           'Hanya LHP. LHA berhenti di Inspektorat dan tidak pernah sampai ke BPK.',
         ]" />
       </div>
     @endif
   </form>
 
-  <div class="tw">
+  {{-- Kelas k-* menandai kolomnya untuk tata letak menurut lebar layar: di
+       layar sempit tiap baris jadi kartu dan kepala kolomnya jadi deretan
+       tombol urut (22 Sep). --}}
+  <div class="tw daftar-rek">
     <table>
       <thead>
         <tr>
-          <th class="num">No</th>
+          <th class="num k-no">No</th>
           @foreach([['uraian', 'Uraian'], ['satker', 'Satuan kerja'], ['tenggat', 'Tenggat jawab'], ['kemajuan', 'Kemajuan', TindakLanjutRingkas::KETERANGAN]] as $kol)
             @php [$k, $nama] = $kol; $ket = $kol[2] ?? null; @endphp
-            <th class="urutkan{{ $urut === $k ? ' aktif' : '' }}{{ $ket ? ' berinfo' : '' }}">
-              <button type="submit" form="saring" name="urut" value="{{ $berikut($k) }}" title="{{ $judulUrut($k, $nama) }}">
+            <th class="urutkan k-{{ $k }}{{ $urut === $k ? ' aktif' : '' }}{{ $ket ? ' berinfo' : '' }}">
+              <button type="submit" form="filter" name="urut" value="{{ $berikut($k) }}" title="{{ $judulUrut($k, $nama) }}">
                 {{ $nama }}
                 <span class="panahurut" aria-hidden="true">{{ $urut === $k ? ($arah === 'naik' ? '↑' : '↓') : '⇅' }}</span>
               </button>
@@ -122,26 +133,26 @@
             $cari = mb_strtolower(implode(' ', [$rek->kode, $rek->temuan->judul, $rek->uraian, $rek->refIdt(),
               $lap->nomor, $rek->refLhp(), $rek->daftarSasaran()->first()?->satker?->namaPendek()]));
           @endphp
-          <tr class="bukaan{{ $rek->perluPerhatian() ? ' awas' : '' }}" data-href="{{ route('rekomendasi.show', $rek) }}"
+          <tr class="bukaan{{ $rek->perluPerhatian() ? ' awas' : '' }}" data-rek="{{ $rek->id }}" data-href="{{ route('rekomendasi.show', $rek) }}"
             data-cari="{{ $cari }}" data-perlu="{{ $rek->perluPerhatian() ? 1 : 0 }}">
-            <td class="num mono" style="font-size:12px;color:var(--ink-3)">
+            <td class="num mono k-no" style="font-size:12px;color:var(--ink-3)">
               <span class="panahbaris"><x-ikon n="ChevronRight" :s="13" /></span>
               <span data-no>{{ $no + 1 }}</span>
             </td>
-            <td style="max-width:420px">
-              <div style="display:flex;align-items:baseline;gap:8px;min-width:380px">
+            <td class="k-uraian">
+              <div class="uraian-isi">
                 <x-sumber :j="$lap->sumber" />
-                <a class="tautbaris" href="{{ route('rekomendasi.show', $rek) }}" style="font-size:13px">{{ $rek->uraian }}</a>
+                <a class="linkbaris" href="{{ route('rekomendasi.show', $rek) }}" style="font-size:13px">{{ $rek->uraian }}</a>
               </div>
             </td>
-            <td style="font-size:12.5px">
-              <span class="kepingsatker" style="max-width:250px">
+            <td class="k-satker" style="font-size:12.5px">
+              <span class="kepingsatker">
                 @foreach($rek->satkerTampil($peran, $u->satker_id) as $s)
                   <span class="keping">{{ $s->namaPendek() }}</span>
                 @endforeach
               </span>
             </td>
-            <td class="mono" style="font-size:12px;color:{{ $lewat ? 'var(--bad)' : 'inherit' }}">
+            <td class="mono k-tenggat" data-label="Tenggat jawab" style="font-size:12px;color:{{ $lewat ? 'var(--bad)' : 'inherit' }}">
               {{ Tampil::tgl($rek->tenggat_jawab) }}
               @if($lewat)
                 <div class="lbl" style="color:var(--bad)">{{ Tampil::lamaTelat($rek->lewatTenggat()) }}</div>
@@ -150,13 +161,13 @@
                 <div class="lbl" style="color:var(--bad)">lewat batas perbaikan {{ $lewatBatas }} hari</div>
               @endif
             </td>
-            <td><x-kemajuan :rek="$rek" /></td>
+            <td class="k-kemajuan"><x-kemajuan :rek="$rek" /></td>
           </tr>
         @endforeach
         <tr data-kosong @if($hasil->isNotEmpty()) hidden @endif>
           <td colspan="5" style="color:var(--ink-3);padding:22px">
             @if($daftar->isNotEmpty())
-              Tidak ada rekomendasi yang cocok. Ubah kata kunci atau saringan.
+              Tidak ada rekomendasi yang sesuai. Ubah kata kunci atau filter.
             @elseif($peran === P::SETBA)
               Belum ada rekomendasi. Rekomendasi muncul di sini sesudah laporannya dicatat lewat Catat laporan baru.
             @else

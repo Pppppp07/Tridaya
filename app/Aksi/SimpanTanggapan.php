@@ -12,7 +12,7 @@ use App\Models\Rekomendasi;
 use App\Models\Sasaran;
 use App\Models\Tanggapan;
 use App\Support\Jejak;
-use App\Support\Kabar;
+use App\Support\Pemberitahuan;
 use App\Support\Tampil;
 use Illuminate\Support\Facades\DB;
 
@@ -28,8 +28,8 @@ use Illuminate\Support\Facades\DB;
  *          setoran, berkas bukti, dan butir dokumen yang terpenuhi.
  *
  * `$isi` berbentuk isian formulir: uraian, tanggal, bukti[] {nama, jenis,
- * tautan, untuk}, setoran[] {jenis, tanggal, nilai, ssbp, ntpn, notaKppn,
- * noBa, berkas, tautan}, penuhi[] (id butir dokumen).
+ * link, untuk}, setoran[] {jenis, tanggal, nilai, ssbp, ntpn, notaKppn,
+ * noBa, berkas, link}, penuhi[] (id butir dokumen).
  */
 class SimpanTanggapan
 {
@@ -58,10 +58,10 @@ class SimpanTanggapan
 
             Jejak::riwayat($r, $pendek, $maju ? "Kemajuan dicatat — {$maju}" : 'Isian disimpan, berkas tetap di satuan kerja');
 
-            /* Dikabarkan hanya kalau kemajuannya benar-benar bergerak. Menyimpan
-               ulang tanpa hasil baru bukan kabar. */
+            /* Diberitahukan hanya kalau kemajuannya benar-benar bergerak. Menyimpan
+               ulang tanpa hasil baru bukan pemberitahuan. */
             if (! Kemajuan::sama($sebelum, $sesudah)) {
-                Kabar::tulis($r, "Kemajuan tindak lanjut — {$maju}".self::catatan($isi['uraian']),
+                Pemberitahuan::tulis($r, "Kemajuan tindak lanjut — {$maju}".self::catatan($isi['uraian']),
                     [PeranPengguna::SETBA], 'r-tindaklanjut', [$s->satker_id], $s->tindakan);
             }
         });
@@ -115,7 +115,7 @@ class SimpanTanggapan
                     'sasaran_id'    => $s->id,
                     'tindakan_id'   => $s->tindakan_id,
                     'nama_asli'     => $st['berkas'] ?: null,
-                    'tautan'        => $st['tautan'] ?: null,
+                    'link'        => $st['link'] ?: null,
                     'label_jenis'   => ($st['jenis'] ?? 'setor') === 'perbaikan' ? 'Berita acara perbaikan' : 'Bukti setor',
                     'label_oleh'    => $pendek,
                     'diunggah_oleh' => $otomatis ? null : auth()->id(),
@@ -146,7 +146,7 @@ class SimpanTanggapan
                     'tindakan_id'    => $s->tindakan_id,
                     'nama_asli'      => $b['nama'],
                     'label_jenis'    => ($b['jenis'] ?? '') ?: 'Bukti tindak lanjut',
-                    'tautan'         => $b['tautan'] ?: null,
+                    'link'         => $b['link'] ?: null,
                     'label_oleh'     => $pendek,
                     'diunggah_oleh'  => $otomatis ? null : auth()->id(),
                     'diunggah_pada'  => $hari,
@@ -170,9 +170,9 @@ class SimpanTanggapan
             DrafTanggapan::where('sasaran_id', $s->id)->delete();
 
             if ($otomatis) {
-                $teks = 'Terkirim otomatis ke Setba — draf mengendap lebih dari '.Kemajuan::HARI_ENDAP.' hari';
+                $teks = 'Terkirim otomatis ke Setba — draf belum dikirim lebih dari '.Kemajuan::HARI_KIRIM_OTOMATIS.' hari';
                 Jejak::riwayat($r, $pendek, $teks);
-                Kabar::tulis($r, $teks, [PeranPengguna::SETBA, PeranPengguna::SATKER], 'r-tindaklanjut',
+                Pemberitahuan::tulis($r, $teks, [PeranPengguna::SETBA, PeranPengguna::SATKER], 'r-tindaklanjut',
                     [$s->satker_id], $s->tindakan, sistem: true, pelaku: $pendek);
 
                 return;
@@ -183,7 +183,7 @@ class SimpanTanggapan
                 .($rincian ? " — {$rincian}" : ''),
                 $isi['tanggal'] ?: null);
 
-            Kabar::tulis($r, 'Berkas dikirim ke Setba'.($rincian ? " — {$rincian}" : '').self::catatan($isi['uraian']),
+            Pemberitahuan::tulis($r, 'Berkas dikirim ke Setba'.($rincian ? " — {$rincian}" : '').self::catatan($isi['uraian']),
                 [PeranPengguna::SETBA], 'r-tindaklanjut', [$s->satker_id], $s->tindakan);
         });
     }

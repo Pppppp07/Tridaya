@@ -128,6 +128,12 @@ class Laporan extends Model
      */
     public const BATAS_JEDA_CATAT = 7;
 
+    /* Keterangan angka pemulihan dana — satu bunyi untuk Pemulihan dana di
+       kepala rincian laporan dan angka di tiap blok temuan. Padanan
+       KET_TAGIHAN dan KET_ADMINISTRATIF di prototipe. */
+    public const KET_TAGIHAN = 'Bagian yang memang harus disetor ke kas negara sesuai bunyi rekomendasinya.';
+    public const KET_ADMINISTRATIF = 'Bagian yang tidak perlu disetor — cukup dilengkapi dokumennya atau diperbaiki prosedurnya. Bisa berubah jadi tagihan kalau buktinya tidak pernah ada.';
+
     /** Jarak antara surat sampai dan surat dicatat. */
     public function jedaPencatatan(): ?int
     {

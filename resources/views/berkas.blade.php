@@ -1,5 +1,5 @@
 @extends('rangka')
-@section('judul', 'Pratinjau berkas')
+@section('judul', 'Preview berkas')
 @section('isi')
 @php use App\Support\Tampil; @endphp
 
@@ -27,8 +27,8 @@
   </div>
 
   <div class="hint" style="line-height:1.6">
-    Data contoh belum punya berkas sungguhan di penyimpanan. Pada sistem sebenarnya berkas
-    aslinya terbuka di sini, disajikan lewat rute terotorisasi &mdash; bukan tautan langsung
+    Data contoh belum memiliki berkas asli di penyimpanan. Pada sistem resmi, berkas
+    aslinya terbuka di sini lewat akses yang terotorisasi &mdash; bukan link langsung
     ke folder penyimpanan.
   </div>
 </div>

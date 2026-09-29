@@ -1,11 +1,13 @@
 @props(['kat' => null, 'polos' => false])
 
 @php
-  /* `kat` model Referensi kategori internal. Warnanya dari data master, jadi
-     menambah kategori tidak perlu menyentuh tampilan. */
+  /* `kat` model Referensi kategori internal — padanan `TagKategori` prototipe.
+     Tanpa warna sejak 27 Sep. Bang Kamal: "Ini biru, biru sama merah apa
+     artinya?" — merah dan hijau di aplikasi ini berarti keadaan, jadi kategori
+     yang berwarna terbaca sebagai keadaan. Kolom `warna` tetap di basis data,
+     tidak dipakai lagi. */
   $mati = $kat && ! $kat->aktif;
   $ket = $mati ? 'Kategori ini sudah tidak aktif di data master' : null;
-  $w = $kat?->warnaLabel() ?? \App\Enums\WarnaLabel::ABU;
 @endphp
 
 @if(! $kat)
@@ -16,10 +18,8 @@
   @endif
 @elseif($polos)
   <span class="nilaikat" @if($ket) title="{{ $ket }}" @endif>
-    <i style="background:{{ $w->padat() }}"></i>
     <span>{{ $kat->nama }}{{ $mati ? ' · nonaktif' : '' }}</span>
   </span>
 @else
-  <span class="tagkat" style="background:{{ $w->isi() }};color:{{ $w->teks() }};border-color:{{ $w->garis() }}"
-    @if($ket) title="{{ $ket }}" @endif>{{ $kat->nama }}{{ $mati ? ' · nonaktif' : '' }}</span>
+  <span class="tagkat" @if($ket) title="{{ $ket }}" @endif>{{ $kat->nama }}{{ $mati ? ' · nonaktif' : '' }}</span>
 @endif

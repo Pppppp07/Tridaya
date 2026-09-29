@@ -2,13 +2,16 @@
   use App\Enums\SumberLaporan;
   use App\Support\Tampil;
 
-  /* Langkah 3 — tinjau. Yang dibaca di sini persis yang akan tersimpan: tiap
+  /* Langkah 2 — tinjau. Yang dibaca di sini persis yang akan tersimpan: tiap
      tindak lanjut, siapa yang memikulnya, dan catatannya. */
   $s = $d['surat'];
   $sumber = SumberLaporan::from($s['sumber']);
   $administratif = $sifat->firstWhere('nama', 'Administratif')?->id;
   $nama = fn ($id) => $satker->firstWhere('id', (int) $id)?->namaPendek() ?? '—';
-  $semuaSatker = collect($d['temuan'])->flatMap(fn ($t) => $t['satker'])->unique();
+  $semuaSatker = collect($d['temuan'])->flatMap(fn ($t) => $t['satker'])->map(fn ($id) => (int) $id)->unique()->values();
+  /* Satuan kerja yang muncul di lebih dari satu temuan disebut jumlahnya —
+     padanan `DaftarSatker` prototipe. */
+  $nTemuan = fn ($id) => collect($d['temuan'])->filter(fn ($t) => in_array($id, array_map('intval', $t['satker']), true))->count();
 @endphp
 
 <div class="card" style="margin-bottom:14px">
@@ -20,7 +23,19 @@
     <x-meta label="Sumber">{{ $sumber->nama() }} — {{ $sumber->penerbit() }}</x-meta>
     <x-meta label="Tanggal surat">{{ Tampil::tgl($s['tgl_surat']) }}</x-meta>
     <x-meta label="Diterima">{{ Tampil::tgl($s['tgl_terima']) }}</x-meta>
-    <x-meta label="Satuan kerja terperiksa">{{ $semuaSatker->map($nama)->join(', ') ?: '—' }}</x-meta>
+    {{-- Ditumpuk sebagai keping, bukan disambung koma (Bang Kamal: "jangan
+         dikoma-koma, kagak bagus"). --}}
+    <x-meta label="Satuan kerja terperiksa">
+      @if($semuaSatker->isEmpty())
+        —
+      @else
+        <span class="kepingsatker">
+          @foreach($semuaSatker as $id)
+            <span class="keping">{{ $nama($id) }}@if($nTemuan($id) > 1)<i>{{ $nTemuan($id) }} temuan</i>@endif</span>
+          @endforeach
+        </span>
+      @endif
+    </x-meta>
   </div>
 </div>
 

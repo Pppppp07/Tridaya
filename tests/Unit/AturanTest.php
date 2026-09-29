@@ -7,7 +7,7 @@ use App\Enums\PosisiBerkas;
 use App\Enums\StatusTindakLanjut;
 use App\Enums\SumberLaporan;
 use App\Models\Rekomendasi;
-use App\Support\PetaData;
+use App\Support\Dasbor;
 use App\Support\Tampil;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -108,7 +108,8 @@ class AturanTest extends TestCase
     {
         $this->assertSame('Rp 18.600.000', Tampil::rupiah(18600000));
         $this->assertSame('—', Tampil::rupiah(0));
-        $this->assertSame('lunas', Tampil::rupiahSisa(0));
+        /* rupiahSisa ("lunas" untuk nol) dibuang 27 Sep bersama rpSisa
+           prototipe: "lunas" kini menempel di baris Sudah dipulihkan. */
 
         $this->assertSame('Rp 0', Tampil::rupiahSingkat(0));
         $this->assertSame('Rp 24 jt', Tampil::rupiahSingkat(24000000));
@@ -131,26 +132,40 @@ class AturanTest extends TestCase
         $this->assertSame('lewat 3 tahun', Tampil::lamaTelat(1200));
     }
 
-    /* ================= pita peta data ================= */
+    /* ================= hitungan Ringkasan (dasbor) ================= */
 
-    public function test_pita_keterlambatan_dan_umur_berkas(): void
+    public function test_persen_bulat_dan_aman_terhadap_nol(): void
     {
-        $this->assertSame('Tanpa tenggat', PetaData::pitaHari(null));
-        $this->assertSame('Belum jatuh tempo', PetaData::pitaHari(-5));
-        $this->assertSame('Jatuh tempo hari ini', PetaData::pitaHari(0));
-        $this->assertSame('Lewat 1–30 hari', PetaData::pitaHari(30));
-        $this->assertSame('Lewat 31–90 hari', PetaData::pitaHari(31));
-        $this->assertSame('Lewat di atas 180 hari', PetaData::pitaHari(400));
-
-        $this->assertSame('0–3 bulan', PetaData::pitaUmur(90));
-        $this->assertSame('Lebih dari setahun', PetaData::pitaUmur(400));
-        $this->assertSame('Tidak diketahui', PetaData::pitaUmur(null));
+        $this->assertSame(50, Dasbor::persen(1, 2));
+        $this->assertSame(0, Dasbor::persen(3, 0));
+        $this->assertSame(33, Dasbor::persen(1, 3));
+        $this->assertSame(44, Dasbor::persen(45, 102));
     }
 
-    public function test_bagian_dihitung_bulat_dan_aman_terhadap_nol(): void
+    public function test_skala_sumbu_kelipatan_yang_enak_dibaca(): void
     {
-        $this->assertSame('50%', PetaData::bagian(1, 2));
-        $this->assertSame('0%', PetaData::bagian(3, 0));
-        $this->assertSame('33%', PetaData::bagian(1, 3));
+        $this->assertSame(['atas' => 40.0, 'tanda' => [0, 20, 40]], Dasbor::skala(35, 3));
+        $this->assertSame(['atas' => 30.0, 'tanda' => [0, 10, 20, 30]], Dasbor::skala(21, 3));
+        /* Yang dihitung selalu jumlah: langkahnya paling kecil satu. */
+        $this->assertSame(['atas' => 1.0, 'tanda' => [0, 1]], Dasbor::skala(0, 3));
+    }
+
+    public function test_pembuka_baku_uraian_dibuang_dari_tampilan(): void
+    {
+        $this->assertSame('Menagih kelebihan pembayaran',
+            Dasbor::pokokUraian('Menteri Pekerjaan Umum agar memerintahkan Kepala BPSDM untuk menagih kelebihan pembayaran'));
+        $this->assertSame('Menyetorkan sisa', Dasbor::pokokUraian('Kepala BPSDM agar menyetorkan sisa'));
+        $this->assertSame('Uraian tanpa pembuka', Dasbor::pokokUraian('Uraian tanpa pembuka'));
+    }
+
+    public function test_dua_belas_bulan_terakhir_ditutup_hari_ini(): void
+    {
+        $b = Dasbor::bulanTerakhir('2026-08-17', 12);
+        $this->assertCount(12, $b);
+        $this->assertSame(['kunci' => '2025-09', 'th' => 2025, 'bl' => 8, 'akhir' => '2025-09-30'], $b[0]);
+        $this->assertSame(['kunci' => '2026-08', 'th' => 2026, 'bl' => 7, 'akhir' => '2026-08-17'], $b[11]);
+        /* Tahun berjalan berhenti di bulan ini. */
+        $this->assertCount(8, Dasbor::bulanTahun(2026, '2026-08-17'));
+        $this->assertCount(12, Dasbor::bulanTahun(2025, '2026-08-17'));
     }
 }

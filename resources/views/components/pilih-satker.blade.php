@@ -4,22 +4,41 @@
   'nama',              /* nama medan, mis. t[satker][] */
   'dari' => null,      /* batasi pilihan ke id ini saja — null berarti semuanya */
   'kosong' => null,    /* kalimat kalau tidak ada yang bisa dipilih */
-  'cari' => false,     /* daftar panjang: keping terpilih di atas, sisanya di balik pencarian */
+  'cari' => null,      /* daftar panjang: keping terpilih di atas, sisanya di balik pencarian — null = otomatis, lebih dari 8 pilihan */
   'kirim' => false,    /* kirim formulirnya begitu dicentang */
+  'hanyaAktif' => false, /* tawarkan unit kerja aktif saja — pilihan lama tetap terbaca */
 ])
 @php
   /* Pemilih satuan kerja — padanan `PilihSatker` prototipe. Centang, bukan
      daftar pilih bertekan Ctrl: hampir tidak ada yang menemukan Ctrl sendiri,
      dan yang terjadi justru pilihan sebelumnya terhapus tanpa disadari. */
   $terpilih = array_map('intval', (array) $terpilih);
-  $pilihan = $dari === null ? $satker : $satker->whereIn('id', array_map('intval', (array) $dari));
+  /* Pilihan yang dibatasi mengikuti urutan daftar asalnya — satuan kerja
+     terperiksa pada temuannya, menurut urutan dipilihnya — seperti di
+     prototipe, bukan urutan data master. */
+  $pilihan = $dari === null ? $satker
+    : collect(array_map('intval', (array) $dari))->map(fn ($id) => $satker->firstWhere('id', $id))->filter()->values();
+  /* Unit kerja yang dinonaktifkan di Data master tidak ditawarkan lagi; yang
+     sudah terlanjur dipilih pada draf tetap tampil, tidak dibuang diam-diam. */
+  if ($hanyaAktif) {
+      $pilihan = $pilihan->filter(fn ($s) => $s->aktif || in_array($s->id, $terpilih, true));
+  }
+  /* Penanggung jawab tiap keping dibawa kepingnya — dibaca daftar "yang
+     diberi tahu" di bawah pemilih tindak lanjut. */
+  $pj = fn ($s) => 'data-pj="'.e($s->relationLoaded('penanggungJawab') ? ($s->penanggungJawab?->name ?? '') : '').'" data-pendek="'.e($s->namaPendek()).'"';
   $sisa = $pilihan->whereNotIn('id', $terpilih);
-  $dipilih = $pilihan->whereIn('id', $terpilih);
+  /* Yang sudah dipilih berdiri di atas menurut urutan dipilihnya, seperti di
+     prototipe — bukan urutan daftar. */
+  $dipilih = collect($terpilih)->map(fn ($id) => $pilihan->firstWhere('id', $id))->filter()->values();
+  /* Batas daftar yang masih enak dilihat utuh — AMBANG_CARI_SATKER prototipe.
+     Di bawahnya kepingnya muat dua baris; di atasnya satu pertanyaan mulai
+     terlihat seperti seluruh formulir. */
+  $cari ??= $pilihan->count() > 8;
 @endphp
 
 @if($pilihan->isEmpty())
-  <div style="font-size:12.5px;color:var(--ink-3);padding:9px 11px;
-    border:1px dashed var(--line-2);border-radius:8px">
+  <div style="font-size:13px;color:var(--ink-2);padding:9px 11px;
+    border:1px dashed var(--line);border-radius:8px">
     {{ $kosong ?: 'Belum ada pilihan.' }}
   </div>
 @elseif(! $cari)
@@ -30,8 +49,8 @@
     @foreach($pilihan as $s)
       <label class="kepingpilih" title="{{ $s->nama }}">
         <input type="checkbox" name="{{ $nama }}" value="{{ $s->id }}"
-          @checked(in_array($s->id, $terpilih, true)) @if($kirim) data-kirim @endif data-pilih-satker>
-        <span class="kotak"><x-ikon n="Check" :s="9" /></span>
+          @checked(in_array($s->id, $terpilih, true)) @if($kirim) data-kirim @endif data-pilih-satker {!! $pj($s) !!}>
+        <span class="kotak" aria-hidden="true"><x-ikon n="Check" :s="9" :w="3.5" /></span>
         {{ $s->namaPendek() }}
       </label>
     @endforeach
@@ -43,8 +62,8 @@
         @foreach($dipilih as $s)
           <label class="kepingpilih" title="{{ $s->nama }}">
             <input type="checkbox" name="{{ $nama }}" value="{{ $s->id }}" checked
-              @if($kirim) data-kirim @endif data-pilih-satker>
-            <span class="kotak"><x-ikon n="Check" :s="9" /></span>
+              @if($kirim) data-kirim @endif data-pilih-satker {!! $pj($s) !!}>
+            <span class="kotak" aria-hidden="true"><x-ikon n="Check" :s="9" :w="3.5" /></span>
             {{ $s->namaPendek() }}
           </label>
         @endforeach
@@ -67,8 +86,8 @@
       @foreach($sisa as $s)
         <label class="kepingpilih" title="{{ $s->nama }}" data-nama="{{ mb_strtolower($s->nama.' '.$s->namaPendek()) }}">
           <input type="checkbox" name="{{ $nama }}" value="{{ $s->id }}"
-            @if($kirim) data-kirim @endif data-pilih-satker>
-          <span class="kotak"><x-ikon n="Check" :s="9" /></span>
+            @if($kirim) data-kirim @endif data-pilih-satker {!! $pj($s) !!}>
+          <span class="kotak" aria-hidden="true"><x-ikon n="Check" :s="9" :w="3.5" /></span>
           {{ $s->namaPendek() }}
         </label>
       @endforeach

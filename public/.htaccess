@@ -23,3 +23,22 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# ---------------------------------------------------------------------------
+# Aset statis (27 Sep): dikirim dari peladen web langsung, tidak lewat PHP.
+# Alamatnya selalu membawa ?v=<waktu ubah berkas> (rangka.blade.php), jadi
+# aman disimpan peramban setahun — berkas yang berubah punya alamat baru.
+# Perangkat pengguna tidak mengunduh ulang CSS/JS/fonta di tiap halaman, dan
+# peladen tidak mengirimnya berulang-ulang.
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|woff2?|ttf|svg|png|jpe?g|gif|ico|webp)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header set X-Content-Type-Options "nosniff"
+    </FilesMatch>
+</IfModule>
+
+# Kompresi teks (HTML, CSS, JS, JSON, SVG) — ukuran kiriman turun ±70-80%.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/csv application/javascript text/javascript application/json image/svg+xml
+</IfModule>

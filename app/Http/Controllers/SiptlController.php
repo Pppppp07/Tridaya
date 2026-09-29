@@ -28,7 +28,7 @@ class SiptlController extends Controller
 
     /**
      * Tanggal unggah dikunci sekali tercatat. Ditolak SEBELUM menyentuh apa pun
-     * kalau barisnya sudah naik — riwayat dan kabar yang terlanjur tercatat
+     * kalau barisnya sudah naik — riwayat dan pemberitahuan yang terlanjur tercatat
      * justru jadi bahan manipulasi.
      */
     public function unggah(Request $req, Sasaran $sasaran)
@@ -45,14 +45,27 @@ class SiptlController extends Controller
 
         UrusanSiptl::unggah($rek, $sasaran, $data['tanggal']);
 
-        return redirect()->route('rekomendasi.index');
+        return redirect()->route('rekomendasi.index', ['tuju' => $sasaran->tindakan->rekomendasi_id]);
     }
 
-    /** Status disalin apa adanya dari SIPTL. BT tidak pernah dipilih orang. */
+    /**
+     * Status disalin apa adanya dari SIPTL. BT tidak pernah dipilih orang.
+     *
+     * Dicatat SEKALI tiap unggahan, lalu terkunci. Kata Hizkia: "perubahan
+     * status SS dan BS itu hanya boleh dilakukan sekali setelah proses Upload
+     * SIPTL." Sudah Sesuai mengakhiri pemantauan baris ini; Belum Sesuai baru
+     * bisa dinilai lagi sesudah berkasnya dikirim ulang lewat `ulangBpk` —
+     * yang melepas catatan unggahannya dan memulangkan statusnya ke BT.
+     *
+     * Penjaganya di sini, bukan cuma di layar: menyimpan lewat alamat langsung
+     * tetap menulis riwayat dan mengirim pemberitahuan.
+     */
     public function status(Request $req, Sasaran $sasaran)
     {
         $rek = $this->jaga($sasaran);
         abort_unless((bool) $sasaran->siptl_tanggal, 422, 'Catat dulu unggahannya ke SIPTL.');
+        abort_unless(($sasaran->status_bpk ?? StatusTindakLanjut::BT) === StatusTindakLanjut::BT, 422,
+            'Hasil pemantauan BPK untuk unggahan ini sudah dicatat dan tidak bisa diubah lagi.');
 
         $data = $req->validate([
             'status'     => ['required', 'in:BS,SS'],
@@ -65,12 +78,17 @@ class SiptlController extends Controller
 
         UrusanSiptl::status($rek, $sasaran, StatusTindakLanjut::from($data['status']), $data['catatan'] ?? null, $data['tgl_pantau'] ?? null);
 
-        return redirect()->route('rekomendasi.index');
+        return redirect()->route('rekomendasi.index', ['tuju' => $sasaran->tindakan->rekomendasi_id]);
     }
 
     /** BPK menolak satu tindak lanjut: dikirim ulang ke satuan kerjanya. */
     public function ulangBpk(Request $req, Rekomendasi $rekomendasi)
     {
+        /* Nilai diketik sebagai teks, boleh bertitik ribuan ("1.500.000") —
+           sama dengan angka() di prototipe, yang dipakai hanya digitnya. */
+        if ($req->filled('nilai')) {
+            $req->merge(['nilai' => preg_replace('/\D/', '', (string) $req->input('nilai')) ?: null]);
+        }
         $data = $req->validate([
             'sasaran_id' => ['required', 'integer'],
             'alasan'     => ['required', 'string', 'max:500'],
@@ -89,6 +107,6 @@ class SiptlController extends Controller
         UrusanSiptl::ulangBpk($rek, $sasaran, $data['alasan'], $data['keterangan'] ?? null,
             $data['dokumen'] ?? [], (int) ($data['nilai'] ?? 0));
 
-        return redirect()->route('rekomendasi.index');
+        return redirect()->route('rekomendasi.index', ['tuju' => $sasaran->tindakan->rekomendasi_id]);
     }
 }

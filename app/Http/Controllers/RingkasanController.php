@@ -4,414 +4,393 @@ namespace App\Http\Controllers;
 
 use App\Enums\HasilTelaah;
 use App\Enums\JenisReferensi;
-use App\Enums\StatusTindakLanjut;
+use App\Enums\SumberLaporan;
+use App\Models\KategoriTemuan;
 use App\Models\Referensi;
-use App\Models\Rekomendasi;
-use App\Support\Lingkup;
-use App\Support\PetaData;
+use App\Models\Satker;
+use App\Support\Dasbor;
+use App\Support\DasborKeadaan;
+use App\Support\Tampil;
 use App\Support\Terlihat;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 /**
- * Ringkasan — padanan `Dasbor` prototipe, dibentuk mengikuti dasbor pemantauan
- * yang mereka pakai sendiri (`(BID KI) Dashboard Pemantauan_LHP BPSDM.xlsx`):
- * dua blok status bertumpuk, tiap keranjang membawa jumlah DAN rupiahnya, lalu
- * dua tabel rekap — per satuan kerja dan per tahun LHP.
+ * Ringkasan — dasbor pemantauan, padanan `DasborUji` prototipe (uji coba 23–24
+ * Sep 2026, disetujui 25 Sep menggantikan Ringkasan lama). Kata mentor Hizkia:
+ * Ringkasan lama "lebih ke laporan bukan dashboard monitoring yang simple,
+ * visual aktif". Susunannya:
  *
- * DUA PENYEBUT, dan ini yang paling gampang tertukar:
+ *   1  Filter sekali untuk seluruh halaman (jenis, tahun, satuan kerja, dan
+ *      filter tambahan), bentuknya seperti slicer Power BI.
+ *   2  Ringkasan utama: lima kartu, semuanya per TINDAK LANJUT SATUAN KERJA.
+ *   3  Rincian: klik satu kartu untuk membuka bagian-bagian angkanya dan dua
+ *      sampai tiga grafiknya. Tiap grafik juga filter.
+ *   4  Tabel keseluruhan di halaman keduanya (Tahun → Satuan kerja); tiap
+ *      angkanya pintasan ke rekomendasi di baliknya.
  *
- *     rekomendasi   123    Reff IDT unik        -> SS / BS / BT
- *     penugasan     312    Satker x Reff IDT    -> memadai / belum memadai
- *
- * Judul tabel mereka sendiri menyebutnya: "Reff IDT per Satker" untuk yang
- * berpenyebut 312, "Reff IDT" saja untuk yang 123.
+ * Hitungannya di `App\Support\Dasbor` (padanan `dasbor-uji.js`), keadaannya di
+ * `App\Support\DasborKeadaan` (padanan `filterDasbor`).
  */
 class RingkasanController extends Controller
 {
-    /**
-     * Susunan panel bawaan, meniru gambar demi gambar di dasbor mereka.
-     * Bedanya cuma satu, dan itu yang penting: di Excel susunan ini dipatok, di
-     * sini tiap panel bisa diganti sendiri.
-     *
-     *     Komposisi Status SIPTL              -> donat, dikelompokkan status
-     *     Komposisi Status Unor               -> donat, dikelompokkan verifikasi
-     *     Pemantauan Rekomendasi per Satker   -> tabel per satuan kerja
-     *     Belum Selesai per Satker            -> batang, ukurannya "belum memadai"
-     *     Rekap Status per Tahun LHP          -> tabel per tahun
-     *
-     * Keterlambatan ikut turun ke sini. Mbak Puspi: "kayaknya enggak perlu
-     * dimunculin ... di bagian bawah aja enggak apa-apa." Dasbor mereka sendiri
-     * tidak memuat tenggat sama sekali — tidak ada sanksinya, dan temuan 2005
-     * yang masih menggantung akan membuat kepalanya merah selamanya.
-     */
-    private const PANEL_AWAL = [
-        ['dim' => 'status',     'ukur' => 'jumlah',       'bentuk' => 'donat',  'urut' => 'alami', 'lebar' => 0],
-        ['dim' => 'verifikasi', 'ukur' => 'jumlah',       'bentuk' => 'donat',  'urut' => 'alami', 'lebar' => 0],
-        ['dim' => 'satker',     'ukur' => 'jumlah',       'bentuk' => 'tabel',  'urut' => 'nilai', 'lebar' => 1],
-        ['dim' => 'satker',     'ukur' => 'belumMemadai', 'bentuk' => 'batang', 'urut' => 'nilai', 'lebar' => 1],
-        /* `nama`, bukan `alami`: tahun tidak punya daftar tetap, dan
-           mengurutkannya menurut nama berarti kronologis — 2019 di atas, 2026
-           di bawah, sama seperti rekap mereka. */
-        ['dim' => 'tahun',      'ukur' => 'jumlah',       'bentuk' => 'tabel',  'urut' => 'nama',  'lebar' => 1],
-        ['dim' => 'posisi',     'ukur' => 'jumlah',       'bentuk' => 'batang', 'urut' => 'alami', 'lebar' => 0],
-        ['dim' => 'intern',     'ukur' => 'nilaiTemuan',  'bentuk' => 'donat',  'urut' => 'nilai', 'lebar' => 0],
-        ['dim' => 'telat',      'ukur' => 'jumlah',       'bentuk' => 'batang', 'urut' => 'alami', 'lebar' => 0],
-    ];
-
     /** Muatan yang dibutuhkan seluruh hitungan halaman ini. */
     private const MUAT = [
-        'temuan.laporan', 'temuan.kategori', 'temuan.kategoriIntern', 'temuan.rekomendasi',
-        'sasaran.satker', 'sasaran.tindakan.bentuk', 'tindakan.bentuk',
-        'pemulihan', 'tolakanBpk', 'permintaanDokumen.item',
+        'temuan.laporan', 'temuan.kategori', 'temuan.kategoriIntern', 'sifat',
+        'sasaran.satker', 'sasaran.tindakan.bentuk', 'sasaran.riwayatStatus',
     ];
+
+    /* Satu satuan kerja, enam teratas; sisanya lewat "Semua (N)". */
+    public const TERATAS = 6;
+
+    /** Kunci sesi keadaan terakhir — filter dibawa saat dibuka lagi lewat menu. */
+    private const SESI = 'ringkasan.keadaan';
 
     public function __invoke(Request $req)
     {
-        $lingkup = Lingkup::dari($req);
-
-        /* Susunan panel dibawa alamat halaman, jadi tampilan yang sedang
-           dilihat bisa disalin dan dikirim apa adanya. Tombol tambah, hapus,
-           dan lebar dijawab dengan alamat baru — tanpa itu, menyegarkan
-           halaman akan mengulangi perbuatannya. */
-        $panel = $this->panel($req);
-        if ($req->query('aksi')) {
-            return redirect()->route('ringkasan', ['p' => $this->terapkan($panel, (string) $req->query('aksi'))]);
-        }
-
         $terlihat = Terlihat::untuk();
-
-        /* Dimuat lewat penyaring hak akses, bukan Rekomendasi::all(). Tanpa ini
-           satuan kerja melihat angka yang menghitung berkas satuan kerja lain —
-           dan angka yang bocor jauh lebih sulit disadari daripada halaman yang
-           bocor. */
-        $utuh = $terlihat->rekomendasi()->with(self::MUAT)->orderBy('rekomendasis.id')->get()
+        /* Dimuat lewat filter hak akses, bukan Rekomendasi::all(): angka yang
+           bocor jauh lebih sulit disadari daripada halaman yang bocor. */
+        $rek = $terlihat->rekomendasi()->with(self::MUAT)->orderBy('rekomendasis.id')->get()
             ->map(fn ($r) => $terlihat->pangkasRekomendasi($r));
+        $items = Dasbor::butir($rek);
 
-        /* Angka pada tombol pemilih dihitung SEBELUM lingkup disaring: kalau
-           tidak, membuka LHP membuat tombol LHA menulis nol — dan tombol yang
-           menulis nol tidak bisa lagi dipakai pindah ke sana. */
-        $jumlahJenis = [
-            'semua' => $utuh->count(),
-            'LHP'   => $utuh->filter(fn ($x) => $x->jenis()->value === 'LHP')->count(),
-            'LHA'   => $utuh->filter(fn ($x) => $x->jenis()->value === 'LHA')->count(),
+        /* Isi tiap filter dibaca dari data dan data master SAAT INI. */
+        $kelompok = Dasbor::kelompokSatker(Satker::orderBy('id')->get(), $items);
+        $opsiTambahan = $this->opsiTambahan($items);
+        $tahunSemua = Dasbor::daftarTahun($items);
+        $sah = [
+            'tahun'  => $tahunSemua,
+            'satker' => array_column($kelompok['semua'], 'k'),
+            'lain'   => array_map(fn ($o) => array_column($o, 'k'), $opsiTambahan),
         ];
 
-        $daftar = $utuh->filter(fn ($x) => Lingkup::berlaku($lingkup, $x->jenis()))->values();
-        $laporan = $terlihat->laporan()->orderBy('id')->get()
-            ->filter(fn ($l) => Lingkup::berlaku($lingkup, $l->sumber))->values();
-        $baris = $daftar->flatMap(fn ($x) => $x->daftarSasaran());
-
-        $master = Referensi::where('jenis', JenisReferensi::KATEGORI_INTERN)
-            ->orderBy('urutan')->orderBy('id')->get();
-
-        return view('ringkasan.index', array_merge(
-            $this->kepala($daftar, $laporan, $baris),
-            $this->blokBpk($daftar),
-            $this->blokUnor($daftar, $baris),
-            [
-                'lingkup'     => $lingkup,
-                'jumlahJenis' => $jumlahJenis,
-                'jenisUtama'  => $this->jenisUtama($lingkup, $laporan),
-                'perSatker'   => $this->perSatker($daftar),
-                'perTahun'    => $this->perTahun($daftar),
-                'panel'       => array_map(fn ($p) => $p + [
-                    'data' => PetaData::ringkas($daftar, $p['dim'], $p['ukur'], $p['urut'], $master),
-                ], $panel),
-            ]
-        ));
-    }
-
-    /* ================================================================
-       KEPALA
-       ================================================================ */
-
-    /**
-     * Judulnya jumlah yang BELUM MEMADAI, bukan yang terlambat.
-     *
-     * Mbak Puspi menolak keterlambatan ditonjolkan; Mas Naufal menyebut
-     * sebabnya — "Pusat 4 tuh udah berapa tahun tuh, udah 4 tahun." Temuan lama
-     * tidak akan pernah berhenti terlambat, jadi kepalanya akan merah
-     * selamanya, dan merah yang tidak pernah berubah berhenti dibaca orang.
-     *
-     * Gantinya angka yang memang mereka pakai memutuskan. Catatan lembar
-     * mereka: "Fokus utama dapat diarahkan pada Satker dengan backlog 'Belum
-     * Selesai' tertinggi." Angka ini juga turun kalau dikerjakan; keterlambatan
-     * cuma bisa naik.
-     */
-    private function kepala(Collection $daftar, Collection $laporan, Collection $baris): array
-    {
-        /* Satuan kerja yang tumpukan belum memadainya paling tinggi. Itu yang
-           dipakai memutuskan apa yang dikejar lebih dulu. */
-        $tumpukan = $baris->reject(fn ($b) => $b->hasil === HasilTelaah::M)
-            ->groupBy(fn ($b) => $b->satker?->namaPendek() ?? 'Tidak diisi')
-            ->map->count()
-            ->sortDesc();
-
-        return [
-            'total'         => $daftar->count(),
-            'jumlahLaporan' => $laporan->count(),
-            'jumlahLhp'     => $laporan->filter(fn ($l) => $l->sumber->value === 'LHP')->count(),
-            'jumlahTemuan'  => $daftar->pluck('temuan_id')->unique()->count(),
-            'nilaiTemuan'   => PetaData::nilaiTemuanUnik($daftar),
-            'tumpukan'      => $tumpukan->isEmpty() ? null
-                : ['satker' => $tumpukan->keys()->first(), 'belum' => $tumpukan->first()],
-            /* Rekomendasi yang dokumennya sudah diminta tapi belum terpenuhi
-               semua. Inilah satu-satunya tempat Setba bisa melihat permintaan
-               mana yang belum dijawab tanpa membuka satu per satu. */
-            'menungguDok' => $daftar->filter(function ($x) {
-                $d = $x->progresDok();
-
-                return $d && $d['ada'] < $d['dari'];
-            })->values(),
-        ];
-    }
-
-    /* ================================================================
-       DUA BLOK STATUS
-       ================================================================ */
-
-    /**
-     * Sumbu BPK. Hanya LHP — LHA tidak pernah masuk SIPTL, jadi menghitungnya
-     * di sini berarti menaruh berkas yang tidak pernah dilihat BPK ke dalam
-     * keranjang "belum ditindaklanjuti" milik BPK.
-     *
-     * Uangnya MEMBAGI HABIS totalnya: yang sudah diakui masuk keranjang SS,
-     * sisanya dipecah menurut status rekomendasinya. Begitu lembar mereka
-     * menyusunnya, dan angkanya cocok — 3.062.188.341 + 628.480.000 +
-     * 247.791.563 = 3.938.459.904.
-     */
-    private function blokBpk(Collection $daftar): array
-    {
-        $bpk = $daftar->filter(fn ($x) => $x->jenis()->melewatiSiptl());
-
-        $jml = ['BT' => 0, 'SS' => 0, 'BS' => 0, 'TD' => 0];
-        $rp = ['BT' => 0, 'SS' => 0, 'BS' => 0, 'TD' => 0];
-        foreach ($bpk as $x) {
-            $kode = $x->status?->value ?? 'BT';
-            $jml[$kode]++;
-            $rp['SS'] += $x->nilaiDiakuiBpk();
-            if ($kode !== 'SS') {
-                $rp[$kode] += $x->sisaNilaiBpk();
+        /* Dibuka lewat menu (tanpa isi alamat): filter dan kartu terakhir
+           dibawa lagi, halamannya kembali ke kartu dan tabelnya tertutup —
+           sama dengan prototipe, yang menyimpan filternya di App selama
+           sesi. Alamatnya ikut ditulis, jadi yang terlihat selalu bisa disalin. */
+        if ($req->query() === [] && is_array($simpan = session(self::SESI))) {
+            $k = DasborKeadaan::dari(Request::create('/', 'GET', $simpan));
+            $k = array_merge($k, ['hal' => 'dasbor', 'buka' => [], 'periode' => '12', 'tabel' => [], 'semua' => [], 'pintas' => '']);
+            $k['f'] = Dasbor::bersihkan($k['f'], $sah);
+            if (DasborKeadaan::keQuery($k)) {
+                return redirect(DasborKeadaan::alamat($k));
             }
         }
 
-        return [
-            'jumlahBpk' => $bpk->count(),
-            'nilaiBpk'  => (int) $bpk->sum(fn ($x) => $x->nilaiRek()),
-            'statusJml' => $jml,
-            'statusRp'  => $rp,
-            'sisaBpk'   => $rp['BS'] + $rp['BT'] + $rp['TD'],
-            /* Inilah selisih yang jadi pokok persoalan Mbak Puspi: sudah
-               memadai menurut Inspektorat, tapi BPK belum menyatakannya
-               selesai. */
-            'beda' => $daftar->filter(fn ($x) => $x->keadaanUnor()->memadai()
-                && $x->status !== StatusTindakLanjut::SS
-                && $x->status !== StatusTindakLanjut::TD)->count(),
-        ];
-    }
+        $k = DasborKeadaan::dari($req);
+        /* Filter yang BERLAKU: pilihan yang sudah tidak ada di daftarnya dibuang. */
+        $k['f'] = Dasbor::bersihkan($k['f'], $sah);
 
-    /**
-     * Sumbu Inspektorat: dua keadaan saja. Kodenya sengaja tidak dipinjam dari
-     * BPK — sebutannya bahkan berbeda menurut jenis laporannya.
-     *
-     * Begitu suratnya memutus memadai, seluruh nilainya masuk tanpa melihat
-     * tanda tiap barisnya: surat verifikasi memutus rekomendasinya, bukan baris
-     * per baris. Yang belum diputus barulah dipecah menurut barisnya, dan di
-     * situlah pengakuan sebagian berlaku.
-     */
-    private function blokUnor(Collection $daftar, Collection $baris): array
-    {
-        $jml = ['M' => 0, 'BM' => 0];
-        $rp = ['M' => 0, 'BM' => 0];
-        foreach ($daftar as $x) {
-            if ($x->keadaanUnor()->memadai()) {
-                $jml['M']++;
-                $rp['M'] += $x->nilaiRek();
-            } else {
-                $jml['BM']++;
-                $rp['M'] += $x->nilaiDiakuiItjen();
-                $rp['BM'] += $x->sisaNilaiItjen();
-            }
+        /* Rekomendasi dibuka dari dasbor (tabel "Sisa nilai terbesar", daftar
+           pintasan): tombol Kembali di rinciannya mendarat di sini lagi. */
+        /* `lihat` = "rekomendasi[:satuan kerja[:tindakan]]" (26 Sep): kalau baris
+           yang diwakilinya milik SATU satuan kerja, tiket dan barisnya dibuka
+           lalu disorot di rincian — padanan `tujuBaris` prototipe. */
+        if ($req->filled('lihat') && preg_match('/^(\d+)(?::(\d+))?(?::(\d+))?$/', (string) $req->query('lihat'), $m)) {
+            return redirect($this->keRincian((int) $m[1], $k, isset($m[2]) ? (int) $m[2] : null,
+                isset($m[3]) ? (int) $m[3] : null));
         }
 
-        return [
-            'nilaiRek' => (int) $daftar->sum(fn ($x) => $x->nilaiRek()),
-            'unorJml'  => $jml,
-            'unorRp'   => ['M' => (int) $rp['M'], 'BM' => (int) $rp['BM']],
-            'sisaItjen' => (int) $rp['BM'],
-            /* Penyebut kedua: penugasan, satu baris per pasangan tindak lanjut
-               dan satuan kerja. Inilah 312 baris lembar pemantauan mereka, dan
-               angka "MEMADAI 303 / BELUM MEMADAI 9" berdiri di atasnya — bukan
-               di atas jumlah rekomendasi. */
-            'tugas' => [
-                'total'   => $baris->count(),
-                'memadai' => $baris->filter(fn ($b) => $b->hasil === HasilTelaah::M)->count(),
-            ],
-        ];
-    }
+        if ($req->filled('ubah')) {
+            [$ubah, $jangkar] = array_pad(explode('@', (string) $req->query('ubah'), 2), 2, '');
+            $k = DasborKeadaan::terapkan($k, $ubah, fn ($j) => SumberLaporan::from($j)->melewatiSiptl());
+            $k['f'] = Dasbor::bersihkan($k['f'], $sah);
+            /* Angka yang di baliknya cuma satu rekomendasi langsung membuka
+               rinciannya; lebih dari satu membuka daftarnya di dekat sel. */
+            if (str_starts_with($ubah, 'pintas:')) {
+                $daftar = $this->isiPintas(Dasbor::terapkanFilter($items, $k['f']), $k['pintas']);
+                if (count($daftar) === 1) {
+                    $k['pintas'] = '';
+                    [$sid, $tid] = self::tujuBaris($daftar[0]['baris']);
 
-    /* ================================================================
-       DUA TABEL REKAP
-       ================================================================ */
-
-    /**
-     * Penyebutnya PENUGASAN — satu baris untuk tiap pasangan tindak lanjut dan
-     * satuan kerja. Itu penyebut yang dipakai lembar mereka juga: tabelnya
-     * berjudul "Reff IDT per Satker" dan totalnya 312, bukan 123.
-     */
-    private function perSatker(Collection $daftar): array
-    {
-        $peta = [];
-        foreach ($daftar as $x) {
-            foreach ($x->daftarSasaran() as $b) {
-                $k = $b->satker?->namaPendek() ?? 'Tidak diisi';
-                $peta[$k] ??= ['kunci' => $k, 'satker' => $k, 'tugas' => 0, 'memadai' => 0,
-                    'belum' => 0, 'sisaItjen' => 0, 'sisaBpk' => 0];
-                $peta[$k]['tugas']++;
-                if ($b->hasil === HasilTelaah::M) {
-                    $peta[$k]['memadai']++;
-                } else {
-                    $peta[$k]['belum']++;
+                    return redirect($this->keRincian($daftar[0]['x']['rek']->id, $k, $sid, $tid));
                 }
-                $peta[$k]['sisaItjen'] += max(0, (int) $b->nilai - $b->nilaiDiakuiItjen());
-                $peta[$k]['sisaBpk'] += max(0, (int) $b->nilai - $b->nilaiDiakuiBpk($x));
+                if (! $daftar) {
+                    $k['pintas'] = '';
+                }
             }
+
+            /* Disimpan sebelum dialihkan (29 Sep): "Hapus filter" tanpa kartu
+               terbuka berakhir di alamat kosong, dan tanpa ini alamat kosong
+               itu dibaca sebagai "dibuka lewat menu" — filter lama dipasang
+               lagi dari sesi. */
+            session([self::SESI => DasborKeadaan::keQuery($k)]);
+
+            return redirect(DasborKeadaan::alamat($k, $jangkar));
         }
 
-        $baris = array_values($peta);
-        usort($baris, fn ($a, $b) => [$b['belum'], $b['tugas']] <=> [$a['belum'], $a['tugas']]);
-        $baris = array_map(function ($o) {
-            $o['persen'] = $o['tugas'] ? $o['memadai'] / $o['tugas'] * 100 : 0;
+        session([self::SESI => DasborKeadaan::keQuery($k)]);
 
-            return $o;
-        }, $baris);
+        return view('ringkasan.index', $this->susun($k, $items, $kelompok, $opsiTambahan, $tahunSemua));
+    }
 
-        return ['baris' => $baris, 'total' => $this->jumlahkan($baris, 'satker', 'TOTAL')];
+    /** Alamat rincian rekomendasi yang Kembali-nya mendarat di dasbor ini. */
+    private function keRincian(int $id, array $k, ?int $satker = null, ?int $tindakan = null): string
+    {
+        $k['pintas'] = '';
+
+        return route('rekomendasi.show', array_filter(['rekomendasi' => $id, 'dari' => 'ringkasan',
+            'ring' => http_build_query(DasborKeadaan::keQuery($k)),
+            'sorot' => $satker ? 'r-tindaklanjut' : null, 'satker' => $satker, 'tindakan' => $tindakan]));
     }
 
     /**
-     * Penyebutnya REKOMENDASI — satu Ref IDT sekali, berapa pun satuan
-     * kerjanya. Dari tabel inilah terbaca yang paling penting: tahun-tahun lama
-     * hampir semua lunas sementara yang belum ditindaklanjuti menumpuk di tahun
-     * terakhir.
+     * Satuan kerja (dan tindak lanjutnya, kalau cuma satu) yang diwakili
+     * sekumpulan baris — atau [null, null] kalau barisnya milik beberapa
+     * satuan kerja.
+     *
+     * @return array{0: ?int, 1: ?int}
      */
-    private function perTahun(Collection $daftar): array
+    public static function tujuBaris($baris): array
     {
-        $peta = [];
-        foreach ($daftar as $x) {
-            $lap = $x->temuan->laporan;
-            $k = $lap->tahun();
-            $peta[$k] ??= ['kunci' => $k, 'tahun' => $k, 'jml' => 0, 'keSiptl' => 0,
-                'SS' => 0, 'BS' => 0, 'BT' => 0, 'TD' => 0,
-                'memadai' => 0, 'belum' => 0, 'nilai' => 0, 'sisaBpk' => 0, 'sisaItjen' => 0];
-            $peta[$k]['jml']++;
-            $peta[$k]['nilai'] += $x->nilaiRek();
-            /* Status BPK cuma dihitung untuk laporan yang memang masuk SIPTL —
-               itu sebabnya ada kolom "dari LHP" sebagai penyebutnya. Tanpa itu
-               baris yang bercampur terbaca seperti salah hitung: SS + BS + BT
-               tidak sama dengan jumlah rekomendasinya. */
-            if ($lap->sumber->melewatiSiptl()) {
-                $peta[$k]['keSiptl']++;
-                $peta[$k][$x->status?->value ?? 'BT']++;
-                $peta[$k]['sisaBpk'] += $x->sisaNilaiBpk();
-            }
-            if ($x->keadaanUnor()->memadai()) {
-                $peta[$k]['memadai']++;
-            } else {
-                $peta[$k]['belum']++;
-            }
-            $peta[$k]['sisaItjen'] += $x->sisaNilaiItjen();
+        $satker = collect($baris)->pluck('satker_id')->filter()->unique()->values();
+        if ($satker->count() !== 1) {
+            return [null, null];
         }
-        ksort($peta, SORT_STRING);
-        $baris = array_values($peta);
+        $tindakan = collect($baris)->pluck('tindakan_id')->filter()->unique()->values();
 
-        return ['baris' => $baris, 'total' => $this->jumlahkan($baris, 'tahun', 'TOTAL')];
+        return [$satker->first(), $tindakan->count() === 1 ? $tindakan->first() : null];
     }
 
-    /** Baris jumlah untuk kaki tabel. */
-    private function jumlahkan(array $baris, string $kunciNama, string $label): array
+    /** Nilai tombol `lihat`: "rekomendasi[:satuan kerja[:tindakan]]". */
+    public static function nilaiLihat(int $rekId, $baris): string
     {
-        $t = [$kunciNama => $label, 'kunci' => 'T'];
-        foreach ($baris as $o) {
-            foreach ($o as $k => $v) {
-                if ($k === $kunciNama || $k === 'kunci' || $k === 'persen') {
-                    continue;
+        [$sid, $tid] = self::tujuBaris($baris);
+
+        return implode(':', array_filter([$rekId, $sid, $sid ? $tid : null]));
+    }
+
+    /** `tahun|satker|kolom` → isi sel tabel keseluruhan. */
+    private function isiPintas(array $T, string $pintas): array
+    {
+        if ($pintas === '') {
+            return [];
+        }
+        [$tahun, $satker, $kolom] = explode('|', $pintas);
+
+        return Dasbor::isiSel($T, $tahun !== '' ? $tahun : null, $satker !== '' ? (int) $satker : null, $kolom);
+    }
+
+    /** Pilihan filter tambahan dari data master masing-masing. */
+    private function opsiTambahan(array $items): array
+    {
+        $ref = fn (JenisReferensi $j) => Referensi::where('jenis', $j->value)->orderBy('urutan')->orderBy('id')->get();
+        $urutSumber = array_flip(['LHP', 'LHA']);
+        $master = [
+            /* Tanpa titik warna sejak 27 Sep — kategori tidak lagi berwarna. */
+            'intern' => $ref(JenisReferensi::KATEGORI_INTERN)->map(fn ($x) => ['nama' => $x->nama,
+                'aktif' => (bool) $x->aktif])->all(),
+            'kategori' => KategoriTemuan::orderBy('urutan')->orderBy('id')->get()
+                ->sortBy(fn ($x) => [$urutSumber[$x->sumber->value] ?? 9, $x->urutan, $x->id])->values()
+                ->map(fn ($x) => ['nama' => $x->nama, 'aktif' => (bool) $x->aktif, 'grup' => $x->sumber->value])->all(),
+            'sifat' => $ref(JenisReferensi::SIFAT_REKOM)->map(fn ($x) => ['nama' => $x->nama, 'aktif' => (bool) $x->aktif])->all(),
+            'bentuk' => $ref(JenisReferensi::BENTUK_TL)->map(fn ($x) => ['nama' => $x->nama, 'aktif' => true])->all(),
+        ];
+
+        return array_combine(Dasbor::URUT_LAIN, array_map(
+            fn ($d) => Dasbor::opsiLain($d, $master[$d], $items, $d === 'bentuk'), Dasbor::URUT_LAIN));
+    }
+
+    /**
+     * Seluruh angka halaman — padanan memo `d` dan turunannya di `DasborUji`.
+     */
+    private function susun(array $k, array $items, array $kelompok, array $opsiTambahan, array $tahunSemua): array
+    {
+        $f = $k['f'];
+        $hariIni = now()->toDateString();
+        $K = Dasbor::terapkanFilter($items, $f, ['hasil']);
+        $T = Dasbor::terapkanFilter($items, $f);
+
+        /* Jumlah tiap pilihan dihitung dengan filter lain yang berlaku,
+           tanpa filternya sendiri. */
+        $hitung = [
+            'jenis'  => Dasbor::hitungPilihan('jenis', Dasbor::terapkanFilter($items, $f, ['jenis'])),
+            'tahun'  => Dasbor::hitungPilihan('tahun', Dasbor::terapkanFilter($items, $f, ['tahun'])),
+            'satker' => Dasbor::hitungPilihan('satker', Dasbor::terapkanFilter($items, $f, ['satker'])),
+            'lain'   => [],
+        ];
+        foreach (array_keys($f['lain']) as $d) {
+            $hitung['lain'][$d] = Dasbor::hitungPilihan($d, Dasbor::terapkanFilter($items, $f, ["lain:$d"]));
+        }
+
+        $bulan = Dasbor::bulanTerakhir($hariIni, 12);
+        $tahunTren = Dasbor::tahunKejadian($items);
+        /* Tahun yang tidak ada lagi di data jatuh ke 12 bulan. */
+        $periode = $k['periode'] !== '12' && in_array($k['periode'], $tahunTren, true) ? $k['periode'] : '12';
+        $bulanTren = $periode === '12' ? $bulan : Dasbor::bulanTahun((int) $periode, $hariIni);
+
+        $t = Dasbor::hitungTindak($K);
+        $d = [
+            'K'        => $K,
+            'T'        => $T,
+            'hitung'   => $hitung,
+            'tindak'   => $t,
+            'tunggu'   => Dasbor::perTunggu(Dasbor::terapkanFilter($items, $f, ['satker', 'hasil'])),
+            'tahun'    => Dasbor::perTahun(Dasbor::terapkanFilter($items, $f, ['tahun', 'hasil'])),
+            'satker'   => Dasbor::perSatker(Dasbor::terapkanFilter($items, $f, ['satker', 'hasil'])),
+            'meja'     => Dasbor::perMeja(Dasbor::terapkanFilter($items, $f, ['meja'])),
+            'banding'  => Dasbor::hitungBanding(Dasbor::terapkanFilter($items, $f, ['hasil', 'bpk'])),
+            'kategori' => Dasbor::perKategori(Dasbor::terapkanFilter($items, $f, ['lain:intern', 'hasil']), $opsiTambahan['intern']),
+            'tren'     => Dasbor::tren($T, $bulanTren),
+            'tumpukan' => Dasbor::tumpukan($K, $bulan),
+            'perlu'    => Dasbor::perluPerhatian($T, 5),
+        ];
+
+        $jenisUtama = $f['jenis'] !== 'semua' ? $f['jenis'] : ($t['lapLhp'] >= $t['lap'] - $t['lapLhp'] ? 'LHP' : 'LHA');
+        $sumber = SumberLaporan::from($jenisUtama);
+        $tp = $d['tumpukan'];
+
+        $namaSatker = function ($id) use ($kelompok) {
+            foreach ($kelompok['semua'] as $o) {
+                if ($o['k'] === $id) {
+                    return $o['nama'];
                 }
-                $t[$k] = ($t[$k] ?? 0) + $v;
             }
-        }
-        if (isset($t['tugas'])) {
-            $t['persen'] = $t['tugas'] ? $t['memadai'] / $t['tugas'] * 100 : 0;
-        }
 
-        return $t;
+            return 'Tidak diisi';
+        };
+
+        $tindakSemua = array_sum(array_map(fn ($x) => $x['semua']->count(), $items));
+
+        return [
+            'k'            => $k,
+            'f'            => $f,
+            'd'            => $d,
+            't'            => $t,
+            'kataM'        => HasilTelaah::M->nama($sumber),
+            'kataBM'       => HasilTelaah::BM->nama($sumber),
+            'kelompok'     => $kelompok,
+            'namaSatker'   => $namaSatker,
+            'opsiJenis'    => array_map(fn ($j) => ['k' => $j, 'nama' => $j,
+                'lengkap' => $j.' · '.SumberLaporan::from($j)->nama()], ['LHP', 'LHA']),
+            'opsiTahun'    => array_map(fn ($th) => ['k' => $th, 'nama' => $th], array_reverse($tahunSemua)),
+            'opsiTambahan' => $opsiTambahan,
+            'tahunSemua'   => $tahunSemua,
+            'bulan'        => $bulan,
+            'bulanTren'    => $bulanTren,
+            'tahunTren'    => $tahunTren,
+            'periode'      => $periode,
+            'tp'           => $tp,
+            'gerak'        => $tp[count($tp) - 1] - $tp[count($tp) - 2],
+            'bulanLalu'    => Dasbor::NAMA_BULAN[$bulan[count($bulan) - 2]['bl']],
+            'jmlTindakT'   => array_sum(array_map(fn ($x) => $x['baris']->count(), $T)),
+            'tindakSemua'  => $tindakSemua,
+            'aktif'        => $this->aktif($f, $namaSatker),
+            'tk'           => $k['hal'] === 'tabel' && $K ? $this->tabelKeseluruhan($T, $kelompok) : null,
+            'pintas'       => $k['pintas'] !== '' ? $this->pintas($T, $k['pintas'], $namaSatker) : null,
+            'hariIni'      => Tampil::tgl($hariIni),
+        ];
     }
 
-    /* ================================================================
-       PANEL
-       ================================================================ */
-
-    /** Susunan panel dari alamat halaman; tanpa itu, susunan bawaan. */
-    private function panel(Request $req): array
+    /**
+     * Seluruh filter yang sedang berlaku, satu keping per jenis filter.
+     * Lebih dari dua pilihan cukup disebut jumlahnya; daftar lengkapnya di
+     * keterangan kepingnya.
+     */
+    private function aktif(array $f, callable $namaSatker): array
     {
-        $p = $req->query('p');
-        if (! is_array($p)) {
-            return self::PANEL_AWAL;
+        $namaLain = fn ($v) => $v !== '' ? $v : 'Tidak diisi';
+        $tahun = $f['tahun'];
+        sort($tahun, SORT_STRING);
+        $pendek = fn ($id) => Satker::find($id)?->namaPendek() ?? 'Tidak diisi';
+        $a = [];
+        if ($f['jenis'] !== 'semua') {
+            $a[] = ['k' => 'jenis', 'nama' => 'Hanya '.$f['jenis'], 'lengkap' => 'Jenis laporan: '.$f['jenis']];
         }
-
-        $dim = array_keys(PetaData::dimensi());
-        $ukur = array_keys(PetaData::ukuran());
-        $bentuk = array_keys(PetaData::BENTUK_TAMPIL);
-
-        $bersih = [];
-        foreach ($p as $x) {
-            if (! is_array($x)) {
+        if ($tahun) {
+            $a[] = ['k' => 'tahun', 'nama' => count($tahun) <= 2 ? 'Tahun '.implode(', ', $tahun) : count($tahun).' tahun',
+                'lengkap' => 'Tahun '.implode(', ', $tahun)];
+        }
+        if ($f['satker']) {
+            $a[] = ['k' => 'satker',
+                'nama' => count($f['satker']) <= 2 ? implode(', ', array_map($namaSatker, $f['satker'])) : count($f['satker']).' satuan kerja',
+                'lengkap' => implode(', ', array_map($pendek, $f['satker']))];
+        }
+        foreach ($f['lain'] as $d => $v) {
+            if (! $v) {
                 continue;
             }
-            $bersih[] = [
-                'dim'    => in_array($x['dim'] ?? '', $dim, true) ? $x['dim'] : 'kategori',
-                'ukur'   => in_array($x['ukur'] ?? '', $ukur, true) ? $x['ukur'] : 'jumlah',
-                'bentuk' => in_array($x['bentuk'] ?? '', $bentuk, true) ? $x['bentuk'] : 'batang',
-                'urut'   => in_array($x['urut'] ?? '', ['nilai', 'alami', 'nama'], true) ? $x['urut'] : 'nilai',
-                'lebar'  => ($x['lebar'] ?? '0') === '1' || ($x['lebar'] ?? 0) === 1 ? 1 : 0,
-            ];
+            $D = Dasbor::DIM_LAIN[$d];
+            $a[] = ['k' => 'lain:'.$d,
+                'nama' => count($v) === 1
+                    ? (isset($D['sebut']) ? $D['sebut'].': '.$namaLain($v[0]) : $namaLain($v[0]))
+                    : $D['nama'].': '.count($v),
+                'lengkap' => $D['nama'].': '.implode(', ', array_map($namaLain, $v))];
+        }
+        if ($f['hasil'] !== '') {
+            $a[] = ['k' => 'hasil', 'hasil' => $f['hasil']];
+        }
+        if ($f['bpk']) {
+            $a[] = ['k' => 'bpk', 'nama' => 'BPK: '.implode(', ', $f['bpk']),
+                'lengkap' => 'Status BPK: '.implode(', ', array_map(
+                    fn ($x) => $x.' '.\App\Enums\StatusTindakLanjut::from($x)->pendek(), $f['bpk']))];
+        }
+        if ($f['meja']) {
+            $nama = array_map(fn ($m) => Dasbor::NAMA_MEJA[$m], $f['meja']);
+            $a[] = ['k' => 'meja', 'nama' => count($nama) <= 2 ? 'Di meja '.implode(', ', $nama) : count($nama).' meja',
+                'lengkap' => 'Di meja '.implode(', ', $nama)];
         }
 
-        return array_slice($bersih, 0, 24);
-    }
-
-    /** Tombol tambah, hapus, dan lebar — dijawab dengan susunan baru. */
-    private function terapkan(array $panel, string $aksi): array
-    {
-        [$apa, $ke] = array_pad(explode(':', $aksi), 2, null);
-        $i = (int) $ke;
-
-        if ($apa === 'tambah') {
-            $panel[] = ['dim' => 'kategori', 'ukur' => 'jumlah', 'bentuk' => 'batang',
-                'urut' => 'nilai', 'lebar' => 0];
-        } elseif ($apa === 'hapus' && isset($panel[$i])) {
-            unset($panel[$i]);
-            $panel = array_values($panel);
-        } elseif ($apa === 'lebar' && isset($panel[$i])) {
-            $panel[$i]['lebar'] = $panel[$i]['lebar'] ? 0 : 1;
-        }
-
-        return $panel;
+        return $a;
     }
 
     /**
-     * Sebutan hasil mengikuti lingkup yang SEDANG DIPILIH lebih dulu; mayoritas
-     * data cuma dipakai kalau lingkupnya "Semua". Kalau ditebak dari isi saja,
-     * lingkup LHA yang kebetulan kosong akan berbunyi "Memadai" — sebutan LHP.
+     * Tabel keseluruhan: satu tabel bertingkat Tahun → Satuan kerja, memakai
+     * SEMUA filter yang berlaku. Satuan kerja tiap tahun dihitung dengan
+     * `perSatker` yang sama, dijalankan per tahun; kolom Rekomendasi
+     * menghitung rekomendasi unik.
      */
-    private function jenisUtama(string $lingkup, Collection $laporan): string
+    private function tabelKeseluruhan(array $T, array $kelompok): array
     {
-        if ($lingkup !== 'semua') {
-            return $lingkup;
+        $urutMaster = [];
+        foreach ($kelompok['semua'] as $i => $o) {
+            $urutMaster[$o['k']] = $i;
         }
-        $lhp = $laporan->filter(fn ($l) => $l->sumber->value === 'LHP')->count();
+        $kunci = ['rek', 'tugas', 'M', 'BM', 'lhp', 'SS', 'BS', 'BT', 'TD', 'nilai', 'sisaBpk', 'sisa'];
+        $jumlah = fn (array $arr) => array_combine($kunci, array_map(
+            fn ($kk) => array_sum(array_column($arr, $kk)), $kunci));
+        $rekUnik = fn (array $arr) => count(array_unique(array_map(fn ($x) => $x['rek']->id,
+            array_filter($arr, fn ($x) => $x['baris']->isNotEmpty()))));
 
-        return $lhp >= $laporan->count() - $lhp ? 'LHP' : 'LHA';
+        $tahunAda = array_values(array_unique(array_map(fn ($x) => Dasbor::tahun($x), $T)));
+        $kelompokTk = [];
+        foreach ($tahunAda as $y) {
+            $Ty = array_values(array_filter($T, fn ($x) => Dasbor::tahun($x) === $y));
+            $baris = array_map(fn ($o) => [
+                'k' => $o['k'], 'nama' => $o['pendek'], 'rek' => $o['nRek'], 'tugas' => $o['M'] + $o['BM'],
+                'urutNama' => $urutMaster[$o['k']] ?? 9999,
+                'M' => $o['M'], 'BM' => $o['BM'], 'lhp' => $o['lhp'], 'SS' => $o['SS'], 'BS' => $o['BS'],
+                'BT' => $o['BT'], 'TD' => $o['TD'], 'nilai' => $o['nilai'], 'sisaBpk' => $o['sisaBpk'], 'sisa' => $o['sisa'],
+            ], Dasbor::perSatker($Ty));
+            if ($baris) {
+                $kelompokTk[] = ['k' => $y, 'baris' => $baris, 'jumlah' => array_merge($jumlah($baris), ['rek' => $rekUnik($Ty)])];
+            }
+        }
+        $semuaBaris = array_merge(...array_map(fn ($g) => $g['baris'], $kelompokTk ?: [['baris' => []]]));
+
+        return [
+            'kelompok' => $kelompokTk,
+            'total'    => array_merge($jumlah($semuaBaris), ['rek' => $rekUnik($T)]),
+            'adaTD'    => collect($semuaBaris)->contains(fn ($o) => $o['TD'] > 0),
+        ];
+    }
+
+    /** Daftar rekomendasi di balik satu angka tabel keseluruhan. */
+    private function pintas(array $T, string $pintas, callable $namaSatker): ?array
+    {
+        [$tahun, $satker, $kolom] = explode('|', $pintas);
+        $daftar = $this->isiPintas($T, $pintas);
+        if (count($daftar) < 2) {
+            return null;
+        }
+
+        return [
+            'kunci'      => $pintas,
+            'tahun'      => $tahun,
+            'satker'     => $satker !== '' ? (int) $satker : null,
+            'namaSatker' => $satker !== '' ? (\App\Models\Satker::find((int) $satker)?->namaPendek() ?? 'Tidak diisi') : null,
+            'kolom'      => $kolom,
+            'daftar'     => $daftar,
+        ];
     }
 }

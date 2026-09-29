@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Satu berkas: tautan ke tempat berkasnya disimpan, atau unggahan.
+ * Satu berkas: link ke tempat berkasnya disimpan, atau unggahan.
  *
  * Berkas yang sudah tercatat tidak bisa dihapus, ditarik, atau diminta kembali
  * (Hizkia, 14 Sep). Kalau keliru, ia diperbaiki lewat penolakan pemeriksanya:
@@ -17,7 +17,7 @@ class Lampiran extends Model
     protected $fillable = [
         'laporan_id', 'rekomendasi_id', 'sasaran_id', 'tindakan_id',
         'jenis_dokumen_id', 'label_jenis',
-        'tautan', 'nama_asli', 'nama_simpan', 'mime', 'ukuran',
+        'link', 'nama_asli', 'nama_simpan', 'mime', 'ukuran',
         'diunggah_oleh', 'label_oleh', 'surat_asli', 'diunggah_pada',
     ];
 
@@ -36,14 +36,14 @@ class Lampiran extends Model
     public function jenisDokumen() { return $this->belongsTo(Referensi::class, 'jenis_dokumen_id'); }
     public function butir()        { return $this->belongsToMany(ItemPermintaan::class, 'item_permintaan_lampiran'); }
 
-    public function berupaTautan(): bool
+    public function berupaLink(): bool
     {
-        return filled($this->tautan) && blank($this->nama_simpan);
+        return filled($this->link) && blank($this->nama_simpan);
     }
 
     public function adaIsinya(): bool
     {
-        return filled($this->tautan) || filled($this->nama_simpan);
+        return filled($this->link) || filled($this->nama_simpan);
     }
 
     /** Sebutan jenisnya: yang diketik saat diminta, lalu jenis baku. */
@@ -54,6 +54,6 @@ class Lampiran extends Model
 
     public function labelTampil(): string
     {
-        return (string) ($this->nama_asli ?: $this->tautan ?: 'berkas tanpa nama');
+        return (string) ($this->nama_asli ?: $this->link ?: 'berkas tanpa nama');
     }
 }

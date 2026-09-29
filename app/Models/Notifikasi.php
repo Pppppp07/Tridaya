@@ -15,10 +15,10 @@ class Notifikasi extends Model
     protected $casts = ['waktu' => 'datetime', 'untuk_peran' => 'array'];
 
     public function rekomendasi() { return $this->belongsTo(Rekomendasi::class); }
-    /* Bentuk tindak lanjut yang dikabarkan — disebut hanya kalau
+    /* Bentuk tindak lanjut yang diberitahukan — disebut hanya kalau
        rekomendasinya punya lebih dari satu. */
     public function tindakan()    { return $this->belongsTo(Tindakan::class); }
-    /* Satuan kerja yang dikabari. Kabar untuk peran selain satuan kerja tetap
+    /* Satuan kerja yang diberi tahu. Pemberitahuan untuk peran selain satuan kerja tetap
        menyebut satuan kerja mana yang bersangkutan. */
     public function satker()      { return $this->belongsToMany(Satker::class, 'notifikasi_satker'); }
     public function dibaca()      { return $this->belongsToMany(User::class, 'notifikasi_bacas')->withPivot('dibaca_pada'); }

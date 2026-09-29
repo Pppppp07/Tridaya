@@ -14,7 +14,7 @@ berbeda, prototipe yang benar — dan bedanya dicatat di `../CATATAN-PERUBAHAN.m
 
 **Klik dua kali `jalankan.bat`.**
 
-Peramban terbuka sendiri ke <http://localhost:8000> setelah kira-kira tiga detik.
+Browser terbuka sendiri ke <http://localhost:8000> setelah kira-kira tiga detik.
 Jendela hitam yang muncul adalah servernya — biarkan terbuka selama dipakai.
 Untuk berhenti: tekan `Ctrl+C` di jendela itu, atau tutup saja jendelanya.
 
@@ -23,30 +23,40 @@ terpasang di komputer itu. Pasang salah satunya, lalu jalankan lagi.
 
 ## Akun contoh
 
-Semuanya bersandi **`rahasia123`**. Di halaman masuk ada daftar akun yang tinggal
-diklik — surel dan sandinya terisi sendiri.
+Semuanya memakai password **`rahasia123`**. Halaman masuk (`/masuk`) kini bersih seperti
+saat dipasang — tempat SSO. Akun contoh ada di **Login developer**
+(`/masuk/pengembang`), lewat kartu "Login developer" di bawah kartu Masuk: daftar
+akun yang tinggal diklik — email dan password-nya terisi sendiri — plus formulir email
+dan password. Daftarnya dikelompokkan (Petugas pusat, Penanggung jawab unit
+kerja) dan bisa dilipat; pilihan itu diingat tiap browser.
 
-| Surel | Peran | Yang bisa dilakukan |
+| Email | Peran | Yang bisa dilakukan |
 |---|---|---|
-| `setba@contoh.test` | Sekretariat Badan | melihat semuanya, mencatat laporan baru, meneruskan berkas, mengurus SIPTL |
+| `setba@contoh.test` | Sekretariat Badan | melihat semuanya, mencatat laporan baru, meneruskan berkas, mengurus SIPTL, Data master |
 | `uki@contoh.test` | Unit Kepatuhan Internal | menelaah kecukupan bukti |
 | `inspektorat@contoh.test` | Inspektorat | verifikasi akhir |
-| `pimpinan@contoh.test` | Pimpinan | hanya melihat; berandanya Ringkasan |
-| `admin@contoh.test` | Administrator | sama seperti Setba |
+| `pimpinan@contoh.test` | Pimpinan | hanya melihat; berandanya Dashboard |
+| `dti@contoh.test` | DTI — Data dan Teknologi Informasi | hanya melihat: Log aktivitas dan rekomendasi (27 Sep) |
+| `admin@contoh.test` | Administrator | seperti Setba, ditambah Log aktivitas dan akun DTI/Admin |
 
-Tiap satuan kerja punya akunnya sendiri, surelnya nama pendeknya:
-`medan@contoh.test`, `palembang@contoh.test`, `jakarta@contoh.test`,
-`bandung@contoh.test`, `yogyakarta@contoh.test`, `surabaya@contoh.test`,
-`banjarmasin@contoh.test`, `makassar@contoh.test`, `jayapura@contoh.test`,
-`sekretariat@contoh.test`, `talenta@contoh.test`, `sdackps@contoh.test`,
-`bmpipiw@contoh.test`, `manajemen@contoh.test`, `politeknik@contoh.test`,
-`penilaian@contoh.test`.
+Sejak 27 Sep tiap akun pusat terhubung ke satu pegawai di direktori contoh
+(`database/data/irm-contoh.json`) menurut NIP — nama dan jabatannya ikut dari
+sana, supaya masuk lewat SSO nanti mengenali orangnya.
 
-Blok akun contoh di halaman masuk hanya ada pada pemasangan contoh. Sebelum
-dipakai sungguhan, hapus bagian itu dari `resources/views/masuk.blade.php`
-dan ganti seluruh sandi.
+Tiap satuan kerja punya satu akun: akun **penanggung jawabnya**, dengan email
+orang itu dari direktori (mis. `martin.simanjuntak@contoh.test` untuk Balai
+Wil. I Medan). Daftar lengkapnya ada di Login developer, dan di Data master →
+Pengguna.
 
-## "Hari ini" pada peragaan
+Login developer **padam sendiri di produksi** (`APP_ENV=production`), atau lewat
+`SIMTLHP_AKUN_DEMO=false` — alamatnya tidak ditemukan dan kartunya hilang dari
+halaman masuk. Kalau produksi masih membolehkan password sebagai cadangan,
+formulirnya pindah ke halaman masuk (tanpa akun contoh). Sebelum dipakai
+sungguhan, ganti seluruh password — atau padamkan masuk dengan password sama
+sekali begitu SSO berjalan (`SIMTLHP_MASUK_PASSWORD=false`): halaman masuk tinggal
+tombol SSO.
+
+## "Hari ini" pada demo
 
 Data contoh disusun untuk **17 Agustus 2026**, sama dengan prototipe. Tanggalnya
 dipatok lewat `.env`:
@@ -81,7 +91,7 @@ penugasan** — satu satuan kerja pada satu bentuk tindak lanjut — bukan
 rekomendasinya.
 
 1. Masuk sebagai **Balai Wil. I Medan** → keranjang *Perlu saya kerjakan*.
-   Buka satu berkas, isi uraiannya, lampirkan tautan bukti untuk tiap dokumen
+   Buka satu berkas, isi uraiannya, lampirkan link bukti untuk tiap dokumen
    yang diminta, tambah baris pemulihan bila ada nilainya.
    **Simpan draf** menyimpan tanpa memindahkan berkas; **Kirim ke Setba** baru
    bisa dipakai kalau dokumennya sudah lengkap.
@@ -94,15 +104,22 @@ rekomendasinya.
    - Memadai: berkasnya kembali ke Setba untuk diteruskan ke Inspektorat.
 4. Masuk sebagai **Inspektorat** → verifikasi akhir. Memadai berarti tindak
    lanjut itu selesai diperiksa.
-5. Kembali sebagai **Setba** → kartu **Urusan SIPTL** pada halaman rincian:
-   catat tanggal unggahnya, lalu salin hasil pemantauan BPK (SS atau BS).
+5. Kembali sebagai **Setba** → pada halaman rincian, buka tiket tindak lanjutnya
+   lalu tekan **Kerjakan** di baris satuan kerja itu: catat tanggal unggahnya ke
+   SIPTL, lalu — sesudah BPK memutus — salin hasil pemantauannya (SS atau BS).
+   Putusan dan catatan BPK terbaca di kotak **Penilaian BPK lewat SIPTL** di
+   rincian barisnya.
    - Tanggal unggah **dikunci** begitu tercatat, dan isiannya cuma muncul saat
      memang sedang tahap itu.
-   - BPK menyatakan Belum Sesuai? Kirim ulang ke satuan kerjanya dari kartu yang
-     sama, berikut catatan dan dokumen yang diminta.
+   - Putusan BPK dicatat **sekali** tiap unggahan, lalu terkunci.
+   - BPK menyatakan Belum Sesuai? Tab Kerjakan baris itu berganti jadi
+     pengiriman ulang ke satuan kerjanya, berikut catatan dan dokumen yang
+     diminta. Sesudah diperbaiki, berkasnya diunggah ulang.
+   - Seluruh kartu di halaman rincian tertutup sejak awal; tekan kepalanya
+     untuk membaca selengkapnya.
 6. Jalur **LHA** berhenti di langkah 4 — LHA tidak pernah sampai ke BPK.
 
-Draf satuan kerja yang mengendap lebih dari tujuh hari dikirim sendiri oleh
+Draf satuan kerja yang belum dikirim lebih dari tujuh hari dikirim sendiri oleh
 `php artisan tlhp:kirim-draf` (terjadwal tiap hari 00.30), asal kewajibannya
 sudah tuntas. Berkas tidak boleh membusuk di satu meja sementara tenggatnya
 berjalan.
@@ -127,13 +144,34 @@ kenyataan.
 
 ---
 
+## Profil & pengaturan akun
+
+Tombol nama di kanan atas membuka menu akun: **Profil saya**, **Keamanan**,
+**Pemberitahuan**, **Tampilan**, **Aktivitas saya**, Panduan singkat, dan
+Keluar. Halamannya `/akun` (sejak 28 Sep):
+
+- *Profil* — data pegawai dari eHRM (hanya dibaca), peran dan hak aksesnya;
+- *Keamanan* — ganti password, perangkat yang sedang masuk (bisa
+  dikeluarkan), riwayat masuk termasuk percobaan yang gagal;
+- *Pemberitahuan* — pop-up pemberitahuan, dan pemberitahuan lewat email (bawaan menyala untuk
+  penanggung jawab unit kerja, mati untuk petugas pusat);
+- *Tampilan* — lebar menu samping, "Kurangi gerak", halaman pertama sesudah
+  masuk;
+- *Aktivitas saya* — log aktivitas milik akun itu sendiri.
+
+Pengaturannya disimpan di `users.pengaturan` (JSON, `App\Support\Setelan`).
+Daftar perangkat membaca tabel sesi, jadi hanya ada bila
+`SESSION_DRIVER=database`.
+
 ## Susunan berkas
 
 ```
 app/Enums/        aturan domain: posisi, status, hasil, sumber laporan, peran
 app/Models/       Rekomendasi.php memuat sebagian besar hitungannya
 app/Aksi/         satu berkas satu perbuatan: kirim, teruskan, putus, SIPTL
-app/Support/      Terlihat (hak lihat), Jejak (pencatat), Kabar, PetaData, Tampil
+app/Support/      Terlihat (hak lihat), Jejak (pencatat), Aktivitas (log), Pemberitahuan, Tampil
+app/Support/Sso/   masuk lewat SSO: kontrak penyedia, OIDC, simulasi, Otorisasi (NIP → akun)
+app/Support/Direktori/  direktori pegawai: berkas contoh atau layanan eHRM
 app/Http/         pengendali tiap layar
 database/         migrasi, penyemai, dan data contoh (database/data/data-contoh.json)
 resources/views/  tampilan Blade
@@ -142,7 +180,7 @@ public/js/        satu berkas, penambah kenyamanan — bukan penopang
 ```
 
 Gaya di `public/css/simtlhp.css` diambil dari prototipe lewat
-`Prototipe/alat/salin-gaya.mjs`, awalan `.simt` dibuang. Jangan menyuntingnya
+`Prototipe/alat/salin-gaya.py`, awalan `.simt` dibuang. Jangan menyuntingnya
 tangan: yang perlu diubah sendiri ditulis di `simtlhp-tambahan.css`.
 
 ## Menjalankan uji
@@ -151,9 +189,23 @@ tangan: yang perlu diubah sendiri ditulis di `simtlhp-tambahan.css`.
 php artisan test
 ```
 
-67 uji: layar tiap peran, hak akses satuan kerja, rantai penuh satu berkas,
-Catat laporan baru, Pemberitahuan, Data master, Ringkasan, data contoh, dan
+Seluruh uji (lihat CATATAN-PERUBAHAN untuk jumlah terakhir): layar tiap peran,
+hak akses satuan kerja, rantai penuh satu berkas, Catat laporan baru,
+Pemberitahuan, Data master, Pengguna & hak akses, Log aktivitas dan DTI,
+keamanan masuk (pembatas percobaan, sesi, CSP, link), Profil & pengaturan
+akun, SSO (simulasi dan OIDC), direktori eHRM, Dashboard, data contoh, dan
 aturan-aturan murni.
+
+## Keamanan, SSO, dan pemasangan sungguhan
+
+Ringkasan kesiapan untuk mentor — apa yang sudah dibangun, cara
+menyambungkan SSO dan direktori eHRM, dan daftar yang perlu diminta ke
+Pusdatin — ada di **`DOKUMEN-PERSIAPAN-MENTOR-SSO-EHRM.md`**. Semua pengaturan
+baru ada di `.env.example` (bagian "MASUK, SSO eHRM, …") dan
+`config/simtlhp.php`.
+
+Demo SSO tanpa server Pusdatin: `SIMTLHP_SSO=simulasi` di `.env`, lalu
+tombol **Masuk dengan SSO** di halaman masuk.
 
 ## Pindah ke MySQL
 

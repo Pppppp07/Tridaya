@@ -9,6 +9,8 @@ use App\Models\KategoriTemuan;
 use App\Models\Referensi;
 use App\Models\Satker;
 use App\Models\User;
+use App\Support\Akun;
+use App\Support\DirektoriIrm;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -26,7 +28,10 @@ class DataMasterSeeder extends Seeder
      * Enam belas satuan kerja, disalin dari lembar pemantauan SETBA. Nama
      * panjangnya yang dipakai di surat; nama pendeknya yang dipakai di layar.
      *
-     * @return list<array{0:string, 1:string, 2:string, 3:string, 4:string}> kode, nama, pendek, jenis, surel
+     * Unsur kelima nama singkat unitnya ('medan') — dulu bagian depan email
+     * akunnya; sekarang dipakai uji untuk menyebut unit kerja.
+     *
+     * @return list<array{0:string, 1:string, 2:string, 3:string, 4:string}> kode, nama, pendek, jenis, alias
      */
     public static function satker(): array
     {
@@ -161,27 +166,51 @@ class DataMasterSeeder extends Seeder
         }
 
         /* ---------- akun contoh ----------
-           Satu akun per peran, dan satu akun per satuan kerja: di prototipe
-           peran "Satuan kerja" memilih satkernya di bilah samping, di sini
-           satkernya melekat pada akunnya.
-
-           Ganti seluruh kata sandi ini sebelum aplikasi dipakai sungguhan. */
+           Satu akun per peran. Ganti seluruh password ini sebelum aplikasi
+           dipakai sungguhan. */
         $akun = [
             ['Petugas Setba', 'setba@contoh.test', PeranPengguna::SETBA, 'SETBA-BPSDM'],
             ['Petugas UKI', 'uki@contoh.test', PeranPengguna::UKI, null],
             ['Petugas Inspektorat', 'inspektorat@contoh.test', PeranPengguna::INSPEKTORAT, null],
             ['Pimpinan', 'pimpinan@contoh.test', PeranPengguna::PIMPINAN, null],
+            /* Penjaga data (27 Sep) — hanya melihat log aktivitas dan
+               rekomendasi. */
+            ['Petugas DTI', 'dti@contoh.test', PeranPengguna::DTI, null],
             ['Administrator', 'admin@contoh.test', PeranPengguna::ADMIN, null],
         ];
-        foreach (self::satker() as [$kode, , $pendek, , $surel]) {
-            $akun[] = ['Petugas '.$pendek, $surel.'@contoh.test', PeranPengguna::SATKER, $kode];
+
+        /* ---------- penanggung jawab tiap unit kerja ----------
+           Satu akun per unit kerja, dan akun itu milik penanggung jawabnya —
+           orang pertama tiap unit di IRM contoh (App\Support\DirektoriIrm),
+           sama dengan prototipe. Di prototipe peran "Satuan kerja" memilih
+           unitnya di bilah samping; di sini unitnya melekat pada akunnya.
+
+           Akun lama ber-email unit (medan@contoh.test) dipindahkan ke
+           penanggung jawabnya — password-nya tidak ditimpa. Menyemai ulang
+           mengembalikan penanggung jawab contoh: akun satuan kerja lain di
+           unit yang sama dinonaktifkan. */
+        foreach (DirektoriIrm::semua()->where('pj', true) as $p) {
+            $unit = $satker[$p['unit']] ?? null;
+            if (! $unit) {
+                continue;
+            }
+            $pj = User::where('email', $p['email'])->first()
+                ?? User::where('peran', PeranPengguna::SATKER->value)->where('satker_id', $unit->id)
+                    ->orderBy('id')->first()
+                ?? new User(['password' => Hash::make('rahasia123')]);
+            $pj->fill([
+                'name' => $p['nama'], 'email' => $p['email'], 'nip' => $p['nip'], 'jabatan' => $p['jabatan'],
+                'peran' => PeranPengguna::SATKER->value, 'satker_id' => $unit->id, 'aktif' => true,
+            ])->save();
+            User::where('peran', PeranPengguna::SATKER->value)->where('satker_id', $unit->id)
+                ->whereKeyNot($pj->id)->update(['aktif' => false]);
         }
 
-        foreach ($akun as [$nama, $surel, $peran, $kodeSatker]) {
-            /* Kuncinya surel saja. Kata sandi yang sudah diganti tidak boleh
-               ditimpa kembali jadi kata sandi contoh. */
+        foreach ($akun as [$nama, $email, $peran, $kodeSatker]) {
+            /* Kuncinya email saja. Password yang sudah diganti tidak boleh
+               ditimpa kembali jadi password contoh. */
             User::firstOrCreate([
-                'email' => $surel,
+                'email' => $email,
             ], [
                 'name' => $nama,
                 'password' => Hash::make('rahasia123'),
@@ -190,5 +219,11 @@ class DataMasterSeeder extends Seeder
                 'jabatan' => $peran->nama(),
             ]);
         }
+
+        /* Akun pusat dihubungkan ke pegawainya di direktori menurut email (27
+           Sep): NIP, nama, dan jabatannya diambil dari sana. Masuk lewat SSO
+           mengenali orang dari NIP — akun tanpa NIP tidak akan pernah bisa
+           masuk lewat SSO. Password dan perannya tidak disentuh. */
+        Akun::hubungkanKeDirektori(User::whereNull('nip')->get());
     }
 }

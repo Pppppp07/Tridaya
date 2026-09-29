@@ -2,7 +2,11 @@
   use App\Enums\PosisiBerkas;
 
   /* Rel tahap SATU baris penugasan — padanan RelBaris. Yang menempuh tahapan
-     tindak lanjut tiap satuan kerja, bukan rekomendasinya. */
+     tindak lanjut tiap satuan kerja, bukan rekomendasinya.
+
+     Sejak 27 Sep kartu x-panel-kerja, sama dengan Bukti & tanggapan, Kerjakan,
+     dan Riwayat di bawahnya; kalimat kepalanya menyebut pemilik berkasnya
+     (`nama`) dan posisinya (`keadaan`, sama dengan kolom Posisi berkas). */
   $keadaanTahap = function (int $n) use ($posisi) {
       $kini = $posisi->tahap();
       if ($posisi === PosisiBerkas::TUNTAS || $posisi->transit()) {
@@ -24,11 +28,15 @@
       }
   }
 @endphp
-<div class="tl-alur">
-  <div class="tl-alur-kep">Alur verifikasi tindak lanjut</div>
+<x-panel-kerja class="tl-alur" ikon="Route" judul="Alur verifikasi" :info="[
+  'Tahap yang ditempuh tindak lanjut satuan kerja ini, dari registrasi sampai surat dan penetapan.',
+  'Centang hijau sudah dilalui; lingkaran biru posisi berkasnya sekarang.',
+]">
+  <x-slot:kalimat>Berkas <b>{{ $nama }}</b> saat ini: {{ $keadaan }}.</x-slot:kalimat>
   <div class="relbaris" role="list" aria-label="Alur verifikasi tindak lanjut">
     @foreach($tahap as $i => $t)
-      <div class="{{ $t['keadaan'] }}" role="listitem" @if($t['keadaan'] === 'aktif') aria-current="step" @endif
+      {{-- --i: urutannya, untuk garis tahap yang terisi berurutan (26 Sep). --}}
+      <div class="{{ $t['keadaan'] }}" role="listitem" @if($t['keadaan'] === 'aktif') aria-current="step" @endif style="--i: {{ $i }}"
         aria-label="{{ $t['nama'] }}: {{ $t['keadaan'] === 'selesai' ? 'sudah dilalui' : ($t['keadaan'] === 'aktif' ? 'posisi saat ini' : 'tahap berikutnya') }}">
         @if($i > 0)<x-ikon n="ChevronRight" :s="12" class="tl-arah" />@endif
         <span class="bul">
@@ -45,4 +53,4 @@
       <b>Setba (saat ini)</b><x-ikon n="ArrowRight" :s="12" /><span>Satuan kerja untuk perbaikan</span>
     </div>
   @endif
-</div>
+</x-panel-kerja>

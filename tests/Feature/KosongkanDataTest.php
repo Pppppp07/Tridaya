@@ -72,6 +72,6 @@ class KosongkanDataTest extends TestCase
         $this->get('/rekomendasi')->assertOk()->assertSee('Belum ada rekomendasi');
         $this->get('/laporan')->assertOk();
         $this->get('/ringkasan')->assertOk();
-        $this->get('/kabar')->assertOk()->assertSee('Tidak ada kabar baru.');
+        $this->get('/pemberitahuan')->assertOk()->assertSee('Belum ada pemberitahuan');
     }
 }

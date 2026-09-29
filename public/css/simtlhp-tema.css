@@ -1,0 +1,362 @@
+/* Tema PHP: pilihan akun dirender server sebelum halaman tergambar.
+   Warna status tetap bermakna; dokumen asli dan keluaran cetak tidak dibalik.
+   simtlhp.css tetap merupakan salinan prototipe. */
+html{color-scheme:light;}
+.tridaya-simbol-gelap,.tema-matahari{display:none;}
+.tema-pintas{display:flex;flex:none;margin:0;}
+.tema-tombol{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);
+  border-radius:10px;color:var(--ink-2);background:var(--surface);}
+.tema-tombol:hover{background:var(--aksen-bg);border-color:var(--aksen-line);color:var(--aksen-kuat);}
+.tema-tombol:disabled{opacity:.55;cursor:wait;}
+.tampilan-pesan{position:fixed;right:20px;bottom:20px;z-index:90;max-width:min(420px,calc(100vw - 40px));
+  padding:12px 16px;border:1px solid var(--ok-line);border-radius:12px;background:var(--ok-bg);
+  color:var(--ink);font-size:13px;box-shadow:var(--bayang-2);}
+.tampilan-pesan.gagal{border-color:var(--bad-line);background:var(--bad-bg);}
+[data-form-tampilan] .dm-opsi:has(input:checked){border-color:var(--aksen);background:var(--aksen-bg);box-shadow:inset 0 0 0 1px var(--aksen);}
+.tema-opsi > b{display:flex;align-items:center;gap:7px;}
+.tema-opsi .tema-pratinjau{display:flex;gap:8px;height:76px;padding:8px;margin-top:10px;overflow:hidden;border:1px solid #CCD5E2;border-radius:8px;background:#F2F5FA;}
+.tema-pratinjau > i{width:22%;border-radius:4px;background:#FFF;}
+.tema-pratinjau > span{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.tema-pratinjau > span > i{background:#FFF;border-radius:4px;}
+.tema-pratinjau > span > i:first-child{grid-column:1/-1;background:#DCE8FB;}
+.tema-opsi .tema-pratinjau.gelap{background:#101827;border-color:#44536B;}
+.tema-pratinjau.gelap > i,.tema-pratinjau.gelap > span > i{background:#253248;}
+.tema-pratinjau.gelap > span > i:first-child{background:#36537D;}
+.tema-petunjuk{margin-top:12px;margin-bottom:0;}
+
+/* Hanya aktif sewaktu pilihan tema berubah, bukan setiap hover atau navigasi.
+   Warna beralih bersama tanpa menggeser ukuran maupun posisi isi halaman. */
+@media screen and (prefers-reduced-motion:no-preference){
+  html.tema-beralih,
+  html.tema-beralih body:not([data-animasi="kurang"]),
+  html.tema-beralih body:not([data-animasi="kurang"]) *,
+  html.tema-beralih body:not([data-animasi="kurang"]) *::before,
+  html.tema-beralih body:not([data-animasi="kurang"]) *::after{
+    transition-property:background-color,color,border-color,outline-color,fill,stroke,box-shadow!important;
+    transition-duration:320ms!important;
+    transition-timing-function:ease-in-out!important;
+    transition-delay:0s!important;
+  }
+  html.tema-beralih body:not([data-animasi="kurang"]) .tema-tombol > svg{
+    animation:temaIkonMasuk 280ms ease-out both;
+  }
+  @keyframes temaIkonMasuk{from{opacity:0;transform:rotate(-30deg) scale(.8);}to{opacity:1;transform:none;}}
+}
+
+@media screen{
+  html[data-tema="gelap"]{color-scheme:dark;background:#101827;}
+  html[data-tema="gelap"] body{
+    --bg:#101827;--surface:#182335;--surface-2:#1D2A3E;--surface-3:#25344A;
+    --line:#3D4F68;--line-2:#2B3B51;
+    --ink:#EDF2FA;--ink-2:#C0CCDC;--ink-3:#A0B1C8;
+    --aksen:#8BB9FF;--aksen-kuat:#B8D5FF;--aksen-bg:#213C61;--aksen-line:#507DB9;
+    --ok:#6EDE9C;--ok-bg:#183B32;--ok-line:#398561;
+    --warn:#F1C16B;--warn-bg:#403421;--warn-line:#A37A3C;
+    --bad:#FFA3A9;--bad-bg:#432A35;--bad-line:#A55C70;
+    --calm:#B6C4D8;--calm-bg:#29374B;--calm-line:#52647D;
+    --jingga:#FFC18B;--jingga-bg:#413223;--jingga-line:#A67742;
+    --bayang:0 1px 3px #0003;--bayang-2:0 14px 36px #0006;
+  }
+  html[data-tema="gelap"] .tridaya-simbol-terang,
+  html[data-tema="gelap"] .tema-bulan{display:none;}
+  html[data-tema="gelap"] .tridaya-simbol-gelap,
+  html[data-tema="gelap"] .tema-matahari{display:block;}
+  html[data-tema="gelap"] .tridaya-logo .tridaya-nama{color:#EDF2FA;}
+
+  /* Menu dan identitas; varian logo berasal dari aset Tridaya yang disetujui. */
+  html[data-tema="gelap"] .nav .nav-ruang,
+  html[data-tema="gelap"] .nav .nav-deskripsi,
+  html[data-tema="gelap"] .nav .ciut,
+  html[data-tema="gelap"] .nav .menu,
+  html[data-tema="gelap"] .nav .menu .n,
+  html[data-tema="gelap"] .nav .nav-penanda,
+  html[data-tema="gelap"] .nav .nav-lembaga,
+  html[data-tema="gelap"] .nav .nav-panduan,
+  html[data-tema="gelap"] .nav .tutup-nav{color:var(--ink-2);}
+  html[data-tema="gelap"] .nav .nav-deskripsi{border-color:var(--line);}
+  html[data-tema="gelap"] .nav .nav-penanda{background:var(--surface-3);}
+  html[data-tema="gelap"] .nav .menu:hover,
+  html[data-tema="gelap"] .nav .ciut:hover,
+  html[data-tema="gelap"] .nav .nav-panduan:hover,
+  html[data-tema="gelap"] .nav .tutup-nav:hover{background:var(--surface-3);color:var(--ink);}
+  html[data-tema="gelap"] .nav .menu[aria-current]{background:var(--aksen-bg);color:var(--aksen-kuat);}
+  html[data-tema="gelap"] .nav .menu[aria-current] .nav-penanda{background:#2864C6;color:#FFF;}
+  html[data-tema="gelap"] .nav .menu[aria-current] .n{color:var(--aksen-kuat);}
+  html[data-tema="gelap"] .nav .menu.genting .n{background:#B43F58;color:#FFF;}
+
+  /* Teks dengan warna tetap dalam stylesheet prototipe. */
+  html[data-tema="gelap"] .pilihgrup > button,
+  html[data-tema="gelap"] .rw-periode > button,
+  html[data-tema="gelap"] .rw-tempat,
+  html[data-tema="gelap"] .rw-catatan-teks,
+  html[data-tema="gelap"] .rw-cuplikan,
+  html[data-tema="gelap"] .tl-tabs button,
+  html[data-tema="gelap"] .dm-tabs a,
+  html[data-tema="gelap"] .dm-filter button,
+  html[data-tema="gelap"] .dm-filter > a,
+  html[data-tema="gelap"] .ak-butir{color:var(--ink);}
+  html[data-tema="gelap"] .kb-jenis,
+  html[data-tema="gelap"] .kb-tab .n,
+  html[data-tema="gelap"] .kb-hari-kep,
+  html[data-tema="gelap"] .kb-bagi,
+  html[data-tema="gelap"] .kb-meta .mono,
+  html[data-tema="gelap"] .pilihgrup > button > svg,
+  html[data-tema="gelap"] .pilihgrup .n,
+  html[data-tema="gelap"] .fb-judul > b.fb-kosong,
+  html[data-tema="gelap"] .fb-ringkas,
+  html[data-tema="gelap"] .fb-panah,
+  html[data-tema="gelap"] .fb-legenda,
+  html[data-tema="gelap"] .fb-catatan,
+  html[data-tema="gelap"] .fb .info > button,
+  html[data-tema="gelap"] .fb .btn:not(.btn-p):not(.btn-ok):not(.btn-bad),
+  html[data-tema="gelap"] .fb .langkah > div .nm,
+  html[data-tema="gelap"] .fb .langkah > div .ket,
+  html[data-tema="gelap"] .fb .langkah > div .bul,
+  html[data-tema="gelap"] .fb .cacah .tombol button,
+  html[data-tema="gelap"] .fb .penerima,
+  html[data-tema="gelap"] .fb-ket,
+  html[data-tema="gelap"] .fb-x,
+  html[data-tema="gelap"] .fb-tab .fb-no,
+  html[data-tema="gelap"] .fb-tab-teks.fb-kosong,
+  html[data-tema="gelap"] .fb-daftar-kep > span,
+  html[data-tema="gelap"] .kepingpilih,
+  html[data-tema="gelap"] .kerja-judul > span,
+  html[data-tema="gelap"] .kerja-ket,
+  html[data-tema="gelap"] .kerja-ket.lanjut > svg,
+  html[data-tema="gelap"] .kerja-meta,
+  html[data-tema="gelap"] .kerja-pilih > button,
+  html[data-tema="gelap"] .kerja-pilih > button > svg,
+  html[data-tema="gelap"] .kerja-pilih > button > span,
+  html[data-tema="gelap"] .kerja-dok .tanda,
+  html[data-tema="gelap"] .kerja-dok .nama,
+  html[data-tema="gelap"] .kerja .fld .hint,
+  html[data-tema="gelap"] .kerja-dok > li.belum .nama,
+  html[data-tema="gelap"] .kerja-setoran .ntpn,
+  html[data-tema="gelap"] .kerja-redup,
+  html[data-tema="gelap"] .kerja-kosong,
+  html[data-tema="gelap"] .relbaris .nm,
+  html[data-tema="gelap"] .relbaris > div.selesai .nm,
+  html[data-tema="gelap"] .tl-siptl-kunci,
+  html[data-tema="gelap"] .tl-siptl-kunci > svg,
+  html[data-tema="gelap"] .rw-subkep > .fb-ket,
+  html[data-tema="gelap"] .rw-periode > button small,
+  html[data-tema="gelap"] .rw-panah,
+  html[data-tema="gelap"] .rw-tempat small,
+  html[data-tema="gelap"] .rw-redup,
+  html[data-tema="gelap"] .rw-perubahan,
+  html[data-tema="gelap"] .rw-status-lama .cap,
+  html[data-tema="gelap"] .rw-arti-hasil,
+  html[data-tema="gelap"] .rw-pencatat,
+  html[data-tema="gelap"] .rw-dokumen,
+  html[data-tema="gelap"] .rw-nomor-surat,
+  html[data-tema="gelap"] .rw-nomor-surat svg,
+  html[data-tema="gelap"] .tl-alur-kembali,
+  html[data-tema="gelap"] .tl-tabs button svg,
+  html[data-tema="gelap"] .tl-detail-kaki,
+  html[data-tema="gelap"] .dm-tabs a svg,
+  html[data-tema="gelap"] .dm-tabs .dm-n,
+  html[data-tema="gelap"] .dm-judul p,
+  html[data-tema="gelap"] .dm-cari,
+  html[data-tema="gelap"] .dm-ringkas,
+  html[data-tema="gelap"] .dm-filter .dm-n,
+  html[data-tema="gelap"] .dm-filter .dm-sub-inline,
+  html[data-tema="gelap"] .dm-nama > span,
+  html[data-tema="gelap"] .dm-kunci,
+  html[data-tema="gelap"] .dm-orang span,
+  html[data-tema="gelap"] .dm-anda,
+  html[data-tema="gelap"] .dm-sub,
+  html[data-tema="gelap"] .dm-waktu,
+  html[data-tema="gelap"] .dm-beda,
+  html[data-tema="gelap"] .dm-beda s,
+  html[data-tema="gelap"] .dm-kosong,
+  html[data-tema="gelap"] .dm-keadaan,
+  html[data-tema="gelap"] .dm-jendela > .kep .judul span,
+  html[data-tema="gelap"] .dm-jendela > .kep .tutup,
+  html[data-tema="gelap"] .dm-wajib,
+  html[data-tema="gelap"] .dm-opsi span,
+  html[data-tema="gelap"] .lg-pilih span,
+  html[data-tema="gelap"] .lg-halaman,
+  html[data-tema="gelap"] .ak-menu-kepala .teks > span,
+  html[data-tema="gelap"] .ak-butir svg,
+  html[data-tema="gelap"] .ak-kepala .peran,
+  html[data-tema="gelap"] .ak-kepala .meta,
+  html[data-tema="gelap"] .ak-ket,
+  html[data-tema="gelap"] .ak-peran .teks > span,
+  html[data-tema="gelap"] .ak-catat,
+  html[data-tema="gelap"] .ak-tampak,
+  html[data-tema="gelap"] .ak-sesi .teks > span,
+  html[data-tema="gelap"] .ak-sesi .teks b,
+  html[data-tema="gelap"] .ak-atur .teks > span,
+  html[data-tema="gelap"] .ak-baris .teks > span{color:var(--ink-2);}
+  html[data-tema="gelap"] .dm-tabel td[data-label]::before{color:var(--ink-2);}
+  html[data-tema="gelap"] .dm-tabel tr.mati td,
+  html[data-tema="gelap"] .dm-tabel tr.mati .dm-nama b,
+  html[data-tema="gelap"] .dm-tabel tr.mati .dm-orang b,
+  html[data-tema="gelap"] .dm-tabel tr.mati .rupa{color:var(--ink-3);}
+
+  /* Bingkai, formulir, riwayat dan panel. */
+  html[data-tema="gelap"] .popup,
+  html[data-tema="gelap"] .kb-panel,
+  html[data-tema="gelap"] .kb-lembar,
+  html[data-tema="gelap"] .kb-tab,
+  html[data-tema="gelap"] .pilihgrup > button,
+  html[data-tema="gelap"] .rw-periode > button,
+  html[data-tema="gelap"] .rw-tempat,
+  html[data-tema="gelap"] .rw-tabel-wrap,
+  html[data-tema="gelap"] .tl-tabs button,
+  html[data-tema="gelap"] .dm-tabs a,
+  html[data-tema="gelap"] .dm-panel.kartu,
+  html[data-tema="gelap"] .dm-panel.kartu:hover,
+  html[data-tema="gelap"] .dm-filter button,
+  html[data-tema="gelap"] .dm-filter > a,
+  html[data-tema="gelap"] .dm-terpilih,
+  html[data-tema="gelap"] .dm-opsi,
+  html[data-tema="gelap"] .ak-menu,
+  html[data-tema="gelap"] .ak-kepala,
+  html[data-tema="gelap"] .ak-peran,
+  html[data-tema="gelap"] .ak-sesi li,
+  html[data-tema="gelap"] .dsb-keping,
+  html[data-tema="gelap"] .dsb-sisi,
+  html[data-tema="gelap"] .kepingpilih,
+  html[data-tema="gelap"] .dsb-keping > button,
+  html[data-tema="gelap"] .dsb-pindah{border-color:var(--line);}
+  html[data-tema="gelap"] input:not([type=radio]):not([type=checkbox]),
+  html[data-tema="gelap"] select,
+  html[data-tema="gelap"] textarea,
+  html[data-tema="gelap"] .dm-cari{border-color:#61748E;}
+  html[data-tema="gelap"] input:hover,
+  html[data-tema="gelap"] select:hover,
+  html[data-tema="gelap"] textarea:hover{border-color:#8EA3BF;}
+  html[data-tema="gelap"] input::placeholder,
+  html[data-tema="gelap"] textarea::placeholder{color:var(--ink-3);}
+  html[data-tema="gelap"] input:focus,
+  html[data-tema="gelap"] select:focus,
+  html[data-tema="gelap"] textarea:focus{border-color:var(--aksen);}
+  html[data-tema="gelap"] .cari-glob input[type=text]{border:0;}
+  html[data-tema="gelap"] .fb,
+  html[data-tema="gelap"] .kerja{
+    --fb-garis:#61748E;--fb-garis-kartu:var(--line);--fb-pemisah:var(--line-2);
+    --fb-pita:#25344A;--fb-pita-2:var(--surface-2);--fb-judul:var(--ink);--fb-label:var(--ink-2);}
+  html[data-tema="gelap"] .fb-bag.buka{border-color:#61748E;}
+  html[data-tema="gelap"] .fb-rek.buka,
+  html[data-tema="gelap"] .fb-nomor,
+  html[data-tema="gelap"] .fb-tunjuk{border-color:var(--aksen-line);}
+  html[data-tema="gelap"] .fb-tl,
+  html[data-tema="gelap"] .ak-kaki,
+  html[data-tema="gelap"] .dm-tabel tr.lg-rinci > td{background:var(--surface-2);}
+  html[data-tema="gelap"] .ak-tersimpan{color:var(--ok);}
+  html[data-tema="gelap"] .ak-sesi .ic,
+  html[data-tema="gelap"] .ak-kosong,
+  html[data-tema="gelap"] .ak-kejadian svg{color:var(--ink-2);}
+  html[data-tema="gelap"] .ak-sesi li.ini .ic,
+  html[data-tema="gelap"] .ak-ini{background:var(--surface-2);color:var(--aksen-kuat);}
+  html[data-tema="gelap"] .ak-kosong{border-color:var(--line);}
+  html[data-tema="gelap"] .ak-kejadian.gagal,
+  html[data-tema="gelap"] .ak-kejadian.gagal svg{color:var(--bad);}
+  html[data-tema="gelap"] .ak-kejadian.masuk svg{color:var(--ok);}
+  html[data-tema="gelap"] input[type=checkbox].ak-saklar:checked{background:#2864C6;border-color:#8BB9FF;}
+  html[data-tema="gelap"] .rw-riwayat .tabriwayat th,
+  html[data-tema="gelap"] .dm-tabel th{background:var(--surface-3);color:var(--ink-2);border-color:var(--line);}
+  html[data-tema="gelap"] .rw-riwayat .tabriwayat td{border-color:var(--line-2);}
+  html[data-tema="gelap"] .rw-riwayat .tabriwayat tbody > tr:not(.terkini):hover > td,
+  html[data-tema="gelap"] .dm-tabel tbody tr:hover td{background:var(--surface-2);}
+  html[data-tema="gelap"] .kb-butir.belum,
+  html[data-tema="gelap"] .tl-tabel-wrap .tabtl > tbody > tr.lebar,
+  html[data-tema="gelap"] .tl-tabel-wrap .tabtl > tbody > tr.lebar > td,
+  html[data-tema="gelap"] .dsb-sisa tbody tr:hover td{background:var(--aksen-bg);}
+  html[data-tema="gelap"] .sumber-LHP{background:#302C59;color:#C9C0FF;}
+  html[data-tema="gelap"] .sumber-LHA{background:#173E4D;color:#8DDFEE;}
+
+  /* Variasi keadaan dan pilihan aktif harus tetap lebih kuat dari warna dasar. */
+  html[data-tema="gelap"] .fb-status,
+  html[data-tema="gelap"] .kerja-awas,
+  html[data-tema="gelap"] .dm-keadaan.diam{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line);}
+  html[data-tema="gelap"] .fb-status.ok,
+  html[data-tema="gelap"] .kerja-pilih > button.ok[aria-pressed=true],
+  html[data-tema="gelap"] .rw-tempat.selesai,
+  html[data-tema="gelap"] .dm-keadaan.aktif{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line);}
+  html[data-tema="gelap"] .kerja-pilih > button.bad[aria-pressed=true],
+  html[data-tema="gelap"] .kerja-awas.bad{background:var(--bad-bg);color:var(--bad);border-color:var(--bad-line);}
+  html[data-tema="gelap"] .kerja-awas.tenang{background:var(--surface-2);border-color:var(--line);color:var(--ink-2);}
+  html[data-tema="gelap"] .fb-tab-ok,
+  html[data-tema="gelap"] .fb-ikon,
+  html[data-tema="gelap"] .kerja-dok .tanda.ok,
+  html[data-tema="gelap"] .kerja-pilih > button.ok[aria-pressed=true] > b,
+  html[data-tema="gelap"] .rw-tempat.selesai small,
+  html[data-tema="gelap"] .dm-ringkas .ok{color:var(--ok);}
+  html[data-tema="gelap"] .fb-tab-kurang,
+  html[data-tema="gelap"] .fb-ikon.kurang,
+  html[data-tema="gelap"] .kerja-ket > svg,
+  html[data-tema="gelap"] .ak-atur .teks .awas{color:var(--warn);}
+  html[data-tema="gelap"] .fb-hapus,
+  html[data-tema="gelap"] .fb-bintang,
+  html[data-tema="gelap"] .fb-catatan.salah,
+  html[data-tema="gelap"] .fb-x:hover,
+  html[data-tema="gelap"] .kerja-meta.lewat,
+  html[data-tema="gelap"] .kerja .fld .hint.salah,
+  html[data-tema="gelap"] .kerja-pilih > button.bad[aria-pressed=true] > b,
+  html[data-tema="gelap"] .dm-ringkas .awas,
+  html[data-tema="gelap"] .dm-belum{color:var(--bad);}
+  html[data-tema="gelap"] .dm-tabs a[aria-selected=true],
+  html[data-tema="gelap"] .tl-tabs button[aria-selected=true],
+  html[data-tema="gelap"] .tl-tabs button.aktif,
+  html[data-tema="gelap"] .pilihgrup > button[aria-pressed=true],
+  html[data-tema="gelap"] .rw-periode > button[aria-pressed=true],
+  html[data-tema="gelap"] .ak-butir:hover,
+  html[data-tema="gelap"] .ak-butir[aria-current],
+  html[data-tema="gelap"] .dm-filter button[aria-pressed=true],
+  html[data-tema="gelap"] .dm-filter > a[aria-current],
+  html[data-tema="gelap"] .kepingpilih:has(input:checked){
+    background:var(--aksen-bg);color:var(--aksen-kuat);border-color:var(--aksen);}
+  html[data-tema="gelap"] .dm-tabs a[aria-selected=true] svg,
+  html[data-tema="gelap"] .tl-tabs button[aria-selected=true] svg,
+  html[data-tema="gelap"] .ak-butir:hover svg,
+  html[data-tema="gelap"] .ak-butir[aria-current] svg{color:var(--aksen);}
+  html[data-tema="gelap"] .dm-tabs a[aria-selected=true] .dm-n{background:var(--surface);color:var(--aksen-kuat);}
+
+  /* Tombol utama memakai latar cukup gelap agar tulisan putih tetap terbaca. */
+  html[data-tema="gelap"] .btn-p,
+  html[data-tema="gelap"] .btn-p:disabled:hover{background:#2864C6;border-color:#5793EE;color:#FFF;}
+  html[data-tema="gelap"] .btn-p:hover{background:#3473D8;border-color:#8BB9FF;color:#FFF;}
+  html[data-tema="gelap"] .btn-ok{background:#23663F;border-color:var(--ok-line);color:#FFF;}
+  html[data-tema="gelap"] .btn-bad{background:#9B354F;border-color:var(--bad-line);color:#FFF;}
+  html[data-tema="gelap"] .babak > .no,
+  html[data-tema="gelap"] .fb-no,
+  html[data-tema="gelap"] .langkahno,
+  html[data-tema="gelap"] .tutupkecil,
+  html[data-tema="gelap"] .kb-lencana,
+  html[data-tema="gelap"] .dsb-keping > button.buka-lain .n,
+  html[data-tema="gelap"] .fb-tab.aktif .fb-no,
+  html[data-tema="gelap"] .fb .langkah > div.aktif .bul,
+  html[data-tema="gelap"] .relbaris > div.aktif .bul,
+  html[data-tema="gelap"] .langkah > div.aktif .bul,
+  html[data-tema="gelap"] .tahapan li.kini .bul,
+  html[data-tema="gelap"] .jalurriwayat .tempat.kini,
+  html[data-tema="gelap"] .grup.buka > .judul .no,
+  html[data-tema="gelap"] .dsb-menu .opsi[aria-pressed=true] .kotak,
+  html[data-tema="gelap"] .kepingpilih:has(input:checked) > .kotak{background:#2864C6;color:#FFF;}
+  html[data-tema="gelap"] .lonceng .n,
+  html[data-tema="gelap"] .dm-tabs .dm-awas{background:#B43F58;color:#FFF;}
+  html[data-tema="gelap"] .info > .isi,
+  html[data-tema="gelap"] .petunjuk{background:#091221;color:#EDF2FA;border:1px solid var(--line);}
+
+  /* Dashboard mempertahankan kategori dan membedakan seri pada latar gelap. */
+  html[data-tema="gelap"] .dsb{--d-teks-status:#101827;--d-ok:#6EDE9C;--d-belum:#FFA3A9;--d-bt:#F1C16B;--d-td:#B6C4D8;
+    --d-masuk:#8BB9FF;--d-tunggu:#F1C16B;--d-proses:#A0B1C8;}
+  html[data-tema="gelap"] .dsb-tk-wadah{--tk-garis:var(--line-2);--tk-garis-kuat:var(--line);
+    --tk-kepala:#2C3D55;--tk-kepala-garis:#52647D;--tk-kepala-bawah:#7489A4;--tk-kepala-teks:var(--ink);
+    --tk-tahun:#213047;--tk-sorot:var(--aksen-bg);--tk-urut:#1E304A;--tk-nol:var(--ink-3);--tk-belum:var(--bad);}
+  html[data-tema="gelap"] .dsb-pita:hover{background:#FFFFFF09;}
+  html[data-tema="gelap"] .pita > span > b,
+  html[data-tema="gelap"] .jalur.tumpuk > i > b{color:#101827;}
+
+  /* Sorotan setelah navigasi mengikuti tema agar tidak berkedip putih. */
+  html[data-tema="gelap"] [data-sorot]::before{background:var(--aksen-bg);}
+  html[data-tema="gelap"] tr[data-sorot] > td{animation-name:temaSorot;}
+  @keyframes temaSorot{0%,100%{background-color:transparent;}10%,80%{background-color:var(--aksen-bg);}}
+}
+
+@media print{
+  html{color-scheme:light;}
+  .tema-pintas,.tampilan-pesan{display:none!important;}
+}

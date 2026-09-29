@@ -11,11 +11,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * Penyaring hak akses, ditaruh di satu tempat — padanan `laporanTerlihat`
+ * Filter hak akses, ditaruh di satu tempat — padanan `laporanTerlihat`
  * prototipe.
  *
  * Yang keluar dari kelas ini sudah dipangkas, jadi setiap perhitungan di
- * bawahnya — jumlah rekomendasi, nilai temuan, progres — mewarisi saringannya
+ * bawahnya — jumlah rekomendasi, nilai temuan, progres — mewarisi filternya
  * tanpa perlu diingat satu per satu.
  *
  * SATU-SATUNYA pemeriksa hak akses satuan kerja adalah `sasarans.satker_id`.
@@ -139,7 +139,7 @@ class Terlihat
             }));
         }
 
-        /* Riwayat aktivitas milik rekomendasi, bukan milik baris — disaring
+        /* Riwayat aktivitas milik rekomendasi, bukan milik baris — difilter
            menurut pelakunya, dan kalimatnya disamarkan. */
         if ($r->relationLoaded('riwayat')) {
             $r->setRelation('riwayat', $r->riwayat
@@ -240,7 +240,7 @@ class Terlihat
             'temuan.rekomendasi.sasaran.satker', 'temuan.rekomendasi.tindakan.bentuk',
             'temuan.rekomendasi.pemulihan', 'temuan.rekomendasi.tolakanBpk',
             'temuan.rekomendasi.permintaanDokumen.item', 'temuan.rekomendasi.riwayat',
-            'temuan.laporan', 'lampiran'];
+            'lampiran'];
 
         /* Urutan dasarnya urutan pencatatan, sama dengan prototipe — urutan
            yang seri pada tiap penyortiran jatuh ke sini. */
@@ -248,6 +248,18 @@ class Terlihat
             ->with(array_unique(array_merge($bawaan, $muat)))
             ->orderBy('id')
             ->get()
+            /* Induk tiap temuan dan rekomendasi dihubungkan ke model yang sudah
+               dimuat (27 Sep). Tanpa ini tiap rekomendasi yang bertanya
+               "laporanku jenis apa" memuat ulang temuan dan laporannya satu
+               per satu — 66 kueri tambahan di Daftar laporan data contoh. */
+            ->each(function ($l) {
+                foreach ($l->temuan as $t) {
+                    $t->setRelation('laporan', $l);
+                    foreach ($t->rekomendasi as $r) {
+                        $r->setRelation('temuan', $t);
+                    }
+                }
+            })
             ->map(fn ($l) => $this->pangkas($l))
             ->filter(fn ($l) => $l->temuan->isNotEmpty())
             ->values();
@@ -257,12 +269,24 @@ class Terlihat
        PENYAMARAN KALIMAT
        ================================================================ */
 
+    /** @var list<string>|null */
+    private static ?array $nama = null;
+
+    /**
+     * Daftar nama disimpan selama proses. Sejak unit kerja bisa ditambah lewat
+     * Data master (18 Sep), daftarnya dilepas tiap kali unit kerja berubah —
+     * unit kerja baru harus ikut disamarkan sejak kalimat pertama yang
+     * menyebutnya.
+     */
+    public static function lupakan(): void
+    {
+        self::$nama = null;
+    }
+
     /** Nama panjang dan pendek seluruh satuan kerja, yang terpanjang dulu. */
     private static function semuaNama(): array
     {
-        static $nama = null;
-
-        return $nama ??= Satker::all()
+        return self::$nama ??= Satker::all()
             ->flatMap(fn ($s) => [$s->nama, $s->nama_pendek])
             ->filter()->unique()
             ->sortByDesc(fn ($x) => mb_strlen($x))

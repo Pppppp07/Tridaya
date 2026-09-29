@@ -15,17 +15,18 @@ use Illuminate\Http\Request;
  * Layar Rekomendasi (padanan `SemuaRekom`) dan halaman rinciannya.
  *
  * Satu layar untuk semua peran: keranjang di kepalanya menggantikan lima layar
- * lama yang isinya daftar sama disaring berbeda. Angka tiap keranjang dihitung
- * dari daftar penuh, bukan dari hasil saringan — kalau ikut tersaring, angkanya
+ * lama yang isinya daftar sama difilter berbeda. Angka tiap keranjang dihitung
+ * dari daftar penuh, bukan dari hasil filter — kalau ikut terfilter, angkanya
  * berubah tiap kali orang mengetik.
  */
 class RekomendasiController extends Controller
 {
     public function beranda()
     {
-        return auth()->user()->peran === PeranPengguna::PIMPINAN
-            ? redirect()->route('ringkasan')
-            : redirect()->route('rekomendasi.index');
+        /* Bawaannya menurut peran — Pimpinan di Dashboard, DTI di Log aktivitas
+           (27 Sep), lainnya di Rekomendasi — kecuali akunnya memilih halaman
+           pertama sendiri di Profil → Tampilan (28 Sep). */
+        return redirect()->route(\App\Support\Setelan::ruteBeranda(auth()->user()));
     }
 
     /** Muatan yang dibutuhkan hitungan daftar: meja, kemajuan, tenggat, urgensi. */
@@ -47,8 +48,8 @@ class RekomendasiController extends Controller
         $utuh = $terlihat->rekomendasi()->with(self::MUAT_DAFTAR)->orderBy('rekomendasis.id')->get()
             ->map(fn ($r) => $terlihat->pangkasRekomendasi($r));
 
-        /* Dihitung sebelum lingkup disaring: kalau dari daftar yang sudah
-           disaring, membuka LHP membuat tombol LHA menulis nol — dan tombol
+        /* Dihitung sebelum lingkup difilter: kalau dari daftar yang sudah
+           difilter, membuka LHP membuat tombol LHA menulis nol — dan tombol
            yang menulis nol tidak bisa lagi dipakai untuk pindah ke sana. */
         $jumlahJenis = [
             'semua' => $utuh->count(),
@@ -59,7 +60,7 @@ class RekomendasiController extends Controller
         $daftar = $utuh->filter(fn ($r) => Lingkup::berlaku($lingkup, $r->jenis()))->values();
 
         $KEADAAN = [
-            'kerja'   => ['nama' => 'Perlu saya kerjakan',
+            'kerja'   => ['nama' => 'Perlu dikerjakan',
                           'uji' => fn ($r) => $r->diMeja($peran, $satkerAktif)],
             'tunggu'  => ['nama' => 'Sedang menunggu',
                           'uji' => fn ($r) => ! $r->beres() && ! $r->diMeja($peran, $satkerAktif)],
@@ -76,8 +77,20 @@ class RekomendasiController extends Controller
         /* Keadaan bawaan mengikuti perannya: yang mengerjakan berkas dibukakan
            pekerjaannya, yang cuma memantau dibukakan semuanya. Keranjang yang
            tombolnya tidak ada dilepas — yang tampil jadi seluruhnya. */
-        $keadaan = $req->query('keadaan', $peran === PeranPengguna::PIMPINAN ? 'semua' : 'kerja');
+        $keadaan = $req->query('keadaan', $peran->hanyaMelihat() ? 'semua' : 'kerja');
         $keadaanKini = isset($keadaanAda[$keadaan]) ? $keadaan : null;
+
+        /* `tuju` (26 Sep): kembali dari rincian, atau sesudah tindakan — kirim,
+           teruskan, putusan. Barisnya disorot skrip (pasangPintasan). Kalau
+           berkasnya sudah pindah keranjang (dikirim: dari "Perlu saya kerjakan"
+           ke "Sedang menunggu"), keranjangnya ikut dipindah — sama dengan
+           prototipe. */
+        $tuju = (int) $req->query('tuju', 0);
+        $rekTuju = $tuju ? $daftar->firstWhere('id', $tuju) : null;
+        if ($rekTuju && $keadaanKini && ! $KEADAAN[$keadaanKini]['uji']($rekTuju)) {
+            $keadaanKini = collect(array_keys($keadaanAda))
+                ->first(fn ($k) => ! isset($keadaanAda[$k]['khusus']) && $KEADAAN[$k]['uji']($rekTuju));
+        }
 
         $q = trim((string) $req->query('q', ''));
         $sk = $req->query('sk', 'semua');

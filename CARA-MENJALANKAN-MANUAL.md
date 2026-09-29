@@ -11,7 +11,7 @@ Aplikasi web bukan berkas yang bisa diklik dua kali seperti Word. Yang terjadi
 sebenarnya begini:
 
 ```
-Anda        →  peramban  →  http://127.0.0.1:8000  →  program PHP  →  jawaban HTML
+Anda        →  browser  →  http://127.0.0.1:8000  →  program PHP  →  jawaban HTML
 (Chrome/Edge)                (alamat komputer sendiri)   (yang Anda jalankan)
 ```
 
@@ -20,7 +20,7 @@ dinyalakan dengan `php artisan serve`. Selama programnya hidup, alamat itu bisa
 dibuka. Begitu programnya dimatikan, alamatnya mati juga.
 
 `127.0.0.1` artinya "komputer ini sendiri". Tidak ada yang keluar ke internet —
-peramban Anda bicara dengan program di komputer Anda sendiri.
+browser Anda bicara dengan program di komputer Anda sendiri.
 
 Tiga hal harus benar sebelum bisa jalan:
 
@@ -90,7 +90,7 @@ Press Ctrl+C to stop the server
 Ini **bukan macet**. Programnya memang sedang menunggu. Selama tulisan itu ada,
 aplikasinya hidup. Jendela ini harus dibiarkan terbuka.
 
-### Langkah 4 — buka di peramban
+### Langkah 4 — buka di browser
 
 Buka Chrome atau Edge, ketik:
 
@@ -98,10 +98,10 @@ Buka Chrome atau Edge, ketik:
 http://127.0.0.1:8000
 ```
 
-Halaman masuk akan muncul. Pakai akun contoh — semuanya bersandi `rahasia123`.
+Halaman masuk akan muncul. Pakai akun contoh — semuanya memakai password `rahasia123`.
 
 Coba lihat kembali jendela PowerShell tadi: tiap kali Anda mengeklik sesuatu di
-peramban, muncul baris baru di situ. Itulah catatan setiap permintaan yang masuk.
+browser, muncul baris baru di situ. Itulah catatan setiap permintaan yang masuk.
 Jendela ini nanti berguna sekali untuk mencari tahu kalau ada yang salah.
 
 ### Langkah 5 — menghentikan
@@ -194,7 +194,7 @@ Alamatnya berubah jadi `http://127.0.0.1:8001`.
 
 ---
 
-## 4. Kalau muncul pesan galat
+## 4. Kalau muncul pesan error
 
 ### `php : The term 'php' is not recognized...`
 
@@ -227,7 +227,7 @@ Stop-Process -Id NOMOR -Force
 
 Atau lebih gampang: jalankan saja di port lain dengan `--port=8001`.
 
-### Halaman putih atau tulisan galat merah di peramban
+### Halaman putih atau tulisan error merah di browser
 
 Baca pesannya, biasanya sudah menyebut berkas dan nomor barisnya. Kalau kurang
 jelas, lihat juga jendela PowerShell — catatannya lebih lengkap di situ.

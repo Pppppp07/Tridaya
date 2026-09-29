@@ -15,12 +15,6 @@ class Tampil
         return $n ? 'Rp '.number_format($n, 0, ',', '.') : '—';
     }
 
-    /** Sisa nol berarti tuntas, bukan kosong. */
-    public static function rupiahSisa($n): string
-    {
-        return (int) $n === 0 ? 'lunas' : self::rupiah($n);
-    }
-
     /**
      * "Rp 1.5 M", "Rp 24 jt" — `rpk` prototipe, termasuk titik desimalnya
      * (toFixed di sana). Kedua artefak diperagakan berdampingan; angka yang
@@ -59,6 +53,53 @@ class Tampil
         }
 
         return $t->format('d').' '.self::BULAN[(int) $t->format('n') - 1].' '.$t->format('Y');
+    }
+
+    /**
+     * "17 Agu 2026 · 09.14" — waktu di log aktivitas, padanan `waktuLog`
+     * prototipe. Baris yang disalin dari riwayat berkas lama cuma bertanggal
+     * (jamnya 00.00.00), jadi jamnya tidak ditulis.
+     */
+    public static function waktuLog($t): string
+    {
+        if (! $t) {
+            return '—';
+        }
+        $t = is_string($t) ? Carbon::parse($t) : $t;
+
+        return $t->format('H:i:s') === '00:00:00' ? self::tgl($t) : self::tgl($t).' · '.$t->format('H.i');
+    }
+
+    /**
+     * "baru saja", "5 menit lalu", "2 jam lalu" (hari yang sama), lalu tanggal
+     * dan jamnya — padanan `sejak` prototipe (28 Sep).
+     */
+    public static function sejak($t): string
+    {
+        if (! $t) {
+            return '—';
+        }
+        $t = is_string($t) ? Carbon::parse($t) : $t;
+
+        return self::lalu((int) floor($t->diffInSeconds(now(), false)), $t);
+    }
+
+    /**
+     * Sama dengan sejak(), dari selisih detik yang sudah dihitung (sesi yang
+     * sedang masuk, App\Support\Sesi). Tanpa `$t`, yang lebih dari sehari
+     * ditulis "N hari lalu".
+     */
+    public static function lalu(int $detik, $t = null): string
+    {
+        $menit = intdiv(max(0, $detik), 60);
+
+        return match (true) {
+            $menit < 2  => 'baru saja',
+            $menit < 60 => $menit.' menit lalu',
+            $menit < 1440 && (! $t || $t->isSameDay(now())) => intdiv($menit, 60).' jam lalu',
+            (bool) $t   => self::waktuLog($t),
+            default     => intdiv($menit, 1440).' hari lalu',
+        };
     }
 
     private const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',

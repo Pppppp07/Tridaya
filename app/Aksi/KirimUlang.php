@@ -10,7 +10,7 @@ use App\Models\PermintaanDokumen;
 use App\Models\Rekomendasi;
 use App\Models\Sasaran;
 use App\Support\Jejak;
-use App\Support\Kabar;
+use App\Support\Pemberitahuan;
 use App\Support\Tampil;
 use Illuminate\Support\Facades\DB;
 
@@ -74,7 +74,7 @@ class KirimUlang
             ]);
 
             Jejak::riwayat($r, 'Setba', $teks);
-            Kabar::tulis($r, $teks, [PeranPengguna::SATKER], 'r-riwayat', [$s->satker_id], $s->tindakan);
+            Pemberitahuan::tulis($r, $teks, [PeranPengguna::SATKER], 'r-riwayat', [$s->satker_id], $s->tindakan);
         });
     }
 }

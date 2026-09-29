@@ -22,9 +22,11 @@
   $jeda = $lap->jedaPencatatan();
   $asli = $lap->suratAsli();
 
-  $tautSatker = '<span class="tautsatker">'.$satkerLap->map(function ($x) use ($lap) {
+  $linkSatker = '<span class="linksatker">'.$satkerLap->map(function ($x) use ($lap) {
       $n = $lap->jumlahTemuanSatker($x->id);
-      return '<button type="button" data-tunjuk="daftar-temuan">'.e($x->namaPendek()).($n > 1 ? ' ('.$n.' temuan)' : '').'</button>';
+      /* Pintasan (26 Sep): membuka blok temuannya lalu menyorot baris
+         rekomendasi satuan kerja ini — dulu cuma menggulir ke seluruh daftar. */
+      return '<button type="button" data-ke-satker="'.$x->id.'">'.e($x->namaPendek()).($n > 1 ? ' ('.$n.' temuan)' : '').'</button>';
   })->join(', ').($satkerLap->isEmpty() ? '—' : '').'</span>';
 
   $faktaSurat = [
@@ -49,15 +51,17 @@
           ? 'Dihitung hari kerja, jadi Sabtu, Minggu, dan hari libur tidak ikut dihitung.'
           : 'Dihitung hari kalender, jadi Sabtu dan Minggu ikut dihitung.',
       ]],
-    ['l' => 'Satuan kerja diperiksa', 'v' => $tautSatker],
+    ['l' => 'Satuan kerja diperiksa', 'v' => $linkSatker],
   ];
 
   $sebaran = '<span class="sebaran">'.collect($sebaranTl)->map(fn ($p) =>
       '<span>'.view('components.ikon', ['n' => $IKON_PEGANG[$p['nama']] ?? 'Clock', 's' => 13])->render().' '.e($p['nama']).' <b>'.$p['n'].'</b></span>'
   )->join('').'</span>';
   $faktaIsi = [
-    ['l' => 'Temuan', 'v' => '<span class="tautsatker"><button type="button" data-tunjuk="daftar-temuan"><b class="angkafakta">'.$a['temuan'].'</b> temuan</button></span>'],
-    ['l' => 'Rekomendasi', 'v' => '<span class="tautsatker"><button type="button" data-tunjuk="daftar-temuan"><b class="angkafakta">'.$a['jml'].'</b> rekomendasi</button></span>'],
+    /* "N temuan" menyorot blok-blok temuannya; "N rekomendasi" membuka semua
+       blok lalu menyorot seluruh baris rekomendasinya (26 Sep). */
+    ['l' => 'Temuan', 'v' => '<span class="linksatker"><button type="button" data-ke-temuan><b class="angkafakta">'.$a['temuan'].'</b> temuan</button></span>'],
+    ['l' => 'Rekomendasi', 'v' => '<span class="linksatker"><button type="button" data-ke-rek><b class="angkafakta">'.$a['jml'].'</b> rekomendasi</button></span>'],
     ['l' => 'Rekomendasi selesai', 'c' => 'var(--ok)', 'v' => '<b class="angkafakta">'.$a['tuntas'].'</b> dari '.$a['jml']],
     $sebaranTl ? ['l' => 'Posisi tindak lanjut', 'ket' => 'Dihitung per tindak lanjut satuan kerja. Satu rekomendasi bisa punya beberapa tindak lanjut di meja berbeda.', 'v' => $sebaran] : null,
   ];
@@ -67,9 +71,9 @@
       'ket' => 'Jumlah semua temuan di laporan ini. Tidak semuanya harus dikembalikan berupa uang.']],
     $a['target'] !== $a['nilaiTemuan'] ? [
       ['l' => 'Tagihan rekomendasi', 'v' => '<b class="angkafakta">'.Tampil::rupiah($a['target']).'</b>',
-        'ket' => 'Bagian yang memang harus disetor ke kas negara sesuai bunyi rekomendasinya.'],
+        'ket' => \App\Models\Laporan::KET_TAGIHAN],
       ['l' => 'Administratif', 'c' => 'var(--jingga)', 'v' => '<b class="angkafakta">'.Tampil::rupiah($a['nilaiTemuan'] - $a['target']).'</b>',
-        'ket' => 'Bagian yang tidak perlu disetor — cukup dilengkapi dokumennya atau diperbaiki prosedurnya. Bisa berubah jadi tagihan kalau buktinya tidak pernah ada.'],
+        'ket' => \App\Models\Laporan::KET_ADMINISTRATIF],
     ] : [],
     [
       ['l' => 'Sudah dipulihkan', 'c' => 'var(--ok)', 'v' => '<b class="angkafakta">'.Tampil::rupiah($a['masuk']).'</b>'],
@@ -82,7 +86,8 @@
 
 <div class="body">
   <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center;flex-wrap:wrap">
-    <a class="taut" href="{{ route('laporan.index') }}"><x-ikon n="ArrowLeft" :s="16" /> Kembali ke daftar laporan</a>
+    {{-- Kembali ke baris laporan ini di daftarnya, disorot (26 Sep). --}}
+    <a class="link" href="{{ route('laporan.index', ['tuju' => $lap->id]) }}"><x-ikon n="ArrowLeft" :s="16" /> Kembali ke daftar laporan</a>
   </div>
 
   <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px">
@@ -124,7 +129,7 @@
       @if($asli)
         <x-berkas :b="$asli" jenis="Surat laporan pemeriksaan" oleh="Setba" :tanggal="$lap->tgl_terima" />
       @else
-        <span class="belumada">belum ditautkan &mdash; bisa dilengkapi belakangan</span>
+        <span class="belumada">belum dihubungkan &mdash; bisa dilengkapi belakangan</span>
       @endif
     </div>
   @endif

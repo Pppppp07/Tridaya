@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\PeranPengguna;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Satker extends Model
 {
@@ -28,6 +30,38 @@ class Satker extends Model
     public function pengguna()
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * Penanggung jawabnya: satu-satunya akun satuan kerja yang masih aktif.
+     * Menetapkan yang baru menonaktifkan yang lama (App\Support\PenanggungJawab),
+     * jadi paling banyak ada satu.
+     */
+    public function penanggungJawab()
+    {
+        return $this->hasOne(User::class)
+            ->where('peran', PeranPengguna::SATKER->value)->where('aktif', true);
+    }
+
+    /**
+     * Sudah tertulis di berkas mana pun — sebagai tempat temuan atau sebagai
+     * yang ditugasi. Namanya lalu terkunci: berkas lama menyebut nama itu.
+     */
+    public function dipakai(): bool
+    {
+        return $this->sasaran()->exists() || $this->temuan()->exists();
+    }
+
+    /** Kode unit kerja baru, dari nama pendeknya. Tidak pernah dipakai dua kali. */
+    public static function kodeBaru(string $pendek): string
+    {
+        $dasar = Str::limit(Str::upper(Str::slug($pendek)), 16, '') ?: 'UNIT';
+        $kode = $dasar;
+        for ($i = 2; static::where('kode', $kode)->exists(); $i++) {
+            $kode = $dasar.'-'.$i;
+        }
+
+        return $kode;
     }
 
     /**

@@ -17,7 +17,7 @@ use App\Support\Tampil;
  */
 class Kemajuan
 {
-    public const HARI_ENDAP = 7;
+    public const HARI_KIRIM_OTOMATIS = 7;
 
     /** Baris pemulihan yang boleh terkirim: lengkap dan sah. */
     public static function setorSah(array $x): bool
@@ -25,7 +25,7 @@ class Kemajuan
         $ntpnSah = (bool) preg_match('/^[0-9A-Za-z]{16}$/', (string) ($x['ntpn'] ?? ''));
 
         return ! empty($x['tanggal']) && self::angka($x['nilai'] ?? 0) > 0
-            && trim((string) ($x['berkas'] ?? '')) !== '' && trim((string) ($x['tautan'] ?? '')) !== ''
+            && trim((string) ($x['berkas'] ?? '')) !== '' && trim((string) ($x['link'] ?? '')) !== ''
             && (($x['jenis'] ?? 'setor') === 'perbaikan' ? trim((string) ($x['noBa'] ?? '')) !== '' : $ntpnSah);
     }
 

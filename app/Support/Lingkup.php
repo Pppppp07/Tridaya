@@ -5,14 +5,7 @@ namespace App\Support;
 use App\Enums\SumberLaporan;
 use Illuminate\Http\Request;
 
-/**
- * Lingkup laporan yang sedang dilihat: Semua, LHP, atau LHA.
- *
- * Bukan mode aplikasi, melainkan keadaan kerja — dan ia ikut ke mana pun:
- * dipilih di layar Rekomendasi atau Ringkasan, berlaku juga di Daftar laporan,
- * pencarian, dan angka menu. Karena itu disimpan di sesi, bukan diulang di
- * alamat tiap halaman.
- */
+/** Lingkup yang dilihat (Semua, LHP, LHA): disimpan di sesi dan berlaku di semua layar. */
 class Lingkup
 {
     private const KUNCI = 'lingkup';

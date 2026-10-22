@@ -8,22 +8,8 @@ use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Kepala keamanan untuk setiap halaman (27 Sep).
- *
- * - Content-Security-Policy: skrip hanya dari aplikasi ini sendiri, dan skrip
- *   sebaris hanya yang membawa `nonce` permintaan ini. Isian berbahaya yang
- *   entah bagaimana lolos ke halaman tidak bisa menjalankan skripnya sendiri.
- *   Gaya sebaris masih dibolehkan — tampilan memakainya di banyak tempat, dan
- *   gaya tidak bisa menjalankan kode.
- * - Halaman tidak boleh dibingkai situs lain (clickjacking), jenis berkas tidak
- *   ditebak browser, alamat asal tidak dibocorkan ke situs luar.
- * - Halaman berlogin tidak disimpan di cache browser maupun proksi: sesudah
- *   keluar, tombol Kembali tidak menampilkan isi berkas orang lain di komputer
- *   bersama.
- * - HSTS hanya bila aplikasinya dibuka lewat HTTPS.
- *
- * Aset statis (css, js, fonta) disajikan langsung oleh server web, tidak
- * lewat sini — aturan cache-nya di public/.htaccess.
+ * Kepala keamanan: CSP (skrip hanya dari aplikasi ini atau berisi `nonce`), anti-bingkai,
+ * anti-cache halaman berlogin, HSTS bila HTTPS.
  */
 class KepalaAman
 {
@@ -38,7 +24,11 @@ class KepalaAman
         $h = $res->headers;
         $h->set('X-Content-Type-Options', 'nosniff');
         $h->set('X-Frame-Options', 'DENY');
-        $h->set('Referrer-Policy', 'same-origin');
+        if ($request->is('sso-login', 'api/sso-check') || $request->routeIs('sso.dwaradaya.*')) {
+            $h->set('Referrer-Policy', 'no-referrer');
+        } elseif ($h->get('Referrer-Policy') !== 'no-referrer') {
+            $h->set('Referrer-Policy', 'same-origin');
+        }
         $h->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()');
         $h->set('Cross-Origin-Opener-Policy', 'same-origin');
         if ($request->isSecure()) {
@@ -49,9 +39,8 @@ class KepalaAman
         if ($html && config('simtlhp.keamanan.csp', true)) {
             $h->set('Content-Security-Policy', $this->csp($nonce));
         }
-        /* Halaman berlogin, halaman masuk, dan jawaban JSON milik akun —
-           semuanya pribadi. */
-        if ($html || $request->user() || $request->routeIs('masuk*', 'sso.*')) {
+        /* Halaman berlogin, halaman masuk, dan JSON milik akun — semuanya pribadi. */
+        if ($html || $request->user() || $request->routeIs('masuk*', 'sso.*') || $request->is('api/sso-check')) {
             $h->set('Cache-Control', 'no-store, private, max-age=0');
             $h->set('Pragma', 'no-cache');
         }
@@ -61,8 +50,7 @@ class KepalaAman
 
     private function csp(string $nonce): string
     {
-        /* Pintu SSO boleh jadi tujuan formulir keluar yang mengalihkan ke
-           halaman keluar penyedia SSO (RP-initiated logout). */
+        /* Pintu SSO boleh jadi tujuan formulir keluar (RP-initiated logout). */
         $sso = array_filter(array_map(fn ($u) => $this->asal((string) $u), [
             config('simtlhp.sso.oidc.authorize'), config('simtlhp.sso.oidc.logout'),
         ]));
@@ -70,6 +58,7 @@ class KepalaAman
         return implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'nonce-{$nonce}'",
+            "script-src-attr 'none'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "font-src 'self' data:",

@@ -1,9 +1,5 @@
-{{-- Sel-sel angka satu baris tabel keseluruhan. Nol ditulis "–" dan
-     dipudarkan (pembaca layar tetap mendengar "0"); belum memadai yang tidak
-     nol merah, sisa Inspektorat yang tidak nol tebal. Angka yang ada isinya
-     sekaligus pintasan: klik membuka rekomendasi di baliknya menurut baris
-     (tahun, satuan kerja) dan kolomnya. Persen tidak bisa diklik — ia
-     perbandingan. --}}
+{{-- Sel angka satu baris. Nol ditulis "–" (pembaca layar tetap "0"); angka berisi sekaligus
+     pintasan ke rekomendasinya. --}}
 @foreach($KOLOM as $x)
   @if($x['k'] === 'pct')
     <td class="{{ $kelasSel($x) }}">

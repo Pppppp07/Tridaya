@@ -5,16 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Isian tindak lanjut yang disimpan satuan kerja tanpa dikirim.
- *
- * Berkasnya tetap di meja satuan kerja. Draf yang belum dikirim lebih dari
- * seminggu dan kewajibannya sudah terpenuhi dikirim sendiri oleh perintah
- * terjadwal `tlhp:kirim-draf` — pemulihan bisa bertahun-tahun, tapi berkas
- * yang sudah lengkap tidak boleh tertahan hanya karena lupa ditekan kirim.
+ * Isian tindak lanjut yang disimpan sementara tanpa dikirim. Kemajuannya terbaca Setba sebagai
+ * pantauan; tidak pernah dikirim sendiri.
  */
 class DrafTanggapan extends Model
 {
-    protected $fillable = ['sasaran_id', 'uraian', 'tanggal', 'bukti', 'setoran', 'penuhi', 'kali', 'terakhir'];
+    protected $fillable = ['sasaran_id', 'uraian', 'tanggal', 'bukti', 'setoran', 'penuhi', 'kali', 'terakhir', 'disimpan_oleh'];
 
     protected $casts = [
         'tanggal'  => 'date',
@@ -25,4 +21,6 @@ class DrafTanggapan extends Model
     ];
 
     public function sasaran() { return $this->belongsTo(Sasaran::class); }
+
+    public function penyimpan() { return $this->belongsTo(User::class, 'disimpan_oleh'); }
 }

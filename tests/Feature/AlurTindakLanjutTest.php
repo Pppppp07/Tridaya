@@ -5,19 +5,20 @@ namespace Tests\Feature;
 use App\Enums\HasilTelaah;
 use App\Enums\PosisiBerkas;
 use App\Enums\StatusTindakLanjut;
+use App\Models\LogAktivitas;
+use App\Models\Notifikasi;
+use App\Models\RiwayatBerkas;
+use App\Models\RiwayatStatus;
 use App\Models\Sasaran;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
 /**
- * Satu berkas menempuh seluruh rantainya: satuan kerja → Setba → UKI → Setba →
- * Inspektorat → SIPTL, berikut jalan pulangnya waktu ditolak.
- *
- * Yang dijaga di sini bukan cuma posisinya berpindah, melainkan juga siapa yang
- * boleh memindahkannya — dan bahwa berkas yang ditolak kembali lewat Setba,
- * bukan langsung ke satuan kerja.
+ * Satu berkas menempuh seluruh rantainya (satuan kerja → Setba → UKI → Setba → Inspektorat →
+ * SIPTL), berikut jalan pulangnya saat ditolak.
  */
 class AlurTindakLanjutTest extends TestCase
 {
@@ -47,11 +48,7 @@ class AlurTindakLanjutTest extends TestCase
         return Sasaran::with('tindakan.rekomendasi', 'satker')->find($this->baris->id);
     }
 
-    /**
-     * Sesudah tindakan, daftar Rekomendasi dibuka dengan baris rekomendasinya
-     * ditunjuk (`tuju`, 26 Sep) — keranjangnya ikut pindah kalau berkasnya
-     * sudah pindah keranjang.
-     */
+    /** Sesudah tindakan, daftar Rekomendasi dibuka dengan barisnya ditunjuk (`tuju`). */
     private function keDaftar(?Sasaran $x = null): string
     {
         $x ??= $this->segar();
@@ -174,9 +171,7 @@ class AlurTindakLanjutTest extends TestCase
             ->assertRedirect($this->keDaftar());
         $this->assertSame(StatusTindakLanjut::BS, $this->segar()->status_bpk);
 
-        /* Putusan BPK dicatat SEKALI tiap unggahan. Sesudah tercatat, statusnya
-           terkunci — termasuk lewat alamat langsung, bukan cuma tombolnya yang
-           hilang dari layar. */
+        /* Putusan BPK dicatat sekali tiap unggahan, lalu terkunci — juga lewat alamat langsung. */
         $this->masuk('setba@contoh.test')
             ->post(route('siptl.status', $this->segar()), ['status' => 'SS'])
             ->assertStatus(422);
@@ -194,10 +189,32 @@ class AlurTindakLanjutTest extends TestCase
         $this->assertSame(PosisiBerkas::SATKER, $this->segar()->pos());
     }
 
+    /** Dua petugas atau klik ganda: aksi dari keadaan yang sudah basi dibatalkan tanpa menulis apa pun. */
+    public function test_aksi_atas_berkas_yang_sudah_berubah_dibatalkan(): void
+    {
+        $this->kirimDariSatker();
+        $basi = $this->segar();
+        $this->teruskan();
+        $this->assertSame(PosisiBerkas::UKI, $this->segar()->pos());
+        $surat = \App\Models\Surat::where('sasaran_id', $basi->id)->count();
+        $riwayat = RiwayatBerkas::count();
+
+        $this->masuk('setba@contoh.test');
+        try {
+            \App\Aksi\Teruskan::jalankan($basi->tindakan->rekomendasi, $basi,
+                ['nomor' => 'PW.02.02-Sb/9002', 'tanggal' => now()->toDateString(), 'perihal' => 'Ganda']);
+            $this->fail('Aksi atas berkas yang sudah berubah seharusnya ditolak.');
+        } catch (\App\Aksi\BerkasBerubah $e) {
+            $this->assertSame(409, $e->getStatusCode());
+        }
+        $this->assertSame(PosisiBerkas::UKI, $this->segar()->pos());
+        $this->assertSame($surat, \App\Models\Surat::where('sasaran_id', $basi->id)->count());
+        $this->assertSame($riwayat, RiwayatBerkas::count());
+    }
+
     /**
-     * Kata Hizkia: "perubahan status SS dan BS itu hanya boleh dilakukan sekali
-     * setelah proses Upload SIPTL." Sudah Sesuai mengakhiri pemantauan baris
-     * itu; Belum Sesuai menunggu dikirim ulang lebih dulu.
+     * SS dan BS hanya sekali sesudah unggah SIPTL; SS mengakhiri pemantauan, BS menunggu kirim
+     * ulang.
      */
     public function test_putusan_bpk_cuma_sekali_tiap_unggahan(): void
     {
@@ -268,7 +285,8 @@ class AlurTindakLanjutTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_kirim_ditahan_kalau_dokumennya_belum_lengkap(): void
+    /** Dokumen boleh dicicil: kiriman tetap jalan, butir yang belum ada tetap terbuka. */
+    public function test_kirim_tetap_jalan_walau_dokumennya_belum_lengkap(): void
     {
         $baris = $this->segar();
         $rek = $baris->tindakan->rekomendasi->load('permintaanDokumen.item');
@@ -282,25 +300,50 @@ class AlurTindakLanjutTest extends TestCase
         $this->actingAs($this->satker())
             ->post(route('tanggapan.simpan', $baris), [
                 'aksi' => 'kirim',
-                'uraian' => 'Sudah dikerjakan.',
+                'uraian' => 'Sebagian dokumen masih menunggu tanda tangan.',
             ])
-            ->assertSessionHasErrors('kirim');
+            ->assertSessionHasNoErrors();
 
-        $this->assertSame(PosisiBerkas::SATKER, $this->segar()->pos());
+        $this->assertSame(PosisiBerkas::SETBA_TINJAU, $this->segar()->pos());
+        $this->assertTrue($belum->every(fn ($i) => ! $i->fresh()->terpenuhi));
     }
 
+    /** Draf hanya isian sementara: tanpa jejak Progres atau status; Setba diberi tahu di lonceng, tanpa email. */
     public function test_draf_disimpan_tanpa_memindahkan_berkas(): void
     {
-        $this->actingAs($this->satker())
-            ->post(route('tanggapan.simpan', $this->baris), [
+        Notification::fake();
+        $belum = fn (Sasaran $x) => $x->tindakan->rekomendasi->permintaanUntuk($x->satker_id, $x->tindakan_id)
+            ->flatMap->item->where('terpenuhi', false);
+        $baris = Sasaran::with('tindakan.rekomendasi.permintaanDokumen.item')->get()
+            ->first(fn ($x) => $x->pos() === PosisiBerkas::SATKER && $belum($x)->isNotEmpty());
+        $this->assertNotNull($baris, 'Data contoh perlu baris di satuan kerja dengan dokumen yang diminta.');
+        $item = $belum($baris)->first();
+        $riwayat = RiwayatBerkas::count();
+        $status = RiwayatStatus::count();
+        $notifikasi = Notifikasi::count();
+        $log = (int) LogAktivitas::max('id');
+
+        $this->actingAs(User::where('satker_id', $baris->satker_id)->firstOrFail())
+            ->post(route('tanggapan.simpan', $baris), [
                 'aksi' => 'draf',
                 'uraian' => 'Sedang dikumpulkan buktinya.',
+                'bukti' => [['nama' => 'Bukti awal', 'link' => 'https://contoh.test/awal', 'jenis' => $item->nama, 'untuk' => $item->id]],
             ])
             ->assertRedirect();
 
-        $baris = $this->segar();
+        $baris = $baris->fresh();
         $this->assertSame(PosisiBerkas::SATKER, $baris->pos());
         $this->assertNotNull($baris->draf);
         $this->assertSame('Sedang dikumpulkan buktinya.', $baris->draf->uraian);
+        $this->assertFalse((bool) $item->fresh()->terpenuhi);
+
+        $this->assertSame($riwayat, RiwayatBerkas::count());
+        $this->assertSame($status, RiwayatStatus::count());
+        $this->assertSame($notifikasi + 1, Notifikasi::count());
+        $this->assertSame(['setba'], Notifikasi::latest('id')->first()->untuk_peran);
+        Notification::assertNothingSent();
+        $baru = LogAktivitas::where('id', '>', $log)->get();
+        $this->assertSame(['tanggapan.draf'], $baru->pluck('aksi')->all());
+        $this->assertSame('Menyimpan draf tindak lanjut', $baru->first()->ringkasan);
     }
 }

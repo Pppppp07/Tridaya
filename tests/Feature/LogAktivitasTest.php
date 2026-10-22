@@ -9,17 +9,18 @@ use App\Models\RiwayatBerkas;
 use App\Models\Sasaran;
 use App\Models\Satker;
 use App\Models\User;
+use App\Support\Aktivitas;
+use App\Support\AlertKeamanan;
+use App\Support\Tampil;
+use App\Support\TampilanLog;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Log aktivitas dan akun DTI (27 Sep). Bang Kamal: "setiap aktivitas terekam
- * … DTI itu hanya untuk melihat jika dia merubah data, merusak data, kita
- * tinggal nembak siapa pelakunya … Log aktivitas, sebatas itu. Terus data
- * master enggak … kalau untuk rekomendasi … hanya nge-view doang."
- */
+/** Log aktivitas dan akun DTI. */
 class LogAktivitasTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -32,8 +33,7 @@ class LogAktivitasTest extends TestCase
 
     public function test_log_awal_menyalin_riwayat_berkas_data_contoh_dengan_pelakunya(): void
     {
-        /* Satu baris log per baris riwayat — yang disalin seeder, ditambah yang
-           ditulis penyapu draf lewat Jejak. */
+        /* Satu baris log per baris riwayat yang disalin seeder. */
         $this->assertSame(RiwayatBerkas::count(), LogAktivitas::where('aksi', 'berkas')->count());
 
         $rw = RiwayatBerkas::where('label_aktor', 'Balai Wil. I Medan')->orderBy('id')->firstOrFail();
@@ -55,11 +55,17 @@ class LogAktivitasTest extends TestCase
         $pj = User::where('peran', PeranPengguna::SATKER->value)->where('satker_id', $baris->satker_id)
             ->where('aktif', true)->firstOrFail();
         $rek = $baris->tindakan->rekomendasi;
+        $bukti = $rek->permintaanUntuk($baris->satker_id, $baris->tindakan_id)
+            ->flatMap->item->where('terpenuhi', false)
+            ->map(fn ($i) => ['nama' => 'Bukti '.$i->nama, 'link' => 'https://contoh.test/'.$i->id,
+                'jenis' => $i->nama, 'untuk' => $i->id])
+            ->values()->all();
         $sebelum = (int) LogAktivitas::max('id');
 
         $this->actingAs($pj)->post(route('tanggapan.simpan', $baris), [
-            'aksi' => 'draf', 'uraian' => 'Sedang dikumpulkan buktinya.',
+            'aksi' => 'kirim', 'uraian' => 'Bukti sudah lengkap.', 'bukti' => $bukti,
         ], ['User-Agent' => 'Uji/1.0'])->assertRedirect();
+        $this->assertSame(PosisiBerkas::SETBA_TINJAU, $baris->fresh()->pos());
 
         $rw = RiwayatBerkas::where('rekomendasi_id', $rek->id)->latest('id')->firstOrFail();
         $log = LogAktivitas::latest('id')->firstOrFail();
@@ -128,10 +134,8 @@ class LogAktivitasTest extends TestCase
     }
 
     /**
-     * Keaktifan akun sesudah akun benar-benar masuk (27 Sep). Dulu error 500
-     * begitu ada `terakhir_masuk_pada` — kolomnya terbaca teks, bukan tanggal —
-     * dan uji di atas tidak menangkapnya karena tak ada yang masuk lewat
-     * formulir.
+     * Keaktifan akun sesudah akun benar-benar masuk (`terakhir_masuk_pada` harus terbaca sebagai
+     * tanggal).
      */
     public function test_keaktifan_dan_pengguna_sesudah_akun_masuk_sungguhan(): void
     {
@@ -140,14 +144,164 @@ class LogAktivitasTest extends TestCase
             $this->post(route('keluar'));
         }
         $setba = User::where('email', 'setba@contoh.test')->firstOrFail()->fresh();
-        $this->assertInstanceOf(\Carbon\CarbonInterface::class, $setba->terakhir_masuk_pada);
+        $this->assertInstanceOf(CarbonInterface::class, $setba->terakhir_masuk_pada);
 
         $isi = $this->masuk('dti@contoh.test')->get(route('log', ['tab' => 'keaktifan']))->assertOk()->getContent();
-        $this->assertStringContainsString(\App\Support\Tampil::waktuLog($setba->terakhir_masuk_pada), $isi);
+        $this->assertStringContainsString(Tampil::waktuLog($setba->terakhir_masuk_pada), $isi);
         $this->assertStringContainsString('Dipakai', $isi);
 
-        $this->masuk('setba@contoh.test')->get(route('master', ['tab' => 'pengguna']))->assertOk()
-            ->assertSee(\App\Support\Tampil::waktuLog($setba->terakhir_masuk_pada));
+        $this->masuk('admin@contoh.test')->get(route('master', ['tab' => 'pengguna']))->assertOk()
+            ->assertSee(Tampil::waktuLog($setba->terakhir_masuk_pada));
+    }
+
+    public function test_rincian_menunjukkan_bukti_hasil_dan_asal_tanpa_memutus_niat(): void
+    {
+        $x = LogAktivitas::create([
+            'waktu' => now(), 'aksi' => 'akses.ditolak', 'kelompok' => 'akses',
+            'nama' => 'Nama saat kejadian', 'peran' => 'uki',
+            'ringkasan' => 'Permintaan ditolak untuk diperiksa', 'ip' => '203.0.113.9',
+            'agen' => '<script>perangkat</script>',
+            'rincian' => ['code_http' => 403, 'konteks' => ['sumber' => 'web', 'metode' => 'POST', 'alamat' => '/data-master/pengguna', 'rute' => 'master.pengguna.tambah']],
+        ]);
+        $lain = LogAktivitas::create(['waktu' => now(), 'aksi' => 'berkas', 'kelompok' => 'berkas', 'ringkasan' => 'Kegiatan lain yang tidak diminta']);
+
+        $isi = $this->masuk('dti@contoh.test')->get(route('log', ['kejadian' => $x->id, 'rinci' => $x->id]))->assertOk()
+            ->assertSee('<b>1</b> aktivitas', false)->assertSee('Ditolak')->assertSee('Permintaan web')
+            ->assertSee('Peran pada saat kejadian')->assertSee('403')->assertSee('/data-master/pengguna')
+            ->assertSee('Nama saat kejadian')->assertSee('Semua aktivitas')->assertDontSee($lain->ringkasan)->getContent();
+        $this->assertStringContainsString('&lt;script&gt;perangkat&lt;/script&gt;', $isi);
+        $this->assertStringNotContainsString('<script>perangkat</script>', $isi);
+        $this->assertStringNotContainsString('id="lg-r-'.$x->id.'" hidden', $isi);
+        $tertutup = $this->get(route('log', ['kejadian' => $x->id, 'rinci' => $lain->id]))->assertOk()
+            ->assertDontSee('id="lg-r-'.$lain->id.'"', false)->getContent();
+        $this->assertMatchesRegularExpression('/id="lg-r-'.$x->id.'"[^>]*\bhidden\b/', $tertutup);
+    }
+
+    public function test_csv_menambah_hasil_asal_dan_menetralisir_formula_tanpa_mengubah_log(): void
+    {
+        $x = LogAktivitas::create([
+            'waktu' => now(), 'aksi' => 'masuk.gagal', 'kelompok' => 'akses', 'nama' => '=1+1',
+            'ringkasan' => '+SUM(1;1)', 'agen' => '@perangkat', 'ip' => '203.0.113.10',
+            'rincian' => ['konteks' => ['sumber' => 'web', 'metode' => 'POST', 'alamat' => '/masuk']],
+        ]);
+        $r = $this->masuk('dti@contoh.test')->get(route('log.unduh', ['kejadian' => $x->id]))->assertOk();
+        $csv = $r->streamedContent();
+        $this->assertStringContainsString(';Hasil;', $csv);
+        $this->assertStringContainsString("'=1+1", $csv);
+        $this->assertStringContainsString("'+SUM(1;1)", $csv);
+        $this->assertStringContainsString("'@perangkat", $csv);
+        $this->assertStringContainsString(';Gagal;"Permintaan web";POST;/masuk;', $csv);
+        $this->assertSame('=1+1', $x->fresh()->nama);
+        $this->assertSame('+SUM(1;1)', $x->fresh()->ringkasan);
+    }
+
+    public function test_log_lama_tidak_ditebak_asalnya_dan_tidak_dinilai_dari_teks_ringkasan(): void
+    {
+        $lama = new LogAktivitas(['aksi' => 'master.intern.saklar', 'ringkasan' => 'Gagal adalah nama kategori', 'ip' => null]);
+        $this->assertSame('Log lama — asal tidak tercatat', TampilanLog::asal($lama));
+        $this->assertSame(['nama' => 'Tercatat', 'kelas' => 'tercatat'], TampilanLog::hasil($lama));
+        $lama->nama = 'Perintah peladen';
+        $this->assertSame('Perintah server', TampilanLog::asal($lama));
+        $lama->rincian = ['konteks' => ['sumber' => 'web', 'metode' => 'POST', 'alamat' => '/data-master']];
+        $this->assertSame('Permintaan web', TampilanLog::asal($lama));
+    }
+
+    public function test_istilah_baru_mencari_log_lama_tanpa_melewati_filter_atau_mengubah_audit(): void
+    {
+        $buat = static fn ($kelompok, $aksi, $ringkasan) => LogAktivitas::create([
+            'waktu' => now(), 'kelompok' => $kelompok, 'aksi' => $aksi,
+            'nama' => 'Perintah peladen', 'ringkasan' => $ringkasan,
+        ]);
+        $server = $buat('master', 'master.unit.ubah', 'Tindakan uji melalui perintah peladen lintasan-uji');
+        $email = $buat('pengguna', 'master.pengguna.hubungkan', 'Akun uji dihubungkan menurut surel lintasan-uji');
+        $berkas = $buat('berkas', 'berkas', 'Berkas berbeda: perintah peladen lintasan-uji dan menurut surel lintasan-uji');
+        $kategori = $buat('master', 'master.intern.ubah', 'Kategori berbeda: perintah peladen lintasan-uji dan menurut surel lintasan-uji');
+        $asli = [$server->id => $server->fresh()->getRawOriginal(), $email->id => $email->fresh()->getRawOriginal()];
+
+        $this->masuk('admin@contoh.test');
+        $this->get(route('log', ['q' => 'perintah server lintasan-uji', 'kelompok' => 'master']))->assertOk()
+            ->assertSee('id="lg-r-'.$server->id.'"', false)->assertSee('id="lg-r-'.$kategori->id.'"', false)
+            ->assertDontSee('id="lg-r-'.$berkas->id.'"', false)
+            ->assertSee('Tindakan uji melalui perintah server lintasan-uji');
+        $this->get(route('log', ['q' => 'menurut email lintasan-uji', 'kelompok' => 'pengguna']))->assertOk()
+            ->assertSee('<b>1</b> aktivitas', false)->assertSee('id="lg-r-'.$email->id.'"', false)
+            ->assertDontSee('id="lg-r-'.$berkas->id.'"', false)->assertDontSee('id="lg-r-'.$kategori->id.'"', false);
+
+        $this->get(route('master', ['tab' => 'riwayat', 'filter' => 'unit', 'cari' => 'perintah server lintasan-uji']))->assertOk()
+            ->assertSee(route('log', ['kejadian' => $server->id, 'rinci' => $server->id]))
+            ->assertDontSee(route('log', ['kejadian' => $kategori->id, 'rinci' => $kategori->id]))
+            ->assertDontSee(route('log', ['kejadian' => $berkas->id, 'rinci' => $berkas->id]));
+        $this->get(route('master', ['tab' => 'riwayat', 'filter' => 'pengguna', 'cari' => 'menurut email lintasan-uji']))->assertOk()
+            ->assertSee(route('log', ['kejadian' => $email->id, 'rinci' => $email->id]))
+            ->assertDontSee(route('log', ['kejadian' => $kategori->id, 'rinci' => $kategori->id]))
+            ->assertDontSee(route('log', ['kejadian' => $berkas->id, 'rinci' => $berkas->id]));
+
+        $csv = $this->get(route('log.unduh', ['q' => 'menurut email lintasan-uji', 'kelompok' => 'pengguna']))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Akun uji dihubungkan menurut surel lintasan-uji', $csv);
+        $this->assertStringNotContainsString('menurut email lintasan-uji', $csv);
+        $this->assertSame($asli[$server->id], $server->fresh()->getRawOriginal());
+        $this->assertSame($asli[$email->id], $email->fresh()->getRawOriginal());
+    }
+
+    public function test_alias_pencarian_memakai_batas_kata_dan_teks_bebas_tetap_asli(): void
+    {
+        $this->assertSame(['server email', 'peladen email', 'server surel', 'peladen surel'], TampilanLog::varianCari('server email'));
+        $this->assertSame(['Mailserver Serverku Emailnya email_arsip'], TampilanLog::varianCari('Mailserver Serverku Emailnya email_arsip'));
+        $this->assertSame(['Server EMAIL', 'Peladen EMAIL', 'Server SUREL', 'Peladen SUREL'], TampilanLog::varianCari('Server EMAIL'));
+
+        $manusia = new LogAktivitas([
+            'user_id' => 123, 'peran' => 'uki', 'nama' => 'Peladen Surel',
+            'ringkasan' => 'Mengubah kategori Peladen dan Surel',
+        ]);
+        $this->assertSame('Peladen Surel', TampilanLog::nama($manusia));
+        $this->assertSame('Mengubah kategori Peladen dan Surel', TampilanLog::ringkasan($manusia));
+        $this->assertSame('Nama kategori Peladen / Surel', TampilanLog::teksUi('Nama kategori Peladen / Surel'));
+        $manusia->nama = 'Perintah peladen';
+        $this->assertSame('Perintah peladen', TampilanLog::nama($manusia));
+    }
+
+    public function test_panel_alert_menampilkan_bukti_tertaut_dan_hanya_admin_mendapat_form_tinjauan(): void
+    {
+        DB::table('pemantauan_keamanan')->where('id', 1)->update(['mulai_pada' => Aktivitas::waktuKini()]);
+        $log = LogAktivitas::create([
+            'waktu' => Aktivitas::waktuKini(), 'aksi' => 'masuk.dikunci', 'kelompok' => 'akses',
+            'nama' => 'identitas-yang-dicoba@example.test', 'ringkasan' => 'Percobaan dibatasi untuk pemeriksaan',
+            'rincian' => ['konteks' => ['sumber' => 'web', 'metode' => 'POST', 'alamat' => '/masuk']],
+        ]);
+        AlertKeamanan::proses($log);
+        $alert = \App\Models\AlertKeamanan::where('aturan', 'masuk_dikunci')->firstOrFail();
+        $alert->tinjauan()->create([
+            'nama' => 'Admin sebelumnya', 'peran' => 'admin', 'keputusan' => 'perlu_tindak_lanjut',
+            'catatan' => '<script>catatan</script>', 'waktu' => Aktivitas::waktuKini(),
+        ]);
+        $url = route('log', ['tab' => 'alert', 'alert' => $alert->id]);
+        $this->masuk('admin@contoh.test')->get($url)->assertOk()->assertSee('Percobaan masuk dibatasi sementara')
+            ->assertSee('Buka log sumber')->assertSee('Simpan tinjauan')->assertSee('Identitas yang dicoba / sistem')
+            ->assertSee('name="bukti_sampai" value="'.$log->id.'"', false)
+            ->assertSee('&lt;script&gt;catatan&lt;/script&gt;', false)->assertDontSee('<script>catatan</script>', false);
+        $this->masuk('dti@contoh.test')->get($url)->assertOk()->assertSee('Buka log sumber')
+            ->assertSee('Akun DTI membaca bukti')->assertDontSee('Simpan tinjauan')
+            ->assertDontSee('action="'.route('log.alert.tinjau', $alert).'"', false);
+        $this->get(route('log', ['kejadian' => $log->id]))->assertOk()->assertSee('Alert #'.$alert->id);
+        $this->get(route('log', ['tab' => 'alert', 'alert' => 999999]))->assertNotFound();
+    }
+
+    public function test_filter_alert_terbuka_memuat_yang_belum_selesai_dan_riwayat_wajar_tetap_bisa_dibuka(): void
+    {
+        $buat = static fn ($status, $judul) => \App\Models\AlertKeamanan::create([
+            'cakupan' => 'uji-tampilan-'.$status,
+            'aturan' => 'perubahan_peran', 'tingkat' => 'perhatian', 'status' => $status, 'judul' => $judul, 'alasan' => 'Perlu pemeriksaan.',
+            'pertama_pada' => Aktivitas::waktuKini(), 'terakhir_pada' => Aktivitas::waktuKini(),
+            'sumber' => 'web', 'bukti' => ['log_ids' => [], 'jumlah' => 1],
+        ]);
+        $buat('baru', 'Indikasi baru untuk diperiksa');
+        $buat('perlu_tindak_lanjut', 'Tindak lanjut masih berjalan');
+        $wajar = $buat('wajar', 'Penggunaan dinilai wajar');
+        $this->masuk('dti@contoh.test')->get(route('log', ['tab' => 'alert', 'status' => 'terbuka']))->assertOk()
+            ->assertSee('<b>2</b> alert sesuai filter', false)->assertSee('Indikasi baru untuk diperiksa')
+            ->assertSee('Tindak lanjut masih berjalan')->assertDontSee('Penggunaan dinilai wajar');
+        $this->get(route('log', ['tab' => 'alert', 'status' => 'wajar', 'alert' => $wajar->id]))->assertOk()
+            ->assertSee('<b>1</b> alert sesuai filter', false)->assertSee('Penggunaan dinilai wajar')->assertSee('Log sumber tidak tersedia lagi');
     }
 
     public function test_log_yang_melewati_masa_simpan_dipangkas(): void

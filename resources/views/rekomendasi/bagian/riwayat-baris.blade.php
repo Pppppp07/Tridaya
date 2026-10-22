@@ -3,15 +3,7 @@
   use App\Enums\StatusTindakLanjut;
   use App\Support\Tampil;
 
-  /* Riwayat status SATU baris penugasan — isi tab "Riwayat" baris itu pada
-     tabel tindak lanjut; padanan `RiwayatBaris` prototipe.
-
-     Dulu kartu tersendiri di bawah tabel (riwayat-status.blade.php), dengan
-     tombol pemilih pasangan dan skrip penukarnya. Kata Hizkia (21 Sep):
-     "ditampilkan kedalam table tindak lanjut satuan kerja sesuai dengan satuan
-     kerjanya … tombol lihat riwayat dipindahkan ke samping tombol bukti,
-     kerjakan". Nama satuan kerja, bentuknya, dan "Posisi saat ini" tidak ikut:
-     baris, tiket, dan alur tahap di atas tab sudah menyebut ketiganya. */
+  /* Riwayat satu baris penugasan — isi tab Progres pada tabel tindak lanjut. */
   $SUMBER = \App\Support\RiwayatTindakLanjut::SUMBER;
   $keping = function (?string $kode) use ($jenis) {
       if (! $kode) {
@@ -26,13 +18,8 @@
   };
 @endphp
 
-{{-- Satu kartu seperti tab Bukti dan Kerjakan di sebelahnya (26 Sep): kepala
-     berpita abu, pemilih periode kalau periodenya lebih dari satu, lalu dua
-     bagian bersubjudul — perjalanan berkas periode yang dipilih, dan catatan
-     peristiwanya. Kepalanya cuma menyebut periode yang sedang berjalan dan
-     tanggal peristiwa terbarunya (Hizkia: "hilangkan keterangan peristiwa,
-     sisakan Periode, dan tanggal terbaru"). Periode 1 berarti belum pernah
-     ditolak otoritas terakhirnya — itu keterangan juga. --}}
+{{-- Satu kartu: kepala berpita abu, pemilih periode (bila lebih dari satu), lalu perjalanan
+     berkas dan catatan peristiwanya. --}}
 @php
   $jml = count($kartu['baris']);
   $kini = $kartu['periodeKini'];
@@ -40,30 +27,17 @@
   $pertama = $kartu['baris'][0]['id'] ?? null;
   $idRw = 'rw-'.str_replace('|', '-', $kartu['kunci']);
 @endphp
-<x-panel-kerja class="rw-riwayat tl-rw" data-riwayat-baris="{{ $kartu['kunci'] }}" ikon="Clock" judul="Riwayat"
+<x-panel-kerja class="rw-riwayat tl-rw" data-riwayat-baris="{{ $kartu['kunci'] }}" ikon="Clock" judul="Progres"
   :info="[
-        'Seluruh perjalanan status tindak lanjut satuan kerja ini, satu periode sekaligus, dari yang terbaru ke yang terdahulu.',
-        'Satuan kerja yang memikul dua bentuk tindak lanjut punya dua riwayat — satu di tiap tiket bentuknya.',
-        'Isinya gabungan lima catatan yang dulu berdiri sendiri-sendiri: hasil telaah, riwayat validasi UKI, riwayat verifikasi Inspektorat, pengembalian berkas, dan perubahan status barisnya.',
-        'Satu putusan satu baris: tanda statusnya, suratnya, dan pengembaliannya ditulis bersama.',
-        'Baris Satker dan Setba mencatat pergerakan berkas: kapan satuan kerja mengirim, dan kapan Setba meneruskannya ke UKI atau Inspektorat dengan surat apa.',
-        'Perjalanan periode menunjukkan ke mana saja berkasnya bergerak di periode yang dipilih, dan di mana sekarang. Periode yang sudah ditutup dibuka lewat tombol periodenya.',
-        'Surat CHV tergambar pada tindak lanjut yang diputusnya. Kalau rekomendasinya secara keseluruhan belum memadai, keterangannya ikut tertulis.',
-        'UKI, Itjen, dan SIPTL menilai hal yang berbeda, jadi ketiganya boleh berselisih. Urutan di sinilah yang menjelaskan mana yang berlaku sekarang.',
-        'Yang tercatat nama pengetiknya, bukan nama otoritasnya. Hasil verifikasi Inspektorat sering diketik Setba.',
-        'Baris bertanda biru di paling atas adalah peristiwa terakhir. Catatannya itulah yang tampil di kolom Catatan terakhir.',
-        'Satu periode verifikasi adalah satu putaran penuh: dari satuan kerja, naik sampai gerbang terakhirnya, lalu dinilai.',
-        'Periode ditutup kalau gerbang terakhir itu menolak dan berkasnya dikembalikan — LHP di BPK lewat SIPTL, LHA di verifikasi Inspektorat.',
-    'Penolakan UKI, dan penolakan Inspektorat pada LHP, tidak menutup periode: berkasnya memang mundur, tapi putarannya belum pernah selesai.',
+    'Riwayat pengiriman, pemeriksaan, perubahan status, dan pengembalian untuk satu Satker pada satu bentuk tindak lanjut. Peristiwa terbaru tampil paling atas.',
+    'Jalur periode menunjukkan urutan perpindahan berkas. Warna kotak pemeriksa mengikuti hasil UKI, Inspektorat, atau BPK yang tercatat pada tahap tersebut.',
   ]">
   <x-slot:kalimat><span title="{{ $jenis->melewatiSiptl()
     ? 'Satu periode ditutup kalau BPK menolak lewat SIPTL dan berkasnya dikembalikan ke satuan kerja.'
     : 'Satu periode ditutup kalau Inspektorat menilai belum sesuai dan berkasnya dikembalikan ke satuan kerja.' }}">Periode {{ $kini }}</span>{{ $jml ? ' · terbaru '.Tampil::tgl($kartu['baris'][0]['tanggal']) : '' }}</x-slot:kalimat>
 
-  {{-- Pemilih periode, urut dari yang pertama — cuma ada kalau periodenya
-       lebih dari satu. Kata Hizkia (26 Sep): riwayat yang punya beberapa
-       periode dibuat "informasi terpisah … semacam pilihan untuk melihat atau
-       berpindah". Yang terbuka lebih dulu periode yang sedang berjalan. --}}
+  {{-- Pemilih periode, hanya bila lebih dari satu; periode yang sedang berjalan terbuka lebih
+       dulu. --}}
   @if($berbabak)
     <div class="rw-periode" role="tablist" aria-label="Pilih periode" data-pilih-periode>
       @foreach(collect($kartu['babak'])->sortBy('k') as $g)
@@ -77,9 +51,7 @@
     </div>
   @endif
 
-  {{-- Satu isi per periode, yang terbaru lebih dulu; yang tidak dipilih
-       disembunyikan. Tempat terakhir rutenya diberi warna kalau periodenya
-       yang sedang berjalan. --}}
+  {{-- Satu isi per periode, terbaru dulu. Penanda terakhir hanya di periode yang berjalan. --}}
   @foreach($kartu['babak'] as $g)
     @php $jalur = $g['k'] === $kini ? $kartu['jalur'] : ($g['jalur'] ?: [['tempat' => 'Satker', 'tanggal' => null]]); @endphp
     <div class="rw-periode-isi" id="{{ $idRw }}-isi{{ $g['k'] }}" data-isi-periode="{{ $g['k'] }}"
@@ -87,10 +59,16 @@
       <div class="fb-subkep kerja-subkep"><b>Perjalanan periode {{ $g['k'] }}</b></div>
       <div class="rw-rute" role="group" tabindex="0" aria-label="Perjalanan berkas periode {{ $g['k'] }}, urut dari awal ke akhir">
         @foreach($jalur as $i => $j)
-          @php $akhir = $g['k'] === $kini && $i === count($jalur) - 1; @endphp
+          @php
+            $akhir = $g['k'] === $kini && $i === count($jalur) - 1;
+            $hasilJalur = $j['hasil'] ?? null;
+          @endphp
           <div class="rw-ruas" style="--i: {{ $i }}">
             @if($i > 0)<x-ikon n="ArrowRight" :s="14" class="rw-panah" />@endif
-            <span class="rw-tempat{{ $akhir ? ($j['tempat'] === 'Selesai' ? ' selesai' : ' kini') : '' }}" title="{{ $j['tanggal'] ? Tampil::tgl($j['tanggal']) : 'awal periode' }}">
+            <span @class(['rw-tempat', 'kini' => $akhir, 'selesai' => $j['tempat'] === 'Selesai'])
+              @if($hasilJalur) data-hasil="{{ $hasilJalur['kelas'] }}" data-peristiwa="{{ $hasilJalur['peristiwa'] }}" @endif
+              @if($akhir) aria-current="step" @endif
+              title="{{ $j['tanggal'] ? Tampil::tgl($j['tanggal']) : 'awal periode' }}">
               <b>@if($j['tempat'] === 'Selesai')<x-ikon n="CheckCircle2" :s="13" />@endif{{ $j['tempat'] }}</b>
               <small>{{ $j['tanggal'] ? Tampil::tgl($j['tanggal']) : 'Awal periode' }}</small>
             </span>
@@ -106,7 +84,7 @@
         <p class="kerja-teks kerja-kosong">{{ $jml ? 'Belum ada peristiwa di periode ini.' : 'Belum ada perubahan status yang tercatat untuk tindak lanjut ini.' }}</p>
       @else
       <div class="rw-tabel-wrap">
-    <table class="tabriwayat" aria-label="Riwayat tindak lanjut {{ $kartu['satker']->namaPendek() }}">
+    <table class="tabriwayat" aria-label="Progres tindak lanjut {{ $kartu['satker']->namaPendek() }}">
       <thead>
         <tr>
           <th scope="col" style="width:118px">Tanggal</th>
@@ -132,14 +110,22 @@
               $ke = $b['ke'] ?? '';
               $arti = $ke ? (StatusTindakLanjut::tryFrom($ke)?->pendek() ?? HasilTelaah::tryFrom($ke)?->nama($jenis) ?? '') : '';
               $catatan = (string) ($b['catatan'] ?? '');
+              /* Jam pencatatan (24 jam). Bila dicatat pada hari lain dari tanggal peristiwa,
+                 tanggal pencatatannya ikut disebut. */
+              $dicatat = ! empty($b['pelaku']['waktu']) ? \Illuminate\Support\Carbon::parse($b['pelaku']['waktu']) : null;
+              $hariSama = $dicatat && $dicatat->toDateString() === (string) $b['tanggal'];
             @endphp
             <tr @class(['terkini' => $terkini])>
               <td class="rw-tanggal">
-                <time datetime="{{ $b['tanggal'] }}">{{ Tampil::tgl($b['tanggal']) }}</time>
+                <time datetime="{{ $hariSama ? $dicatat->format('Y-m-d\TH:i') : $b['tanggal'] }}">{{ Tampil::tgl($b['tanggal']) }}</time>
+                @if($hariSama)
+                  <span class="rw-pukul">{{ $dicatat->format('H.i') }} WIB</span>
+                @elseif($dicatat)
+                  <span class="rw-dicatat">dicatat <time datetime="{{ $dicatat->format('Y-m-d\TH:i') }}">{{ Tampil::tglJam($dicatat) }} WIB</time></span>
+                @endif
                 @if($terkini)<span class="rw-terbaru">Terbaru</span>@endif
               </td>
-              {{-- Kelas rw-sel-* menandai kolomnya: di panel yang sempit tiap
-                   peristiwa jadi blok bertumpuk (22 Sep). --}}
+              {{-- Kelas rw-sel-*: di panel sempit tiap peristiwa jadi blok bertumpuk. --}}
               <td class="rw-sumber"><span class="asal {{ $kelas }}">{{ $namaSumber }}</span></td>
               <td class="rw-sel-peristiwa">
                 <div class="rw-peristiwa">
@@ -182,8 +168,20 @@
                   <div style="font-size:12.5px;margin-top:3px">Keterangan Setba: {{ $b['kembali']['keteranganSetba'] }}</div>
                 @endif
                 @if(! empty($b['catatanRek']))<div class="lbl" style="margin-top:3px">{{ $b['catatanRek'] }}</div>@endif
-                @if(! empty($b['oleh']) || ($b['lingkup'] ?? '') === 'rek')
-                  <div class="rw-pencatat">{{ collect([! empty($b['oleh']) ? 'Dicatat oleh '.$b['oleh'] : '', ($b['lingkup'] ?? '') === 'rek' ? 'berlaku untuk seluruh rekomendasi' : ''])->filter()->join(' · ') }}</div>
+                {{-- Pencatatnya; jamnya di kolom Tanggal. --}}
+                @php
+                  $pelaku = $b['pelaku'] ?? null;
+                  $namaPelaku = $pelaku['nama'] ?? null;
+                  $peranPelaku = ($pelaku['peran'] ?? '') ?: ($b['oleh'] ?? '');
+                  $berlakuRek = ($b['lingkup'] ?? '') === 'rek';
+                @endphp
+                @if($namaPelaku || $peranPelaku || $berlakuRek)
+                  <div class="rw-pencatat">
+                    @if($namaPelaku || $peranPelaku)
+                      <span class="rw-oleh">Oleh @if($namaPelaku)<b class="rw-pelaku">{{ $namaPelaku }}</b>{{ $peranPelaku ? ' ('.$peranPelaku.')' : '' }}@else{{ $peranPelaku }}@endif</span>
+                    @endif
+                    @if($berlakuRek)<span>{{ ($namaPelaku || $peranPelaku) ? ' · ' : '' }}berlaku untuk seluruh rekomendasi</span>@endif
+                  </div>
                 @endif
               </td>
               @if($kartu['adaSurat'])

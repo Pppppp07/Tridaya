@@ -7,22 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Mengosongkan data contoh dari basis data.
- *
- * Dipakai sebelum aplikasi diisi data sungguhan, atau sebelum diserahkan.
- * Dibuat sebagai perintah, bukan skrip sekali pakai: pengosongannya akan
- * diulang tiap kali data contoh dibuat lagi untuk demo, dan skrip yang
- * ditulis ulang tiap kali cepat atau lambat melewatkan satu tabel.
- *
- * Dua tingkat, dan bedanya penting:
- *
- *   bawaan   data transaksi saja — laporan, temuan, rekomendasi, berkas, dan
- *            seluruh jejaknya. Data master dan akun tetap, jadi aplikasinya
- *            langsung bisa dipakai mencatat laporan sungguhan.
- *
- *   --semua  data master dan akun ikut dikosongkan. Sesudah ini aplikasinya
- *            TIDAK BISA DIMASUKI sampai disemai ulang — tidak ada satu pun
- *            akun yang tersisa.
+ * Mengosongkan data contoh. Bawaan: data transaksi saja (master dan akun tetap). --semua: master
+ * dan akun ikut — aplikasi tidak bisa dimasuki sampai disemai ulang.
  */
 class KosongkanData extends Command
 {
@@ -32,14 +18,7 @@ class KosongkanData extends Command
 
     protected $description = 'Mengosongkan data contoh dari basis data';
 
-    /**
-     * Urutannya anak lebih dulu, induknya belakangan.
-     *
-     * Kunci asing memang dimatikan sebentar saat mengosongkan, tapi urutannya
-     * tetap ditulis benar: kalau suatu saat penjaganya tidak bisa dimatikan —
-     * hak akses basis data yang lebih ketat, misalnya — perintah ini tetap
-     * jalan, bukan gagal di tengah dengan separuh tabel sudah kosong.
-     */
+    /** Anak dulu, induk belakangan — tetap benar walau kunci asing tidak bisa dimatikan. */
     private const TRANSAKSI = [
         'item_permintaan_lampiran',
         'item_permintaans',
@@ -65,9 +44,10 @@ class KosongkanData extends Command
         'temuan_satker',
         'temuans',
         'laporans',
-        /* Draf formulir Catat laporan baru menunjuk akun, bukan laporan — tapi
-           isinya data contoh juga, jadi ikut dikosongkan. */
+        /* Draf Catat laporan baru ikut dikosongkan. */
         'draf_laporans',
+        /* Draf impor data historis juga; file upload-nya tetap di storage. */
+        'draf_historis',
     ];
 
     /** Akun lebih dulu: ia menunjuk satuan kerja. */
@@ -86,7 +66,6 @@ class KosongkanData extends Command
         'jobs',
         'job_batches',
         'failed_jobs',
-        'password_reset_tokens',
     ];
 
     public function handle(): int
@@ -99,9 +78,7 @@ class KosongkanData extends Command
             self::SISTEM,
         );
 
-        /* Yang tidak ada dilewati, bukan menggagalkan seluruhnya: daftar ini
-           ikut berubah saat tabel baru ditambahkan, dan basis data yang
-           migrasinya tertinggal tetap boleh dikosongkan. */
+        /* Tabel yang tidak ada dilewati, tidak menggagalkan seluruhnya. */
         $tabel = array_values(array_filter($tabel, fn ($t) => Schema::hasTable($t)));
 
         $jumlah = [];
@@ -143,9 +120,7 @@ class KosongkanData extends Command
             return self::SUCCESS;
         }
 
-        /* truncate, bukan delete: nomor urutnya ikut kembali ke satu. Basis
-           data yang baru dikosongkan tapi laporan pertamanya bernomor 21
-           membuat orang mengira ada dua puluh yang hilang. */
+        /* truncate, bukan delete: nomor urut kembali ke satu. */
         Schema::disableForeignKeyConstraints();
         try {
             foreach ($tabel as $t) {

@@ -10,11 +10,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Keamanan masuk, sesi, cache, dan cookie (27 Sep). Kata Hizkia: "tidak kalah
- * penting optimalisasi keamanan terutama pada sistem login, session, cache,
- * cookie".
- */
+/** Keamanan masuk, sesi, cache, dan cookie. */
 class KeamananMasukTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -94,13 +90,11 @@ class KeamananMasukTest extends TestCase
     }
 
     /**
-     * Halaman masuk sungguhan bersih seperti saat dipasang; akun contoh, email,
-     * dan password selama pengembangan pindah ke Login developer (28 Sep).
-     * Keduanya padam sendiri di produksi.
+     * Halaman masuk sungguhan bersih; akun contoh dan password di Login developer, padam di
+     * produksi.
      */
     public function test_akun_contoh_dan_formulir_password_bisa_dipadamkan_untuk_produksi(): void
     {
-        config(['simtlhp.sso.driver' => 'simulasi']);
         $this->get(route('masuk'))->assertOk()
             ->assertDontSee('Akun contoh')->assertDontSee('rahasia123')->assertDontSee('data-form-masuk', false)
             ->assertSee('Masuk dengan SSO PU')
@@ -126,10 +120,8 @@ class KeamananMasukTest extends TestCase
     }
 
     /**
-     * Halaman masuk yang ditata ulang (28 Sep): akun contoh dikelompokkan,
-     * isian password punya mata dan peringatan Caps Lock, latarnya hiasan
-     * yang dilewati pembaca layar — dan skrip sebarisnya (daftar akun contoh
-     * yang terlipat) tetap membawa nonce CSP.
+     * Halaman masuk: akun contoh berkelompok, mata password, peringatan Caps Lock, latar hiasan
+     * dilewati pembaca layar.
      */
     public function test_halaman_masuk_tertata_dan_skrip_sebarisnya_bernonce(): void
     {
@@ -177,7 +169,8 @@ class KeamananMasukTest extends TestCase
         $this->assertTrue(LinkAman::sah('https://drive.pu.go.id/berkas/1'));
         $this->assertTrue(LinkAman::sah('http://intranet.pu.go.id/a?b=1'));
         foreach (['javascript:alert(1)', 'JAVASCRIPT:alert(1)', 'data:text/html,<b>x</b>', 'vbscript:x', '//contoh.test/a',
-            'drive.pu.go.id/berkas', "https://a.test/\njavascript:x", 'https:///tanpa-host'] as $buruk) {
+            'drive.pu.go.id/berkas', "https://a.test/\njavascript:x", 'https:///tanpa-host',
+            'https://drive.pu.go.id@lain.test/berkas', 'https://user:password@a.test/berkas'] as $buruk) {
             $this->assertFalse(LinkAman::sah($buruk), $buruk);
         }
 

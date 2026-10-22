@@ -8,9 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Berkas yang sudah dikirim tidak bisa diubah sendiri — orang lain
-        // mungkin sudah membacanya. Yang memutuskan adalah pemegang berkas
-        // saat ini, ditentukan dari posisinya.
+        // Berkas yang sudah dikirim tidak bisa diubah sendiri; yang memutuskan pemegang berkas saat
+        // ini.
         Schema::create('permintaan_ubahs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rekomendasi_id')->constrained('rekomendasis')->cascadeOnDelete();

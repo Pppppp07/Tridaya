@@ -13,30 +13,20 @@ use App\Models\RiwayatStatus;
 use App\Models\Sasaran;
 use App\Models\Telaah;
 use App\Models\Verifikasi;
+use App\Support\Aktivitas;
 use App\Support\Jejak;
+use App\Support\KebijakanBukti;
 use App\Support\Pemberitahuan;
 use App\Support\Tampil;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Putusan UKI atau Inspektorat atas satu baris — padanan `putusPeriksa`.
- *
- * `otoritas` yang berwenang menurut suratnya; `pengetik` yang benar-benar
- * menekan tombolnya. Untuk Inspektorat keduanya bisa berbeda: meja
- * Inspektorat boleh dikerjakan Setba, yang menyalin isi surat CHV. Riwayat
- * menyebut pengetiknya — kalau tertulis "Inspektorat" padahal Setba yang
- * mengetik, catatannya tidak bisa dipakai sebagai bukti.
- *
- * Belum memadai TIDAK memulangkan berkas ke satuan kerja: ia ke meja
- * pemberkasan ulang Setba, dan Setba yang mengirimkannya ulang.
+ * Putusan UKI atau Inspektorat atas satu baris. `otoritas` = yang berwenang menurut surat,
+ * `pengetik` = yang menekan tombol (meja Inspektorat boleh dikerjakan Setba). Belum memadai ke meja
+ * pemberkasan ulang Setba, tidak langsung ke satuan kerja.
  */
 class PutusPeriksa
 {
-    /**
-     * @param  array{catatan:?string, nomor:?string, tglSurat:?string, perihal:?string, berkas:?string,
-     *               link:?string, batasWaktu:?string, dokumenDiminta:list<string>, nomorLhv:?string,
-     *               tglLhv:?string, tanda:list<array{satker_id:int, hasil:?string, catatan:?string}>}  $isi
-     */
     public static function jalankan(Rekomendasi $r, Sasaran $s, PeranPengguna $peran, HasilTelaah $hasil, array $isi): void
     {
         $uki = $peran === PeranPengguna::UKI;
@@ -66,6 +56,7 @@ class PutusPeriksa
 
         DB::transaction(function () use ($r, $s, $uki, $otoritas, $pengetik, $dari, $ke, $hasil, $isi, $catatan,
             $dokumen, $bersurat, $idAksi, $teks, $tanda, $kenaSini, $jenis, $kata) {
+            $s->kunciSejak();
 
             /* ---- tanda per satuan kerja, lalu penolakannya ---- */
             $baris = $r->sasaran()->with('satker')->get();
@@ -84,7 +75,7 @@ class PutusPeriksa
                     if ($uki) {
                         $x->update(['hasil_uki' => $d['hasil']]);
                     } else {
-                        $x->update(['hasil' => $d['hasil'], 'catatan' => $catatanTanda ?: $x->catatan]);
+                        $x->forceFill(['hasil' => $d['hasil'], 'nilai_diakui_itjen' => null, 'catatan' => $catatanTanda ?: $x->catatan])->save();
                     }
                     Jejak::status($x, $uki ? RiwayatStatus::UKI : RiwayatStatus::ITJEN, $lama, $d['hasil'],
                         $pengetik, $catatanJejak, null, $idAksi, null, paksa: true);
@@ -92,24 +83,40 @@ class PutusPeriksa
             }
 
             if ($hasil === HasilTelaah::BM) {
+                $idDitolak = array_map('intval', $isi['buktiTolak'] ?? []);
+                /* Penolakan melekat pada arsip; pengiriman ulang membuat lampiran baru. */
+                foreach (Lampiran::where('sasaran_id', $s->id)->whereIn('id', $isi['buktiTolak'] ?? [])
+                    ->whereNull('ditolak_pada')->with('butir.lampiran')->get() as $b) {
+                    $b->update(['ditolak_pada' => Aktivitas::waktuKini(), 'ditolak_oleh' => auth()->id(),
+                        'alasan_penolakan' => $catatan]);
+                    foreach ($b->butir as $item) {
+                        $adaPengganti = $item->lampiran->contains(fn ($l) => ! in_array($l->id, $idDitolak, true) && ! $l->ditolak_pada && KebijakanBukti::sah($l->link));
+                        if (! $adaPengganti) {
+                            $item->update(['terpenuhi' => false, 'dipenuhi_pada' => null]);
+                        }
+                    }
+                    Aktivitas::catat('bukti.ditolak', 'Bukti perlu diganti: '.$b->labelTampil(), [
+                        'subjek' => $r, 'rincian' => ['lampiran_id' => $b->id, 'sasaran_id' => $s->id,
+                            'alasan' => $catatan, 'sebelum' => ['aktif' => true], 'sesudah' => ['aktif' => false]],
+                    ]);
+                }
                 foreach ($baris as $x) {
                     $x->refresh();
                     if (in_array($x->satker_id, $kenaSini, true) && $x->tindakan_id === $s->tindakan_id && $x->pos() === $dari) {
                         $x->update([
-                            'kembali_dari'     => $otoritas,
+                            'kembali_dari' => $otoritas,
                             'alasan_perbaikan' => $catatan ?: null,
-                            'batas_perbaikan'  => ! $uki && filled($isi['batasWaktu'] ?? null) ? $isi['batasWaktu'] : null,
+                            'batas_perbaikan' => ! $uki && filled($isi['batasWaktu'] ?? null) ? $isi['batasWaktu'] : null,
                             'keterangan_setba' => null,
-                            'dokumen_diminta'  => $dokumen ?: null,
+                            'dokumen_diminta' => $dokumen ?: null,
                         ]);
                     }
                 }
             }
 
-            /* ---- surat hasil ----
-               Satu CHV memutus SELURUH rekomendasi: memadai hanya kalau seluruh
-               satuan kerjanya memadai. Surat validasi UKI milik baris yang
-               divalidasi. */
+            /* ---- Surat hasil ----
+               Satu CHV memutus seluruh rekomendasi: memadai hanya bila seluruh satuan kerjanya
+               memadai. Surat validasi UKI milik baris yang divalidasi. */
             $r->unsetRelation('sasaran');
             $semuaMemadai = $r->sasaran()->get()->every(fn ($x) => $x->hasil === HasilTelaah::M);
             $hasilSurat = $uki ? $hasil : ($hasil === HasilTelaah::M && $semuaMemadai ? HasilTelaah::M : HasilTelaah::BM);
@@ -121,12 +128,12 @@ class PutusPeriksa
             $berkas = filled($isi['berkas'] ?? null)
                 ? Lampiran::create([
                     'rekomendasi_id' => $r->id,
-                    'nama_asli'      => trim($isi['berkas']),
-                    'label_jenis'    => 'Dokumen perbaikan',
-                    'link'         => ($isi['link'] ?? '') ?: null,
-                    'label_oleh'     => $otoritas,
-                    'diunggah_oleh'  => auth()->id(),
-                    'diunggah_pada'  => Jejak::tanggal(),
+                    'nama_asli' => trim($isi['berkas']),
+                    'label_jenis' => 'Dokumen perbaikan',
+                    'link' => ($isi['link'] ?? '') ?: null,
+                    'label_oleh' => $otoritas,
+                    'diunggah_oleh' => auth()->id(),
+                    'diunggah_pada' => Jejak::tanggal(),
                 ])
                 : null;
 
@@ -134,39 +141,37 @@ class PutusPeriksa
                 $surat = Verifikasi::firstOrCreate(
                     ['jenis' => $uki ? Verifikasi::LHV : Verifikasi::CHV, 'nomor_surat' => trim($isi['nomor'])],
                     [
-                        'tgl_surat'    => $isi['tglSurat'],
-                        'perihal'      => ($isi['perihal'] ?? '') ?: null,
-                        'pejabat'      => $otoritas,
-                        'nomor_lhv'    => ! $uki ? (($isi['nomorLhv'] ?? '') ?: null) : null,
-                        'tgl_lhv'      => ! $uki ? (($isi['tglLhv'] ?? '') ?: null) : null,
-                        'lampiran_id'  => $berkas?->id,
+                        'tgl_surat' => $isi['tglSurat'],
+                        'perihal' => ($isi['perihal'] ?? '') ?: null,
+                        'pejabat' => $otoritas,
+                        'nomor_lhv' => ! $uki ? (($isi['nomorLhv'] ?? '') ?: null) : null,
+                        'tgl_lhv' => ! $uki ? (($isi['tglLhv'] ?? '') ?: null) : null,
+                        'lampiran_id' => $berkas?->id,
                         'dicatat_oleh' => auth()->id(),
                     ],
                 );
                 KeputusanVerifikasi::create([
-                    'verifikasi_id'  => $surat->id,
+                    'verifikasi_id' => $surat->id,
                     'rekomendasi_id' => $r->id,
-                    'sasaran_id'     => $uki ? $s->id : null,
-                    'hasil'          => $hasilSurat,
-                    'tenggat_baru'   => ! $uki && $hasil === HasilTelaah::BM ? (($isi['batasWaktu'] ?? '') ?: null) : null,
-                    'catatan'        => $catatanSurat ?: null,
-                    /* Putusan diambil dari dalam satu baris: catatannya milik baris
-                       itu, bukan catatan umum surat — satuan kerja lain tidak boleh
-                       membacanya. */
-                    'catatan_umum'   => null,
+                    'sasaran_id' => $uki ? $s->id : null,
+                    'hasil' => $hasilSurat,
+                    'tenggat_baru' => ! $uki && $hasil === HasilTelaah::BM ? (($isi['batasWaktu'] ?? '') ?: null) : null,
+                    'catatan' => $catatanSurat ?: null,
+                    /* Catatan putusan milik baris itu; satuan kerja lain tidak boleh membacanya. */
+                    'catatan_umum' => null,
                     'catatan_satker' => collect($catatan !== '' ? [['satker_id' => $s->satker_id, 'catatan' => $catatan]] : [])
                         ->merge($tanda->filter(fn ($d) => filled($d['catatan'] ?? null))
                             ->map(fn ($d) => ['satker_id' => (int) $d['satker_id'], 'catatan' => trim($d['catatan'])]))
                         ->values()->all(),
-                    'aksi_id'        => $idAksi,
+                    'aksi_id' => $idAksi,
                 ]);
             }
 
             /* ---- berkasnya bergerak ---- */
             Jejak::geser($r, $dari, $ke, $s->satker_id, $s->tindakan_id);
 
-            /* LHA berhenti di Inspektorat, jadi putusan suratnya sekaligus status
-               akhirnya. LHP masih menunggu BPK — statusnya tidak disentuh. */
+            /* LHA berhenti di Inspektorat, jadi putusan suratnya sekaligus status akhir. Status
+               LHP menunggu BPK. */
             $naik = ! $uki && $hasil === HasilTelaah::M && $r->semuaTuntas();
             if (! $uki && ! $jenis->melewatiSiptl()) {
                 if ($hasilSurat === HasilTelaah::BM) {
@@ -178,34 +183,35 @@ class PutusPeriksa
 
             Telaah::create([
                 'rekomendasi_id' => $r->id,
-                'sasaran_id'     => $s->id,
-                'tanggal'        => Jejak::tanggal(),
-                'oleh_id'        => auth()->id(),
-                'label_oleh'     => $otoritas,
+                'sasaran_id' => $s->id,
+                'tanggal' => Jejak::tanggal(),
+                'oleh_id' => auth()->id(),
+                'label_oleh' => $otoritas,
                 'label_pencatat' => $pengetik,
-                'hasil'          => $hasil,
-                'catatan'        => $catatan,
-                'nomor_surat'    => ($isi['nomor'] ?? '') ?: null,
-                'tgl_surat'      => ($isi['tglSurat'] ?? '') ?: null,
-                'perihal'        => ($isi['perihal'] ?? '') ?: null,
-                'batas_waktu'    => ($isi['batasWaktu'] ?? '') ?: null,
-                'dokumen'        => $dokumen ?: null,
-                'lampiran_id'    => $berkas?->id,
-                'aksi_id'        => $idAksi,
+                'hasil' => $hasil,
+                'catatan' => $catatan,
+                'nomor_surat' => ($isi['nomor'] ?? '') ?: null,
+                'tgl_surat' => ($isi['tglSurat'] ?? '') ?: null,
+                'perihal' => ($isi['perihal'] ?? '') ?: null,
+                'batas_waktu' => ($isi['batasWaktu'] ?? '') ?: null,
+                'dokumen' => $dokumen ?: null,
+                'lampiran_id' => $berkas?->id,
+                'aksi_id' => $idAksi,
             ]);
 
             Jejak::riwayat($r, $pengetik, $teks, ($isi['tglSurat'] ?? '') ?: null);
 
-            /* Pemberitahuannya milik satuan kerja yang diputus. Penolakan diberitahukan ke
-               satuan kerja cukup status dan tempatnya: alasan dan dokumennya
-               sampai saat Setba mengirim ulang. */
-            $untuk = $hasil === HasilTelaah::BM ? [PeranPengguna::SETBA] : [PeranPengguna::SETBA, PeranPengguna::SATKER];
+            /* Pemberitahuan penolakan ke satuan kerja cukup status dan tempatnya; alasan dan
+               dokumen sampai saat Setba mengirim ulang. Pimpinan diberi tahu keputusannya, sama
+               dengan satuan kerjanya. */
+            $untuk = $hasil === HasilTelaah::BM ? [PeranPengguna::SETBA]
+                : [PeranPengguna::SETBA, PeranPengguna::SATKER, PeranPengguna::PIMPINAN];
             Pemberitahuan::tulis($r, $teks, $untuk, 'r-riwayat', $kenaSini, $s->tindakan);
             if ($hasil === HasilTelaah::BM) {
                 Pemberitahuan::tulis($r,
                     ($uki ? 'Validasi UKI' : 'Verifikasi Inspektorat').": {$kata} — berkas di Setba untuk pemberkasan ulang. "
                     .'Alasan dan dokumen yang diminta menyusul saat Setba mengirim ulang.',
-                    [PeranPengguna::SATKER], 'r-riwayat', $kenaSini, $s->tindakan);
+                    [PeranPengguna::SATKER, PeranPengguna::PIMPINAN], 'r-riwayat', $kenaSini, $s->tindakan);
             }
         });
     }

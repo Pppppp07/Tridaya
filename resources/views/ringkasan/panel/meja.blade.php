@@ -1,6 +1,8 @@
-{{-- Posisi berkas — padanan `panelMeja`: di meja siapa tiap tindak lanjut
-     sedang menunggu. Klik batangnya memfilter meja itu. --}}
+{{-- Posisi berkas: di meja siapa tiap tindak lanjut menunggu, satu warna per tahap (sama dengan
+     kartu Proses tindak lanjut). Klik batang memfilter meja itu. --}}
 @php
+  use App\Support\Dasbor;
+
   $maksMeja = max(1, ...array_column($d['meja'], 'n'));
   $puncakMeja = null;
   foreach ($d['meja'] as $m) {
@@ -11,7 +13,7 @@
   $nMeja = array_sum(array_column($d['meja'], 'n'));
   $tabelOn = in_array('meja', $k['tabel'], true);
 @endphp
-<x-dsb-panel id="dsb-p-meja" :kelas="$kelas" judul="Posisi berkas" info="Di meja siapa tiap tindak lanjut sedang menunggu."
+<x-dsb-panel id="dsb-p-meja" :kelas="$kelas" judul="Posisi berkas" info="Jumlah tindak lanjut pada tiap tahap pemrosesan. Klik tahap untuk memfilter data; posisi berkas terpisah dari hasil pemeriksaan."
   :kosong="! $nMeja ? 'Tidak ada tindak lanjut pada pilihan ini.' : null"
   kunci-tabel="meja" :tabel="$tabelOn">
   <x-slot:isiTabel>
@@ -24,13 +26,12 @@
     <div class="plot" style="--n:{{ count($d['meja']) }}">
       @foreach($d['meja'] as $m)
         @php $pilih = in_array($m['k'], $f['meja'], true); @endphp
-        {{-- 84%, bukan 100%: batang tertinggi masih menyisakan tempat untuk
-             angka dan tanda "terbanyak" di atasnya. --}}
+        {{-- 84%: batang tertinggi masih menyisakan tempat untuk angka di atasnya. --}}
         <button type="submit" name="ubah" value="{{ 'meja:'.$m['k'].'@dsb-p-meja' }}" aria-pressed="{{ $pilih ? 'true' : 'false' }}"
-          class="dsb-pita{{ $m['k'] === 'selesai' ? ' selesai' : '' }}{{ $f['meja'] && ! $pilih ? ' redup' : '' }}"
-          style="--h:{{ $m['n'] / $maksMeja * 84 }}%" aria-label="{{ $m['nama'] }}: {{ $m['n'] }} tindak lanjut"
+          class="dsb-pita{{ $f['meja'] && ! $pilih ? ' redup' : '' }}"
+          style="--h:{{ $m['n'] / $maksMeja * 84 }}%;--w:{{ Dasbor::WARNA_MEJA[$m['k']] }}" aria-label="{{ $m['nama'] }}: {{ $m['n'] }} tindak lanjut"
           data-petunjuk="{{ $petunjuk(['judul' => $m['nama'],
-            'baris' => [['warna' => $m['k'] === 'selesai' ? $W['M'] : $W['tunggu'], 'nilai' => $m['n'], 'nama' => 'tindak lanjut']],
+            'baris' => [['warna' => Dasbor::WARNA_MEJA[$m['k']], 'nilai' => $m['n'], 'nama' => 'tindak lanjut']],
             'ket' => $persen($m['n'], $nMeja).'% dari seluruh tindak lanjut']) }}">
           <span class="batang"></span>
           @if($puncakMeja && $puncakMeja['k'] === $m['k'] && $m['n'] > 0)<span class="tag">terbanyak</span>@endif
@@ -44,9 +45,5 @@
         <span><span class="pjg">{{ $m['nama'] }}</span><span class="pdk">{{ $m['pendek'] }}</span></span>
       @endforeach
     </div>
-  </div>
-  <div class="dsb-legenda">
-    <span><i style="background:{{ $W['tunggu'] }}"></i>Menunggu</span>
-    <span><i style="background:{{ $W['M'] }}"></i>Selesai</span>
   </div>
 </x-dsb-panel>

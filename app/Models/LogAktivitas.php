@@ -7,10 +7,8 @@ use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Satu baris log aktivitas (27 Sep). Hanya bertambah — ditulis lewat
- * App\Support\Aktivitas, tidak pernah diubah. Yang terlalu tua dipangkas
- * `php artisan model:prune` (terjadwal harian, routes/console.php) supaya
- * tabelnya tidak tumbuh tanpa batas di server.
+ * Log aktivitas: hanya bertambah, ditulis lewat App\Support\Aktivitas. Yang terlalu tua dipangkas
+ * `model:prune` (terjadwal harian).
  */
 class LogAktivitas extends Model
 {

@@ -1,7 +1,6 @@
 @props(['kepala', 'baris', 'kaki' => null])
 
-{{-- Tampilan tabel sebuah panel — padanan `Tabel` di DasborUji.jsx.
-     $kepala: [['nama' => …, 'num' => bool], …]; $baris/$kaki: nilai per kolom. --}}
+{{-- $kepala: [['nama', 'num' => bool], …]; $baris/$kaki: nilai per kolom. --}}
 <div class="dsb-tw">
   <table class="dsb-tabel">
     <thead>

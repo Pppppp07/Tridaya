@@ -3,18 +3,11 @@
 @use('App\Enums\PeranPengguna', 'P')
 @use('App\Support\Rangka')
 @section('isi')
-{{-- Halaman masuk (ditata ulang 28 Sep). Dua kolom di layar lebar — kiri
-     pengenal aplikasinya, kanan kartu masuk — dan satu kolom di layar sempit.
-     Latarnya bergerak pelan (x-latar-masuk). Rupanya di simtlhp-tambahan.css
-     ("halaman masuk"); kelakuannya — mata password, peringatan Caps Lock,
-     tombol yang menunggu, akun contoh — di simtlhp.js (pasangMasuk). Semua
-     tetap bekerja tanpa skrip, kecuali klik akun contoh.
-
-     Satu tampilan untuk dua halaman (28 Sep, permintaan Hizkia):
-     - /masuk — halaman masuk sungguhan, bersih seperti saat dipasang, tempat
-       SSO. Selama pengembangan ada kartu "Login developer" di bawahnya.
-     - /masuk/pengembang ($pengembang) — Login developer: SSO simulasi, email
-       dan password, dan akun contoh. Tidak ditemukan di produksi. --}}
+{{-- Halaman masuk: dua kolom di layar lebar, satu di layar sempit. Gaya di
+     simtlhp-tambahan.css, perilaku di simtlhp.js (pasangMasuk). Semua jalan tanpa skrip kecuali
+     klik akun contoh.
+     /masuk = halaman sungguhan (SSO); /masuk/pengembang = Login developer, tidak ada di
+     produksi. --}}
 @php
   $gagal = $errors->any();
   /* Sesudah gagal, email-nya sudah terisi — password-nya yang diketik ulang. */
@@ -51,23 +44,23 @@
         <p class="sub">Masuk dengan akun contoh untuk mencoba setiap peran. Halaman ini tidak tersedia di versi resmi.</p>
       @else
         <h1>Masuk</h1>
-        <p class="sub">Silakan masuk untuk melanjutkan.</p>
+        <p class="sub">{{ $dwaradaya ? 'Login ke Dwaradaya, lalu pilih '.config('app.display_name').' di menu aplikasi. Anda akan masuk sesuai akses akun Anda.' : 'Silakan masuk untuk melanjutkan.' }}</p>
       @endif
       @if($gagal)
         <div class="pesan bad msk-error" role="alert"><x-ikon n="AlertTriangle" :s="16" /><span>{{ $errors->first() }}</span></div>
+      @elseif($sesiBerakhir)
+        <div class="pesan warn msk-error" role="status"><x-ikon n="Clock" :s="16" /><span>Sesi berakhir karena {{ \App\Support\Sesi::menitDiam() }} menit tanpa aktivitas. Silakan masuk lagi.</span></div>
+      @elseif($ssoBelum)
+        <div class="pesan msk-error" role="status"><x-ikon n="ShieldCheck" :s="16" /><span>Masuk dengan {{ $sso }} sedang disiapkan.@if($password) Untuk sementara, masuk dengan email dan password.@endif</span></div>
       @endif
 
-      {{-- Masuk lewat SSO eHRM (27 Sep) — tombol utama begitu penyedianya
-           disiapkan (SIMTLHP_SSO). Hanya pegawai yang terdaftar di Data master
-           yang diterima; yang lain mendarat di halaman Akses dibatasi. --}}
-      @if($sso)
-        <a class="btn btn-p msk-tombol" href="{{ route('sso.arahkan') }}" data-tunggu="Menghubungkan…">
-          <x-ikon n="ShieldCheck" :s="17" class="msk-ikon" />
-          <x-ikon n="LoaderCircle" :s="17" class="msk-putar" />
-          <span class="teks">Masuk dengan {{ $sso }}</span>
-        </a>
-        @if($password)<div class="msk-atau"><span>atau dengan email dan password</span></div>@endif
-      @endif
+      {{-- Tombol SSO (SIMTLHP_SSO). Hanya pegawai terdaftar yang diterima. --}}
+      <a class="btn btn-p msk-tombol" href="{{ route('sso.arahkan') }}" data-tunggu="Menghubungkan…">
+        <x-ikon n="ShieldCheck" :s="17" class="msk-ikon" />
+        <x-ikon n="LoaderCircle" :s="17" class="msk-putar" />
+        <span class="teks">Masuk dengan {{ $sso }}</span>
+      </a>
+      @if($password)<div class="msk-atau"><span>atau dengan email dan password</span></div>@endif
 
       @if($password)
         <form method="post" action="{{ route('masuk') }}" data-form-masuk>
@@ -95,16 +88,11 @@
             </span>
             <p class="msk-caps" id="caps-password" role="status" hidden><x-ikon n="AlertTriangle" :s="14" /> Caps Lock aktif</p>
           </div>
-          <button class="btn msk-tombol {{ $sso ? 'kedua' : 'btn-p' }}" type="submit" data-tunggu="Memeriksa…">
+          <button class="btn msk-tombol kedua" type="submit" data-tunggu="Memeriksa…">
             <x-ikon n="LoaderCircle" :s="17" class="msk-putar" />
             <span class="teks">Masuk</span>
           </button>
         </form>
-      @endif
-
-      @if(! $sso && ! $password)
-        {{-- Pemasangan tanpa SSO dan tanpa password: belum ada pintu. --}}
-        <div class="pesan warn" role="status"><x-ikon n="AlertTriangle" :s="16" /><span>Masuk lewat SSO belum dikonfigurasi di server ini.</span></div>
       @endif
 
       @if($pengembang)
@@ -112,13 +100,12 @@
       @else
         <p class="msk-catatan">
           <x-ikon n="Lock" :s="14" />
-          <span>Hanya untuk petugas yang didaftarkan Sekretariat Badan. Belum punya akses? Hubungi Setba.</span>
+          <span>Hanya untuk user yang sudah diberi akses. Belum punya akses? Hubungi Admin DTI.</span>
         </p>
       @endif
     </div>
 
-    {{-- Pintu ke Login developer — hanya selama pengembangan. Bingkai
-         putus-putus: bukan bagian aplikasi yang sungguhan. --}}
+    {{-- Pintu ke Login developer — hanya selama pengembangan. --}}
     @if(! $pengembang && $adaPengembang)
       <a class="msk-pengembang" href="{{ route('masuk.pengembang') }}">
         <span class="ic" aria-hidden="true"><x-ikon n="Code" :s="17" /></span>
@@ -130,10 +117,8 @@
       </a>
     @endif
 
-    {{-- Padanan pemilih "Masuk sebagai" di prototipe. Hanya ada pada
-         pemasangan contoh — padam sendiri di produksi
-         (config simtlhp.akun_demo). Terbuka atau terlipatnya diingat
-         tiap browser. --}}
+    {{-- Akun contoh — hanya di pemasangan contoh (config simtlhp.akun_demo).
+         Terbuka/terlipatnya diingat tiap browser. --}}
     @if($akun->isNotEmpty())
       @php
         [$unit, $pusat] = $akun->partition(fn ($a) => $a->peran === P::SATKER);
@@ -157,7 +142,7 @@
                   @php $p = Rangka::pengguna($a); @endphp
                   <button type="button" data-email="{{ $a->email }}" title="{{ $p['peran'] }} · {{ $a->email }}">
                     <span class="rupa" aria-hidden="true">{{ $p['rupa'] }}</span>
-                    <span class="t"><b>{{ $p['nama'] }}</b><small>{{ $a->name }}</small></span>
+                    <span class="t"><b>{{ $a->peran->pendek() }}</b><small>{{ $a->name }}</small></span>
                   </button>
                 @endforeach
               </div>
@@ -165,8 +150,7 @@
           @endif
           @if($unit->isNotEmpty())
             <div class="msk-grup">
-              {{-- Akun satuan kerja milik penanggung jawabnya (Data master) —
-                   unit kerjanya di baris pertama, orangnya di baris kedua. --}}
+              {{-- Akun satuan kerja: unit kerja di baris pertama, orangnya di baris kedua. --}}
               <span class="lbl">Penanggung jawab unit kerja</span>
               <div class="msk-akun gulir">
                 @foreach($unit as $a)
@@ -180,8 +164,7 @@
           @endif
         </div>
       </details>
-      {{-- Dilipat sebelum tergambar bila terakhir kali dilipat di browser
-           ini — tanpa kedipan daftar yang terbuka lalu menutup. --}}
+      {{-- Dilipat sebelum tergambar bila terakhir dilipat di browser ini (tanpa kedipan). --}}
       <script nonce="{{ $nonce ?? '' }}">try{if(localStorage.getItem('simtlhp.masuk.akunContoh')==='0')document.currentScript.previousElementSibling.open=false}catch(e){}</script>
     @endif
   </section>

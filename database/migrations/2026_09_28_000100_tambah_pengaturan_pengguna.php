@@ -4,12 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Pengaturan akun sendiri (28 Sep) — Profil → Pemberitahuan dan Tampilan:
- * sembulan kabar, kabar lewat surel, gerak animasi, halaman pertama sesudah
- * masuk. Satu kolom JSON; yang kosong berarti bawaan perannya
- * (App\Support\Setelan::bawaan).
- */
+/** Pengaturan akun sendiri dalam satu kolom JSON; kosong = bawaan peran. */
 return new class extends Migration
 {
     public function up(): void

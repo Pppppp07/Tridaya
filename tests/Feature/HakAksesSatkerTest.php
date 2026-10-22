@@ -11,14 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Apa yang boleh dan tidak boleh dilihat satuan kerja.
- *
- * Angka yang bocor jauh lebih sulit disadari daripada halaman yang bocor, jadi
- * yang diuji bukan cuma "halamannya ditolak" melainkan juga isinya: nama satuan
- * kerja lain di dalam kalimat, nilai yang bukan bagiannya, dan surat
- * pemeriksaan asli yang memuat temuan semua orang.
- */
+/** Apa yang boleh dan tidak boleh dilihat satuan kerja — termasuk angka, bukan hanya halaman. */
 class HakAksesSatkerTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -103,6 +96,13 @@ class HakAksesSatkerTest extends TestCase
         $this->assertNotNull($lain);
 
         $this->actingAs($pengguna)->get(route('berkas.show', $lain))->assertForbidden();
+    }
+
+    public function test_berkas_tanpa_cakupan_tidak_bisa_dibuka_satker_dengan_menebak_id(): void
+    {
+        $berkas = Lampiran::create(['nama_asli' => 'Berkas belum ditugaskan.pdf']);
+        $this->actingAs($this->akun('medan'))->get(route('berkas.show', $berkas))->assertForbidden();
+        $this->masuk('setba@contoh.test')->get(route('berkas.show', $berkas))->assertOk();
     }
 
     public function test_rekomendasi_yang_bukan_urusannya_tidak_bisa_dibuka(): void

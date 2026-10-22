@@ -1,24 +1,20 @@
 @php
   use App\Enums\PeranPengguna as P;
 
-  /* Panduan singkat — isi kartu "Butuh bantuan?" di kaki menu; padanan
-     `Panduan` prototipe. Dulu link-nya "#panduan" tidak menuju ke mana pun.
-
-     Terbuka lewat #panduan walau skrip tidak jalan (:target), dan lewat skrip
-     yang memasang kelas `tampil` tanpa mengubah alamat halaman. Isinya menurut
-     peran yang sedang masuk: tugasnya, menu yang ia punya dan gunanya,
-     perjalanan satu tindak lanjut, dan beberapa kiat. */
-  /* Kalimatnya milik PeranPengguna::tugas() sejak 28 Sep — Profil memakai
-     kalimat yang sama. */
+  /* Panduan singkat: terbuka lewat #panduan walau tanpa skrip (:target), atau lewat kelas
+     `tampil` dari skrip. */
   $tugas = $peran->tugas();
   $guna = fn (string $rute) => match ($rute) {
-      'rekomendasi.index' => $peran === P::PIMPINAN
-          ? 'Semua rekomendasi beserta posisi berkasnya sekarang.'
-          : ($peran === P::SATKER ? 'Rekomendasi yang ditujukan ke unit Anda. ' : 'Semua rekomendasi yang Anda pegang. ')
+      'rekomendasi.index' => match (true) {
+          $peran === P::PIMPINAN => 'Rekomendasi Satker yang Anda pimpin beserta posisi berkas dan proses tindak lanjutnya.',
+          /* Peran pemantau tidak punya filter Perlu dikerjakan. */
+          $peran->hanyaMelihat() => 'Semua rekomendasi beserta posisi berkas dan proses tindak lanjutnya.',
+          default => ($peran === P::SATKER ? 'Rekomendasi yang ditujukan ke unit Anda. ' : 'Semua rekomendasi yang Anda pegang. ')
             .'Filter Perlu dikerjakan berisi berkas yang menunggu tindakan Anda — jumlahnya sama dengan angka di menu ini.',
+      },
       'laporan.index' => 'Laporan pemeriksaan — LHP dari BPK dan LHA dari Inspektorat — beserta temuan dan rekomendasinya.',
       'ringkasan'     => 'Angka utama per tindak lanjut satuan kerja. Klik kartunya untuk rincian, atau buka Tabel keseluruhan.',
-      'master'        => 'Unit kerja beserta penanggung jawabnya, pengguna dan hak aksesnya, kategori, sifat rekomendasi, dan riwayat perubahannya. Angka merah di menunya berarti ada unit kerja yang belum punya penanggung jawab.',
+      'master'        => 'Admin DTI mengelola user dan akses, satuan kerja beserta penanggung jawabnya, serta kategori dan referensi. Dashboard menampilkan data yang perlu dilengkapi; Log admin mencatat perubahannya. Angka merah di menu menunjukkan masalah kelengkapan akses dan penugasan yang perlu ditangani.',
       'log'           => 'Siapa melakukan apa dan kapan — perpindahan berkas, perubahan data master dan hak akses, masuk dan keluar — serta keaktifan tiap akun.',
       default         => '',
   };
@@ -69,7 +65,7 @@
           <li>Tekan <kbd>/</kbd> untuk mencari kode, temuan, atau satuan kerja.</li>
           <li>Tombol akun di kanan atas membuka profil, keamanan akun, pengaturan, dan tombol Keluar.</li>
           <li>Tanda <b>!</b> menyimpan keterangan lengkap — sentuh untuk membacanya.</li>
-          <li>Di tabel tindak lanjut, buka baris satuan kerja untuk melihat Bukti &amp; tanggapan, Kerjakan, dan Riwayat.</li>
+          <li>Di tabel tindak lanjut, buka baris satuan kerja untuk melihat Bukti &amp; tanggapan, Kerjakan, dan Progres.</li>
           <li>Klik area kosong di menu, tombol panah di bagian atas sidebar, atau tekan <kbd>[</kbd> untuk menciutkan atau melebarkan menu pada komputer dan tablet.</li>
           <li>Di ponsel, tutup menu dengan tombol ×, tombol Esc, atau sentuh area di luarnya.</li>
             <li>Tombol matahari/bulan di header mengganti tema dan langsung menyimpannya untuk akun Anda. Tema, lebar menu, animasi, dan halaman pertama juga bisa diatur melalui Profil &amp; pengaturan → Tampilan.</li>

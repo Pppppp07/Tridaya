@@ -8,16 +8,8 @@ use App\Support\Akun;
 use Illuminate\Console\Command;
 
 /**
- * Menghubungkan akun yang belum punya NIP ke pegawainya di direktori menurut
- * email-nya (27 Sep).
- *
- * Masuk lewat SSO mengenali orang dari NIP. Akun yang dibuat sebelum SSO
- * disiapkan — akun password lama — perlu NIP dulu, kalau tidak pemiliknya
- * akan ditolak ("belum terdaftar") begitu SSO dinyalakan. Jalankan ini
- * sebelum SIMTLHP_MASUK_PASSWORD dipadamkan; akun yang tidak terhubung disebutkan
- * supaya bisa dirapikan satu per satu di tab Pengguna.
- *
- *   php artisan simtlhp:hubungkan-pegawai
+ * Menghubungkan akun tanpa NIP ke pegawainya menurut email. Jalankan sebelum SIMTLHP_MASUK_PASSWORD
+ * dipadamkan, kalau tidak pemiliknya ditolak SSO. php artisan simtlhp:hubungkan-pegawai
  */
 class HubungkanPegawai extends Command
 {

@@ -7,26 +7,30 @@ use App\Support\Lingkup;
 use App\Support\Terlihat;
 use Illuminate\Http\Request;
 
-/**
- * Daftar laporan dan Rincian laporan — padanan `DaftarLaporan` dan
- * `RincianLaporan`. Lingkup (LHP / LHA) yang dipilih di layar Rekomendasi
- * ikut berlaku di sini.
- */
+/** Daftar dan rincian laporan; lingkup LHP/LHA sama dengan layar Rekomendasi (disimpan di sesi). */
 class LaporanController extends Controller
 {
     public function index(Request $req)
     {
         $lingkup = Lingkup::dari($req);
+        $utuh = Terlihat::untuk()->daftarLaporan();
+
+        /* Dihitung sebelum lingkup difilter, supaya tombol LHP/LHA tidak menulis nol. */
+        $jumlahJenis = [
+            'semua' => $utuh->count(),
+            'LHP' => $utuh->filter(fn ($l) => $l->sumber->value === 'LHP')->count(),
+            'LHA' => $utuh->filter(fn ($l) => $l->sumber->value === 'LHA')->count(),
+        ];
+
         /* Difilter di hulu, bukan di tampilan. */
-        $semua = Terlihat::untuk()->daftarLaporan()
-            ->filter(fn ($l) => Lingkup::berlaku($lingkup, $l->sumber))
+        $semua = $utuh->filter(fn ($l) => Lingkup::berlaku($lingkup, $l->sumber))
             ->each(fn ($l) => $l->angkaTersimpan = $l->angka())
             ->values();
 
         $KEADAAN = [
-            'jalan'  => ['nama' => 'Masih berjalan', 'uji' => fn ($l) => ! $l->angkaTersimpan['beres']],
+            'jalan' => ['nama' => 'Masih berjalan', 'uji' => fn ($l) => ! $l->angkaTersimpan['beres']],
             'tuntas' => ['nama' => 'Sudah tuntas', 'uji' => fn ($l) => $l->angkaTersimpan['beres']],
-            'semua'  => ['nama' => 'Semua', 'uji' => fn () => true],
+            'semua' => ['nama' => 'Semua', 'uji' => fn () => true],
         ];
         /* Angkanya dari daftar penuh, bukan dari hasil pencarian. */
         $jumlah = array_map(fn ($k) => $semua->filter($k['uji'])->count(), $KEADAAN);
@@ -40,7 +44,8 @@ class LaporanController extends Controller
         }
 
         $cocok = fn ($l) => $cari === '' || str_contains(mb_strtolower(implode(' ', [
-            $l->nomor, $l->satkerDiperiksa()->map->nama->join(' '), $l->sumber->nama(), $l->temuan->map->judul->join(' '),
+            $l->nomor, $l->satkerDiperiksa()->map(fn ($s) => $s->nama.' '.$s->namaPendek())->join(' '),
+            $l->sumber->nama(), $l->temuan->map->judul->join(' '),
         ])), mb_strtolower($cari));
 
         $hasil = $semua->filter($cocok)->filter($KEADAAN[$keadaan]['uji'])
@@ -52,13 +57,13 @@ class LaporanController extends Controller
                     return $perhatian;
                 }
                 $banding = match ($urut) {
-                    'nomor'       => strcmp($x->nomor, $y->nomor),
-                    'diterima'    => strcmp((string) $x->tgl_terima?->toDateString(), (string) $y->tgl_terima?->toDateString()),
-                    'satker'      => strcmp((string) $x->satkerDiperiksa()->first()?->nama, (string) $y->satkerDiperiksa()->first()?->nama)
+                    'nomor' => strcmp($x->nomor, $y->nomor),
+                    'diterima' => strcmp((string) $x->tgl_terima?->toDateString(), (string) $y->tgl_terima?->toDateString()),
+                    'satker' => strcmp((string) $x->satkerDiperiksa()->first()?->nama, (string) $y->satkerDiperiksa()->first()?->nama)
                                      ?: $x->satkerDiperiksa()->count() <=> $y->satkerDiperiksa()->count(),
-                    'temuan'      => $a['temuan'] <=> $b['temuan'],
+                    'temuan' => $a['temuan'] <=> $b['temuan'],
                     'rekomendasi' => $a['jml'] <=> $b['jml'],
-                    default       => $a['masuk'] <=> $b['masuk'],
+                    default => $a['masuk'] <=> $b['masuk'],
                 };
 
                 return ($arah === 'turun' ? -$banding : $banding) ?: $perhatian;
@@ -66,15 +71,17 @@ class LaporanController extends Controller
             ->values();
 
         return view('laporan.index', [
-            'hasil'   => $hasil,
-            'semua'   => $semua,
+            'hasil' => $hasil,
+            'semua' => $semua,
+            'lingkup' => $lingkup,
+            'jumlahJenis' => $jumlahJenis,
             'KEADAAN' => $KEADAAN,
-            'jumlah'  => $jumlah,
+            'jumlah' => $jumlah,
             'keadaan' => $keadaan,
-            'cari'    => $cari,
-            'urut'    => $urut,
-            'arah'    => $arah,
-            'perlu'   => $hasil->sum(fn ($l) => $l->angkaTersimpan['perlu']),
+            'cari' => $cari,
+            'urut' => $urut,
+            'arah' => $arah,
+            'perlu' => $hasil->sum(fn ($l) => $l->angkaTersimpan['perlu']),
         ]);
     }
 
@@ -90,8 +97,8 @@ class LaporanController extends Controller
 
         $terlihat = Terlihat::untuk();
 
-        /* Laporan yang sama sekali tidak menyangkut pengguna ini tidak dibuka —
-           halaman kosong tetap membocorkan bahwa laporannya ada. */
+        /* Laporan yang tidak menyangkut pengguna ini tidak dibuka — halaman kosong pun
+           membocorkan keberadaannya. */
         abort_unless($terlihat->bolehLihatLaporan($laporan), 403,
             'Laporan ini tidak menyangkut satuan kerja Anda.');
 

@@ -2,7 +2,7 @@
    Warna status tetap bermakna; dokumen asli dan keluaran cetak tidak dibalik.
    simtlhp.css tetap merupakan salinan prototipe. */
 html{color-scheme:light;}
-.tridaya-simbol-gelap,.tema-matahari{display:none;}
+.infax-simbol-gelap,.tema-matahari{display:none;}
 .tema-pintas{display:flex;flex:none;margin:0;}
 .tema-tombol{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);
   border-radius:10px;color:var(--ink-2);background:var(--surface);}
@@ -57,13 +57,14 @@ html{color-scheme:light;}
     --jingga:#FFC18B;--jingga-bg:#413223;--jingga-line:#A67742;
     --bayang:0 1px 3px #0003;--bayang-2:0 14px 36px #0006;
   }
-  html[data-tema="gelap"] .tridaya-simbol-terang,
+  html[data-tema="gelap"] .infax-simbol-terang,
   html[data-tema="gelap"] .tema-bulan{display:none;}
-  html[data-tema="gelap"] .tridaya-simbol-gelap,
+  html[data-tema="gelap"] .infax-simbol-gelap,
   html[data-tema="gelap"] .tema-matahari{display:block;}
-  html[data-tema="gelap"] .tridaya-logo .tridaya-nama{color:#EDF2FA;}
+  html[data-tema="gelap"] .infax-logo .infax-nama{color:#BCE2DC;}
+  html[data-tema="gelap"] .infax-logo .infax-x{color:#E39A7D;}
 
-  /* Menu dan identitas; varian logo berasal dari aset Tridaya yang disetujui. */
+  /* Menu dan identitas; varian logo berasal dari aset SVG infaX. */
   html[data-tema="gelap"] .nav .nav-ruang,
   html[data-tema="gelap"] .nav .nav-deskripsi,
   html[data-tema="gelap"] .nav .ciut,

@@ -1,8 +1,7 @@
 @props(['lap', 'maks' => null])
 
 @php
-  /* Satuan kerja yang diperiksa, sebagai keping. `maks` meringkas: dua nama
-     pertama, sisanya "+N lagi" (RingkasSatker di prototipe). */
+  /* Keping satuan kerja; `maks`: dua nama pertama lalu "+N lagi". */
   $d = $lap->satkerDiperiksa();
 @endphp
 

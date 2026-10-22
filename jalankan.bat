@@ -54,9 +54,12 @@ echo       inspektorat@contoh.test    Inspektorat Jenderal
 echo       pimpinan@contoh.test       Pimpinan - hanya melihat
 echo.
 echo     Hentikan dengan Ctrl+C, atau tutup jendela ini.
+echo     Jendela kecil "pengirim email" ikut berjalan; tutup juga.
 echo   ==============================================================
 echo.
 
+REM Pengirim email (antrean): jendela kecil terpisah, tutup juga saat selesai.
+start "Tridaya - pengirim email" /min "%PHP%" artisan queue:work --queue=email,default --sleep=3 --max-time=3600
 start "" /min cmd /c "timeout /t 3 /nobreak >nul & explorer http://localhost:8000"
 "%PHP%" artisan serve --host=127.0.0.1 --port=8000
 

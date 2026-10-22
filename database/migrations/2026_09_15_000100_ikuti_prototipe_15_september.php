@@ -5,66 +5,30 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Menyusul prototipe dari catatan 10 sampai 15 September 2026.
- *
- * Satu migrasi, karena perubahannya satu gagasan yang sama: **rekomendasi
- * tidak menempuh proses apa pun — yang berjalan tindak lanjut tiap satuan
- * kerja.** Hampir semua kolom di bawah ini pindah atau lahir karena itu.
- *
- *  1. `rekomendasis.posisi` dibuang. Tingkat dua (siptl → bpk → selesai)
- *     sudah tidak ada: yang diunggah ke SIPTL adalah tindak lanjut satuan
- *     kerjanya, jadi unggahan dan status BPK pindah ke `sasarans`.
- *
- *  2. Tiga tempat penilaian per baris: `hasil_uki` (validasi UKI), `hasil`
- *     (verifikasi Inspektorat), `status_bpk` (SIPTL). Tiap perubahannya
- *     tercatat di `riwayat_statuses`, dikelompokkan `aksi_id` supaya satu
- *     putusan terbaca satu baris.
- *
- *  3. Pemberkasan ulang. Berkas tidak lagi bisa ditarik atau diminta kembali
- *     oleh satuan kerja; ia hanya pulang kalau UKI, Inspektorat, atau BPK
- *     menolak — dan yang mengirimkannya ulang Setba, bersama alasan, batas
- *     perbaikan, keterangannya sendiri, dan dokumen yang diminta. Kolomnya di
- *     `sasarans` (keadaan sekarang) dan `pengembalians` (arsipnya).
- *
- *  4. Draf tanggapan satuan kerja dan tolakan BPK per satuan kerja.
- *
- *  5. Yang dibuang bersama fiturnya: `permintaan_ubahs`, kolom penarikan
- *     berkas di `lampirans`, dan `notifikasis.satker_id` (satu kabar kini bisa
- *     untuk beberapa satuan kerja sekaligus — `notifikasi_satker`).
- */
+/** Rekomendasi tidak menempuh proses — yang berjalan tindak lanjut tiap satuan kerja (sasarans). */
 return new class extends Migration
 {
     public function up(): void
     {
-        /* ---------------------------------------------------------------
-           1. Satuan kerja: nama pendek disimpan, bukan dirakit.
-              Enam belas nama di lembar pemantauan punya singkatannya sendiri
-              ("Pusbangkom SDACKPS", "Balai Wil. I Medan"); memotong nama
-              panjangnya dengan str_replace tidak pernah menghasilkan itu.
-           --------------------------------------------------------------- */
+        /* ---- 1. Satuan kerja: nama pendek disimpan ---- */
         Schema::table('satkers', function (Blueprint $t) {
             $t->string('nama_pendek', 80)->nullable()->after('nama');
         });
 
-        /* ---------------------------------------------------------------
-           2. Baris penugasan: tiga penilaian, urusan SIPTL, pemberkasan ulang.
-           --------------------------------------------------------------- */
+        /* ---- 2. Baris penugasan: penilaian, SIPTL, pemberkasan ulang ---- */
         Schema::table('sasarans', function (Blueprint $t) {
-            /* Validasi UKI. `hasil` tetap milik Inspektorat — dua kolom, karena
-               UKI boleh menyatakan memadai lalu Inspektorat menolaknya. */
+            /* Validasi UKI terpisah dari `hasil` Inspektorat. */
             $t->string('hasil_uki', 2)->nullable()->after('hasil');
 
-            /* Urusan SIPTL satu baris. Tanggal unggah dikunci sekali terisi;
-               hanya pengiriman ulang atas penolakan BPK yang mengosongkannya. */
+            /* Tanggal unggah SIPTL dikunci; hanya pengiriman ulang atas penolakan BPK yang
+               mengosongkannya. */
             $t->string('status_bpk', 2)->nullable()->after('hasil_uki');
             $t->date('siptl_tanggal')->nullable()->after('status_bpk');
             $t->text('catatan_bpk')->nullable()->after('siptl_tanggal');
             $t->date('tgl_pantau')->nullable()->after('catatan_bpk');
 
-            /* Keadaan pemberkasan ulang yang sedang berlaku. Dikosongkan
-               begitu satuan kerja mengirim perbaikannya — arsipnya tetap ada
-               di `pengembalians`. */
+            /* Pemberkasan ulang yang berlaku; dikosongkan saat perbaikan dikirim (arsipnya di
+               `pengembalians`). */
             $t->string('kembali_dari', 20)->nullable()->after('tgl_pantau');
             $t->text('alasan_perbaikan')->nullable()->after('kembali_dari');
             $t->date('batas_perbaikan')->nullable()->after('alasan_perbaikan');
@@ -72,9 +36,7 @@ return new class extends Migration
             $t->json('dokumen_diminta')->nullable()->after('keterangan_setba');
         });
 
-        /* Unggahan SIPTL yang dulu tercatat per rekomendasi diturunkan ke tiap
-           barisnya, sebelum kolom posisinya dibuang. Status BPK baru berarti
-           kalau unggahannya ada. */
+        /* Unggahan SIPTL diturunkan dari rekomendasi ke tiap barisnya. */
         foreach (DB::table('rekomendasis')->whereNotNull('siptl_tanggal')->get() as $r) {
             $tindakan = DB::table('tindakans')->where('rekomendasi_id', $r->id)->pluck('id');
             DB::table('sasarans')->whereIn('tindakan_id', $tindakan)->update([
@@ -93,18 +55,14 @@ return new class extends Migration
             $t->string('oleh', 80);
             $t->date('tanggal');
             $t->text('catatan')->nullable();
-            /* Satu putusan bisa menulis beberapa butir — tanda UKI, tanda
-               Inspektorat, status SIPTL yang ikut turun. Kuncinya yang
-               menyatukannya kembali jadi satu baris riwayat. */
+            /* Kunci yang menyatukan butir satu putusan jadi satu baris riwayat. */
             $t->string('aksi_id', 40)->nullable()->index();
             $t->string('jenis_aksi', 20)->nullable();   // kembaliBpk
             $t->timestamps();
             $t->index(['sasaran_id', 'tanggal']);
         });
 
-        /* ---------------------------------------------------------------
-           3. Rekomendasi tidak lagi punya posisi.
-           --------------------------------------------------------------- */
+        /* ---- 3. Rekomendasi tidak lagi punya posisi ---- */
         Schema::table('rekomendasis', function (Blueprint $t) {
             $t->dropIndex(['status', 'posisi']);
         });
@@ -112,18 +70,14 @@ return new class extends Migration
             $t->dropColumn(['posisi', 'siptl_tanda_terima']);
         });
 
-        /* Daftar dokumen yang diminta, per bentuk tindak lanjut — ditulis
-           Setba saat mencatat laporan. */
+        /* Dokumen yang diminta, per bentuk tindak lanjut. */
         Schema::table('tindakans', function (Blueprint $t) {
             $t->json('dokumen')->nullable()->after('catatan');
         });
 
-        /* ---------------------------------------------------------------
-           4. Arsip putusan dan pengembalian.
-           --------------------------------------------------------------- */
+        /* ---- 4. Arsip putusan dan pengembalian ---- */
         Schema::table('telaahs', function (Blueprint $t) {
-            /* "Inspektorat" diputus, "Setba" yang mengetik — keduanya perlu
-               tercatat, dan tidak boleh tertukar. */
+            /* Yang memutus dan yang mengetik dicatat terpisah. */
             $t->string('label_pencatat', 40)->nullable()->after('label_oleh');
             $t->date('batas_waktu')->nullable()->after('perihal');
             $t->json('dokumen')->nullable()->after('batas_waktu');
@@ -143,10 +97,7 @@ return new class extends Migration
             $t->text('alasan')->nullable()->after('catatan');
         });
 
-        /* Surat hasil: LHV dari UKI, CHV dari Inspektorat. Satu nomor boleh
-           memutus beberapa baris atau rekomendasi, jadi keunikannya pindah ke
-           pasangan jenis + nomor, dan keputusannya tidak lagi satu per
-           rekomendasi. */
+        /* Surat hasil LHV/CHV: unik pada jenis + nomor; satu nomor boleh memutus beberapa baris. */
         Schema::table('verifikasis', function (Blueprint $t) {
             $t->string('periode', 40)->nullable()->change();
             $t->string('perihal', 500)->nullable()->after('tgl_surat');
@@ -161,9 +112,8 @@ return new class extends Migration
         });
 
         Schema::table('keputusan_verifikasis', function (Blueprint $t) {
-            /* Indeks sendiri lebih dulu: di MySQL indeks unik lama itulah yang
-               menopang kunci asing verifikasi_id, dan ia tidak bisa dibuang
-               selama belum ada penggantinya. */
+            /* Indeks sendiri lebih dulu: di MySQL indeks unik lama menopang kunci asing
+               verifikasi_id. */
             $t->index('verifikasi_id', 'keputusan_verifikasi_idx');
         });
         Schema::table('keputusan_verifikasis', function (Blueprint $t) {
@@ -181,9 +131,7 @@ return new class extends Migration
             $t->string('tautan', 500)->nullable()->after('catatan');
         });
 
-        /* ---------------------------------------------------------------
-           5. Berkas: tidak bisa ditarik lagi, dan membawa sebutannya sendiri.
-           --------------------------------------------------------------- */
+        /* ---- 5. Berkas: tidak bisa ditarik, membawa sebutannya ---- */
         Schema::table('lampirans', function (Blueprint $t) {
             $t->dropForeign(['ditarik_oleh']);
         });
@@ -193,20 +141,16 @@ return new class extends Migration
         Schema::table('lampirans', function (Blueprint $t) {
             $t->foreignId('tindakan_id')->nullable()->after('sasaran_id')
                 ->constrained('tindakans')->nullOnDelete();
-            /* Nama jenis dokumen sebagaimana diminta — "Nota Konfirmasi KPPN
-               setoran sisa" — bukan cuma satu dari sepuluh jenis baku. */
+            /* Nama jenis dokumen sebagaimana diminta. */
             $t->string('label_jenis')->nullable()->after('jenis_dokumen_id');
             $t->string('label_oleh', 80)->nullable()->after('diunggah_oleh');
-            /* Surat pemeriksaan aslinya: memuat temuan seluruh satuan kerja,
-               jadi tidak pernah diberikan ke satuan kerja mana pun. */
+            /* Surat pemeriksaan asli: tidak pernah diberikan ke satuan kerja. */
             $t->boolean('surat_asli')->default(false)->after('label_oleh');
         });
 
         Schema::dropIfExists('permintaan_ubahs');
 
-        /* ---------------------------------------------------------------
-           6. Draf tanggapan dan tolakan BPK.
-           --------------------------------------------------------------- */
+        /* ---- 6. Draf tanggapan dan tolakan BPK ---- */
         Schema::create('draf_tanggapans', function (Blueprint $t) {
             $t->id();
             $t->foreignId('sasaran_id')->unique()->constrained('sasarans')->cascadeOnDelete();
@@ -215,8 +159,7 @@ return new class extends Migration
             $t->json('bukti')->nullable();
             $t->json('setoran')->nullable();
             $t->json('penuhi')->nullable();
-            /* Berapa kali disimpan, dan kapan terakhir. Dari yang kedua inilah
-               penyapu terjadwal tahu draf mana yang sudah mengendap. */
+            /* Jumlah dan waktu simpan terakhir. */
             $t->unsignedInteger('kali')->default(1);
             $t->date('terakhir');
             $t->timestamps();
@@ -232,9 +175,7 @@ return new class extends Migration
             $t->timestamps();
         });
 
-        /* Draf formulir Catat laporan baru, satu per pengguna. Dulu di sesi —
-           hilang begitu keluar, padahal satu surat bisa memuat belasan temuan
-           yang tidak selesai diketik dalam sekali duduk. */
+        /* Draf Catat laporan baru, satu per pengguna. */
         Schema::create('draf_laporans', function (Blueprint $t) {
             $t->id();
             $t->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
@@ -242,9 +183,7 @@ return new class extends Migration
             $t->timestamps();
         });
 
-        /* ---------------------------------------------------------------
-           7. Kabar: beberapa satuan kerja, dan bentuk tindak lanjutnya.
-           --------------------------------------------------------------- */
+        /* ---- 7. Pemberitahuan: beberapa satuan kerja dan bentuk tindak lanjutnya ---- */
         Schema::create('notifikasi_satker', function (Blueprint $t) {
             $t->id();
             $t->foreignId('notifikasi_id')->constrained('notifikasis')->cascadeOnDelete();

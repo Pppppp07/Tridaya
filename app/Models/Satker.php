@@ -11,11 +11,13 @@ class Satker extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['kode', 'nama', 'nama_pendek', 'provinsi', 'jenis', 'aktif'];
+    protected $fillable = ['kode', 'kode_satker', 'nama', 'nama_pendek', 'aktif'];
     protected $casts = ['aktif' => 'boolean'];
 
-    /** Baris penugasan yang jadi tanggungannya. Inilah pintu satu-satunya
-        untuk menjawab "apa pekerjaan satuan kerja ini". */
+    /**
+     * Baris penugasan yang jadi tanggungannya — pintu satu-satunya untuk pekerjaan satuan kerja
+     * ini.
+     */
     public function sasaran()
     {
         return $this->hasMany(Sasaran::class);
@@ -33,9 +35,8 @@ class Satker extends Model
     }
 
     /**
-     * Penanggung jawabnya: satu-satunya akun satuan kerja yang masih aktif.
-     * Menetapkan yang baru menonaktifkan yang lama (App\Support\PenanggungJawab),
-     * jadi paling banyak ada satu.
+     * Penanggung jawab: satu-satunya akun satuan kerja yang aktif (PenanggungJawab menonaktifkan
+     * yang lama).
      */
     public function penanggungJawab()
     {
@@ -43,10 +44,7 @@ class Satker extends Model
             ->where('peran', PeranPengguna::SATKER->value)->where('aktif', true);
     }
 
-    /**
-     * Sudah tertulis di berkas mana pun — sebagai tempat temuan atau sebagai
-     * yang ditugasi. Namanya lalu terkunci: berkas lama menyebut nama itu.
-     */
+    /** Sudah tertulis di berkas mana pun; namanya lalu terkunci. */
     public function dipakai(): bool
     {
         return $this->sasaran()->exists() || $this->temuan()->exists();
@@ -64,10 +62,7 @@ class Satker extends Model
         return $kode;
     }
 
-    /**
-     * Nama pendek untuk layar. Nama panjangnya dipakai di surat; singkatannya
-     * mengikuti yang memang sudah dipakai di lembar pemantauan mereka.
-     */
+    /** Nama pendek untuk layar; nama panjang untuk surat. */
     public function namaPendek(): string
     {
         return $this->nama_pendek ?: $this->nama;

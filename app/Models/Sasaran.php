@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Aksi\BerkasBerubah;
 use App\Enums\HasilTelaah;
 use App\Enums\PeranPengguna;
 use App\Enums\PosisiBerkas;
@@ -10,22 +11,16 @@ use App\Enums\SumberLaporan;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Satu satuan kerja pada satu bentuk tindak lanjut — satu baris penugasan.
- *
- * Inilah yang menempuh proses. Rekomendasi tidak: posisi berkas, tiga
- * penilaian (UKI, Inspektorat, BPK), unggahan SIPTL, dan pemberkasan ulang
- * semuanya milik baris ini. Satu rekomendasi yang dipikul tiga satuan kerja
- * berisi tiga perjalanan yang berbeda, dan bisa berada di tiga meja sekaligus.
+ * Satu satuan kerja pada satu bentuk tindak lanjut — yang menempuh proses: posisi, penilaian
+ * UKI/Inspektorat/BPK, SIPTL, pemberkasan ulang.
  */
 class Sasaran extends Model
 {
-    /* `siptl_tanggal` sengaja tidak di sini. Tanggal unggah SIPTL dikunci
-       sekali tercatat, dan kolom yang bisa diisi massal bisa ditimpa lewat
-       `update($request->all())` tanpa sengaja. Penulisnya satu:
-       `CatatSiptl`, lewat forceFill. */
+    /* `siptl_tanggal` sengaja tidak fillable: dikunci sekali tercatat; penulisnya hanya
+       CatatSiptl lewat forceFill. */
     protected $fillable = ['tindakan_id', 'satker_id', 'nilai',
-        'nilai_ss', 'nilai_memadai', 'posisi', 'hasil', 'hasil_uki', 'catatan',
-        'status_bpk', 'catatan_bpk', 'tgl_pantau',
+        'posisi', 'hasil', 'hasil_uki', 'catatan',
+        'status_bpk', 'catatan_bpk', 'uraian_verifikasi', 'tgl_pantau',
         'kembali_dari', 'alasan_perbaikan', 'batas_perbaikan', 'keterangan_setba', 'dokumen_diminta'];
 
     protected $casts = [
@@ -37,6 +32,10 @@ class Sasaran extends Model
         'tgl_pantau'      => 'date',
         'batas_perbaikan' => 'date',
         'dokumen_diminta' => 'array',
+        'siptl_historis' => 'boolean',
+        'tanggal_acuan_historis' => 'date',
+        'nilai_diakui_itjen' => 'integer',
+        'nilai_diakui_bpk' => 'integer',
     ];
 
     public function tindakan() { return $this->belongsTo(Tindakan::class); }
@@ -47,7 +46,6 @@ class Sasaran extends Model
     public function permintaanDokumen() { return $this->hasMany(PermintaanDokumen::class)->orderBy('tanggal')->orderBy('id'); }
     public function pengembalian()      { return $this->hasMany(Pengembalian::class)->orderBy('tanggal')->orderBy('id'); }
     public function telaah()            { return $this->hasMany(Telaah::class)->orderBy('tanggal')->orderBy('id'); }
-    public function riwayat()           { return $this->hasMany(RiwayatBerkas::class)->orderBy('waktu'); }
     public function lampiran()          { return $this->hasMany(Lampiran::class); }
     public function surat()             { return $this->hasMany(Surat::class)->orderBy('tanggal')->orderBy('id'); }
     public function tolakanBpk()        { return $this->hasMany(TolakanBpk::class)->orderBy('tanggal')->orderBy('id'); }
@@ -62,14 +60,15 @@ class Sasaran extends Model
         return $this->tindakan?->rekomendasi;
     }
 
-    /* ================================================================
-       POSISI
-       ================================================================ */
+    /** Hasil impor data historis, bukan dicatat lewat Catat laporan baru. */
+    public function historis(): bool
+    {
+        return $this->draf_historis_id !== null;
+    }
 
-    /**
-     * Posisi baris ini, dan satu-satunya cara membacanya. Baris yang belum
-     * pernah bergerak masih di satuan kerja — tidak meminjam posisi siapa pun.
-     */
+    /* ---- Posisi ---- */
+
+    /** Posisi baris ini; yang belum pernah bergerak masih di satuan kerja. */
     public function pos(): PosisiBerkas
     {
         return $this->posisi ?? PosisiBerkas::SATKER;
@@ -85,102 +84,75 @@ class Sasaran extends Model
         return $this->pos()->pemegang();
     }
 
-    /* ================================================================
-       URUSAN SIPTL — hanya jalur yang lewat BPK
-       ================================================================ */
+    /* ---- Urusan SIPTL (hanya LHP) ---- */
 
-    /**
-     * Satu baris naik ke SIPTL begitu tindak lanjutnya selesai diperiksa —
-     * tidak menunggu satuan kerja lain.
-     */
+    /** Snapshot historis dapat memiliki status resmi tanpa tanggal unggah yang diketahui. */
+    public function sudahSiptl(): bool
+    {
+        return (bool) $this->siptl_tanggal || (bool) $this->siptl_historis;
+    }
+
+    /** Naik ke SIPTL begitu selesai diperiksa, tanpa menunggu satuan kerja lain. */
     public function perluUnggah(SumberLaporan $jenis): bool
     {
-        return $jenis->melewatiSiptl() && $this->tuntas() && ! $this->siptl_tanggal;
+        return $jenis->melewatiSiptl() && $this->tuntas() && ! $this->sudahSiptl();
     }
 
     /**
-     * Sudah diunggah, dan BPK belum memutus apa pun atas unggahan ITU.
-     *
-     * Putusan BPK dicatat sekali tiap unggahan. Kata Hizkia: "perubahan status
-     * SS dan BS itu hanya boleh dilakukan sekali setelah proses Upload SIPTL."
-     * Jadi baris ber-BS tidak lagi menunggu penilaian — penilaiannya sudah
-     * turun, dan yang berikutnya mengirimnya kembali ke satuan kerja.
+     * Sudah diunggah dan BPK belum memutus unggahan itu. Putusan BPK dicatat sekali tiap unggahan.
      */
     public function perluCek(SumberLaporan $jenis): bool
     {
-        return $jenis->melewatiSiptl() && $this->siptl_tanggal
+        return $jenis->melewatiSiptl() && $this->sudahSiptl()
             && ($this->status_bpk ?? StatusTindakLanjut::BT) === StatusTindakLanjut::BT;
     }
 
-    /**
-     * BPK memutus Belum Sesuai atas unggahan ini. Yang berikutnya bukan
-     * mengecek SIPTL lagi: berkasnya dikirim kembali ke satuan kerja,
-     * diperbaiki, lalu diunggah ulang — barulah BPK punya sesuatu yang baru
-     * untuk dinilai.
-     */
+    /** BPK memutus Belum Sesuai: berkasnya dikirim kembali ke satuan kerja lalu diunggah ulang. */
     public function perluKirimUlang(SumberLaporan $jenis): bool
     {
-        return $jenis->melewatiSiptl() && $this->siptl_tanggal
+        return $jenis->melewatiSiptl() && $this->sudahSiptl()
             && $this->status_bpk === StatusTindakLanjut::BS;
     }
 
     /**
-     * Putusan BPK masih boleh dicatat untuk baris ini: sebelum berkasnya naik
-     * (yang dicatat tanggalnya) atau sesudah naik selama statusnya masih BT.
+     * Status di SIPTL; null = belum diunggah. BT hanya untuk yang sudah diunggah dan belum dinilai
+     * BPK, supaya yang belum pernah naik tidak terhitung BT.
      */
+    public function statusSiptl(): ?StatusTindakLanjut
+    {
+        return $this->sudahSiptl() ? ($this->status_bpk ?? StatusTindakLanjut::BT) : null;
+    }
+
+    /** Putusan BPK masih boleh dicatat: sebelum naik, atau sesudah naik selama masih BT. */
     public function bolehCatatSiptl(SumberLaporan $jenis): bool
     {
         return $this->perluUnggah($jenis) || $this->perluCek($jenis);
     }
 
-    /* ================================================================
-       NILAI YANG DIAKUI
-       ================================================================ */
+    /* ---- Nilai yang diakui ---- */
 
-    /**
-     * Medan kosong berarti "belum ada angkanya sendiri", bukan nol — yang
-     * membacanya jatuh ke keadaannya: utuh bila sudah beres, nol bila belum.
-     */
+    /** Snapshot impor mendukung pengakuan sebagian; penilaian baru menggantikannya. */
     public function nilaiDiakuiItjen(): int
     {
-        return $this->nilai_memadai !== null
-            ? (int) $this->nilai_memadai
-            : ($this->hasil === HasilTelaah::M ? (int) $this->nilai : 0);
+        if ($this->nilai_diakui_itjen !== null) return min((int) $this->nilai, max(0, $this->nilai_diakui_itjen));
+        return $this->hasil === HasilTelaah::M ? (int) $this->nilai : 0;
     }
 
-    /**
-     * Sisi BPK dibaca dari status baris ini sendiri. Baris yang belum pernah
-     * berstatus jatuh ke status rekomendasinya — catatan lama.
-     */
-    public function nilaiDiakuiBpk(?Rekomendasi $rek = null): int
+    /** Sisi BPK: hanya baris yang sudah diunggah dan dinyatakan SS. */
+    public function nilaiDiakuiBpk(): int
     {
-        if ($this->nilai_ss !== null) {
-            return (int) $this->nilai_ss;
-        }
-        if ($this->status_bpk) {
-            return $this->status_bpk === StatusTindakLanjut::SS ? (int) $this->nilai : 0;
-        }
-        $rek ??= $this->rekomendasi();
-
-        return $rek && $rek->status === StatusTindakLanjut::SS ? (int) $this->nilai : 0;
+        if ($this->sudahSiptl() && $this->nilai_diakui_bpk !== null) return min((int) $this->nilai, max(0, $this->nilai_diakui_bpk));
+        return $this->statusSiptl() === StatusTindakLanjut::SS ? (int) $this->nilai : 0;
     }
 
     public function sisaNilaiItjen(): int { return max(0, (int) $this->nilai - $this->nilaiDiakuiItjen()); }
     public function sisaNilaiBpk(): int   { return max(0, (int) $this->nilai - $this->nilaiDiakuiBpk()); }
 
-    /* ================================================================
-       BAHASA TAMPILAN — padanan `presentasiBerkas` prototipe
-       ================================================================ */
+    /* ---- Bahasa tampilan ---- */
 
     /**
-     * Siapa yang memegang dan apa yang sedang terjadi. Hanya bahasa:
-     * perpindahan berkas dan keputusan tetap milik pengendalinya.
-     *
-     * Kalimat "langkah berikutnya" dibuang 21 Sep — kata Hizkia, "keterangan
-     * langkah berikutnya dihilangkan saja". Tabel tindak lanjut kini membaca
-     * catatan terbaru dari riwayatnya (RiwayatTindakLanjut::catatanTerakhir).
-     *
-     * @return array{pemegang:string, judul:string, selesai:bool}
+     * Siapa yang memegang dan apa yang sedang terjadi — hanya bahasa; perpindahan dan keputusan
+     * milik pengendalinya.
      */
     public function presentasi(SumberLaporan $jenis): array
     {
@@ -203,10 +175,10 @@ class Sasaran extends Model
             if (! $jenis->melewatiSiptl()) {
                 $isi = ['Selesai', 'Verifikasi Inspektorat selesai'];
                 $selesai = true;
-            } elseif (! $this->siptl_tanggal) {
+            } elseif (! $this->sudahSiptl()) {
                 $isi = ['Setba', 'Siap dicatat ke SIPTL'];
-            } elseif (in_array($this->status_bpk, [StatusTindakLanjut::SS, StatusTindakLanjut::TD], true)) {
-                $isi = ['Selesai', $this->status_bpk === StatusTindakLanjut::SS ? 'Sudah sesuai menurut BPK' : 'Tidak dapat ditindaklanjuti menurut BPK'];
+            } elseif ($this->status_bpk === StatusTindakLanjut::SS) {
+                $isi = ['Selesai', 'Sudah sesuai menurut BPK'];
                 $selesai = true;
             } elseif ($this->status_bpk === StatusTindakLanjut::BS) {
                 $isi = ['Setba', 'Menindaklanjuti hasil BPK'];
@@ -220,12 +192,27 @@ class Sasaran extends Model
         return compact('pemegang', 'judul', 'selesai');
     }
 
-    /* ================================================================
-       FILTER
-       ================================================================ */
+    /* ---- Filter ---- */
 
-    public function scopeMilik($q, ?int $satkerId)
+    public function scopeMilik($q, int|array|null $satkerId)
     {
-        return $satkerId ? $q->where('satker_id', $satkerId) : $q;
+        return $satkerId ? $q->whereIn('satker_id', (array) $satkerId) : $q;
+    }
+
+    /* ---- Penjaga aksi bersamaan ---- */
+
+    private const KOLOM_KEADAAN = ['posisi', 'hasil', 'hasil_uki', 'status_bpk', 'siptl_tanggal', 'siptl_historis', 'nilai_diakui_itjen', 'nilai_diakui_bpk', 'updated_at'];
+
+    /**
+     * Dipanggil paling awal di transaksi tiap aksi: baris dikunci, lalu dibandingkan dengan yang
+     * dibaca di awal permintaan. Berubah = sudah diproses orang lain (klik ganda, dua petugas).
+     */
+    public function kunciSejak(): void
+    {
+        $segar = static::query()->whereKey($this->getKey())->lockForUpdate()->first(self::KOLOM_KEADAAN);
+        $tanda = fn (self $x) => array_map(fn ($k) => (string) $x->getRawOriginal($k), self::KOLOM_KEADAAN);
+        if (! $segar || $tanda($segar) !== $tanda($this)) {
+            throw new BerkasBerubah;
+        }
     }
 }

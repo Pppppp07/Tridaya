@@ -4,16 +4,7 @@ namespace App\Support\Direktori;
 
 use Illuminate\Support\Collection;
 
-/**
- * Kontrak satu sumber data pegawai (27 Sep).
- *
- * Satu pegawai selalu berbentuk:
- *   ['nip' => '18 angka', 'nama' => …, 'jabatan' => …, 'unit' => kode unit,
- *    'unitNama' => nama unit, 'email' => …]
- *
- * Sumber lain (mis. SOAP eHRM, atau basis data kepegawaian langsung) cukup
- * memenuhi kontrak ini lalu didaftarkan di DirektoriIrm::sumber().
- */
+/** Kontrak sumber data pegawai: ['nip', 'nama', 'jabatan', 'unit', 'unitNama', 'email']. */
 interface SumberPegawai
 {
     /** Pegawai yang nama atau NIP-nya memuat kata pencari. */

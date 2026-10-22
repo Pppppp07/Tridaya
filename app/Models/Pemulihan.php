@@ -5,8 +5,7 @@ namespace App\Models;
 use App\Enums\JenisPemulihan;
 use Illuminate\Database\Eloquent\Model;
 
-/** Satu baris satu peristiwa pemulihan. Nilai terkumpul selalu dijumlahkan
-    dari sini — tidak pernah ada kolom yang menyimpannya. */
+/** Satu peristiwa pemulihan. Nilai terkumpul selalu dijumlahkan dari sini. */
 class Pemulihan extends Model
 {
     protected $fillable = [
@@ -17,9 +16,7 @@ class Pemulihan extends Model
     protected $casts = ['jenis' => JenisPemulihan::class, 'tanggal' => 'date'];
 
     public function rekomendasi() { return $this->belongsTo(Rekomendasi::class); }
-    /* Setoran selalu milik satu satuan kerja. Nominal rekomendasi dipecah
-       antar satker, jadi setoran yang tidak menyebut satkernya tidak bisa
-       dikurangkan dari tagihan siapa pun. */
+    /* Setoran selalu milik satu satuan kerja (nominal rekomendasi dipecah antar satker). */
     public function sasaran()     { return $this->belongsTo(Sasaran::class); }
     public function lampiran()    { return $this->belongsTo(Lampiran::class); }
 

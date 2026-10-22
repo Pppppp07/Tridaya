@@ -1,4 +1,4 @@
-{{-- Identitas yang sama untuk halaman masuk, simulasi SSO, dan akses dibatasi. --}}
+{{-- Identitas yang sama untuk halaman masuk dan akses dibatasi. --}}
 <div class="msk-merek">
-  <x-logo-tridaya />
+  <x-logo-infax />
 </div>

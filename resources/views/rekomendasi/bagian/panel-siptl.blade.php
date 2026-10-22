@@ -2,19 +2,11 @@
   use App\Enums\StatusTindakLanjut;
   use App\Support\Tampil;
 
-  /* Pekerjaan SIPTL satu baris, di tab Kerjakan barisnya — padanan
-     `PanelSiptlBaris`. Sejak 25 Sep berbentuk panel kerja (`x-panel-kerja`):
-     kartu berkepala pita abu, label di kiri, bintang pada yang wajib, dan
-     keterangan panjang di balik ikon Info.
-
-     Karena putusan BPK dicatat sekali tiap unggahan, satu baris cuma pernah
-     punya satu dari tiga pekerjaan ini: mencatat unggahan, mencatat putusan,
-     atau mengirim ulang yang ditolak. */
+  /* Pekerjaan SIPTL satu baris dalam bentuk panel kerja (`x-panel-kerja`). */
   $hari = now()->toDateString();
   $nama = $x->satker->namaPendek();
-  /* Bentuk tindak lanjutnya disebut di jendela penegasan kalau satuan kerja
-     itu memikul lebih dari satu — "Bandung" saja tidak menjawab yang mana. Di
-     kepala panel tidak: bentuknya sudah tertulis di kepala kelompoknya. */
+  /* Bentuk tindak lanjut disebut di jendela penegasan bila satuan kerja itu memikul lebih dari
+     satu. */
   $rangkap = $r->sasaran->where('satker_id', $x->satker_id)->pluck('tindakan_id')->unique()->count() > 1;
   $siapa = $nama.($rangkap && $x->tindakan?->namaBentuk() ? ' ('.$x->tindakan->namaBentuk().')' : '');
   $siapNaik = $x->perluUnggah($jenis);
@@ -32,15 +24,13 @@
     <x-panel-kerja ikon="Upload" judul="Catat unggahan ke SIPTL" wajib
       ket="Tanggal unggah harus terisi" lanjut="Statusnya jadi Belum Ditindaklanjuti sampai BPK memutus."
       :info="[
-        'Unggahannya dikerjakan di aplikasi SIPTL milik BPK. Yang dicatat di sini tanggalnya.',
-        'Begitu dicatat, statusnya otomatis Belum Ditindaklanjuti sampai BPK memutus.',
-        'Yang naik hanya tindak lanjut satuan kerja pada baris ini. Satuan kerja lain tidak perlu ditunggu.',
+        'Mencatat bahwa bukti penugasan ini sudah diunggah ke aplikasi SIPTL BPK.',
+        'Pencatatan tanggal unggah memasang status awal BT sampai hasil BPK dicatat. Pengunggahan file dilakukan di SIPTL.',
       ]">
       <x-slot:kalimat>Berkas <b>{{ $nama }}</b> siap diunggah ke SIPTL.</x-slot:kalimat>
-      {{-- Kotak tanggal unggah cuma pernah muncul di sini, selama memang
-           tahap unggah — supaya tidak jadi bahan manipulasi. --}}
+      {{-- Kotak tanggal unggah hanya muncul selama tahap unggah. --}}
       <x-baris-isi label="Tanggal unggah" :untuk="'unggah-'.$k" wajib
-        info="Pastikan sama dengan tanggal unggah yang tertulis di SIPTL — tanggal ini tidak bisa diubah lagi.">
+        info="Salin tanggal unggah dari SIPTL. Tanggal terkunci setelah disimpan untuk unggahan ini.">
         <div class="fb-sebaris">
           <input id="unggah-{{ $k }}" type="date" name="tanggal" aria-required="true" max="{{ $hari }}" data-tanggal-unggah>
           <span class="fb-catatan"><x-ikon n="Lock" :s="13" /> dikunci begitu dicatat</span>
@@ -63,19 +53,16 @@
     <x-panel-kerja ikon="Clock" judul="Catat hasil pemantauan BPK" wajib
       ket="Pilih putusan BPK. Kalau BPK belum memutus, biarkan dulu."
       :info="[
-        'Dibaca dari aplikasi SIPTL, lalu disalin apa adanya ke sini.',
-        'Putusan BPK dicatat sekali untuk unggahan ini dan tidak bisa diubah lagi.',
-        'Kalau Belum Sesuai, berkasnya dikirim ulang ke satuan kerja lalu diunggah ulang ke SIPTL — putusan berikutnya dicatat sesudah itu.',
-        'Belum Ditindaklanjuti tidak pernah dipilih: itu keadaan awal yang terpasang sendiri saat unggahannya dicatat.',
+        'Mencatat putusan dan catatan BPK yang sudah tersedia di SIPTL untuk unggahan ini.',
+        'Hasil disimpan sekali untuk setiap unggahan. Hasil berikutnya baru dapat dicatat setelah perbaikan dan unggah ulang.',
       ]">
       <x-slot:kalimat>Berkas <b>{{ $nama }}</b> menunggu putusan BPK di SIPTL.</x-slot:kalimat>
       <x-baris-isi label="Diunggah ke SIPTL">
         <div class="kerja-teks">@if($x->siptl_tanggal)<span>{{ Tampil::tgl($x->siptl_tanggal) }}</span>@else{{ 'tidak tercatat' }}@endif<span class="kerja-meta">dikunci</span></div>
       </x-baris-isi>
-      {{-- Pilihannya dua. BT keadaan awal yang terpasang sendiri; TD tidak
-           pernah terjadi di lembar pemantauan. --}}
+      {{-- Dua pilihan: BT terpasang sendiri saat diunggah. --}}
       <x-baris-isi label="Putusan BPK" gabung wajib kosong :kunci="'putusan-bpk-'.$k"
-        info="Dicatat sekali untuk unggahan ini, lalu terkunci.">
+        info="SS berarti bukti sudah sesuai dengan rekomendasi; BS berarti masih perlu perbaikan. Pilih sesuai putusan BPK di SIPTL. Hasil yang disimpan terkunci untuk unggahan ini.">
         <div class="kerja-pilih" role="group" aria-label="Putusan BPK">
           <button type="button" class="ok" aria-pressed="false" data-kartu-status="SS">
             <x-ikon n="CheckCircle2" :s="18" /><b>SS</b><span>{{ StatusTindakLanjut::SS->pendek() }}</span>
@@ -87,14 +74,13 @@
       </x-baris-isi>
       {{-- Tanggal dan catatannya baru ditanyakan sesudah ada putusannya. --}}
       <div class="kerja-susul" data-bila-pilih hidden>
-      <x-baris-isi label="Tanggal pemantauan" :untuk="'pantau-'.$k" info="Kosongkan bila dipantau hari ini.">
+      <x-baris-isi label="Tanggal pemantauan" :untuk="'pantau-'.$k" info="Tanggal hasil BPK diperiksa di SIPTL. Jika kosong, digunakan tanggal hari ini.">
         <input id="pantau-{{ $k }}" type="date" name="tgl_pantau" max="{{ $hari }}">
       </x-baris-isi>
-      {{-- Catatannya wajib kalau Belum Sesuai: kalimat itulah yang menjelaskan
-           kenapa berkasnya dikembalikan. Bintang dan keterangannya ditukar
-           skrip menurut putusan yang dipilih. --}}
+      {{-- Catatan wajib bila Belum Sesuai; bintang dan keterangannya ditukar skrip menurut
+           putusan. --}}
       <x-baris-isi label="Catatan BPK" :untuk="'catatan-bpk-'.$k" bila="BS"
-        info="Salin apa yang tertulis di SIPTL untuk satuan kerja ini.">
+        info="Salin catatan BPK dari SIPTL untuk penugasan ini. Catatan wajib diisi jika hasilnya BS.">
         <textarea id="catatan-bpk-{{ $k }}" rows="3" maxlength="500" name="catatan"
           placeholder="Salin apa yang tertulis di SIPTL untuk satuan kerja ini." data-hitung-huruf data-catatan-bpk></textarea>
         <div class="hitunghuruf" data-jumlah-huruf>0/500</div>
@@ -128,9 +114,9 @@
     <x-panel-kerja ikon="RotateCcw" judul="Kirim ulang ke satuan kerja" wajib
       :ket="$x->catatan_bpk ? '' : 'Catatan untuk satuan kerja harus terisi'" :lanjut="$lanjutUlang"
       :info="[
-        'BPK menilai tindak lanjut ini Belum Sesuai. Setba yang mengirimkannya ulang ke satuan kerja.',
-        'Catatan unggahannya dilepas: sesudah diperbaiki, berkas yang baru yang diunggah ke SIPTL.',
-        'Yang dikirim ulang hanya satuan kerja pada baris ini. Yang lain tetap di tempatnya.',
+        'Hasil BS memerlukan perbaikan. Setba mengirim ulang berkas beserta catatan BPK ke satuan kerja.',
+        'Tanggal unggah aktif dikosongkan untuk pencatatan unggahan berikutnya; riwayat sebelumnya tetap tersimpan.',
+        'Pengiriman ulang hanya berlaku untuk penugasan yang sedang dibuka.',
       ]">
       <x-slot:kalimat>Berkas <b>{{ $nama }}</b> dikembalikan untuk pemberkasan ulang.</x-slot:kalimat>
       <x-baris-isi label="Ditolak BPK">
@@ -146,19 +132,19 @@
         </x-baris-isi>
       @endif
       <x-baris-isi label="Catatan untuk satuan kerja" :untuk="'alasan-bpk-'.$k" wajib
-        :info="'Kalimat inilah yang dibaca '.$nama.' saat berkasnya kembali'.($x->catatan_bpk ? ' — diisikan dari catatan BPK di atas.' : '.')">
+        :info="'Jelaskan perbaikan yang perlu dilakukan '.$nama.' berdasarkan catatan BPK.'">
         <textarea id="alasan-bpk-{{ $k }}" rows="3" maxlength="500" name="alasan" aria-required="true"
           placeholder="Sebutkan apa yang kurang di satuan kerja ini." data-hitung-huruf data-alasan-bpk>{{ $x->catatan_bpk }}</textarea>
         <div class="hitunghuruf" data-jumlah-huruf>{{ mb_strlen((string) $x->catatan_bpk) }}/500</div>
       </x-baris-isi>
       <x-baris-isi label="Dokumen yang diminta" gabung :kunci="'dok-bpk-'.$k" :info="[
-        'Isi kalau catatan BPK memang meminta dokumen tertentu.',
-        'Satuan kerja wajib melampirkan seluruhnya sebelum bisa mengirim ulang ke Setba.',
+        'Daftar dokumen yang perlu dilengkapi sesuai catatan BPK.',
+        'Satuan kerja perlu melengkapi seluruh dokumen yang diminta sebelum mengirim ulang tanggapan ke Setba.',
       ]">
         @include('rekomendasi.bagian.daftar-isian', ['nama' => 'dokumen', 'nilai' => [''], 'placeholder' => 'Nama dokumen', 'tambah' => 'Tambah dokumen'])
       </x-baris-isi>
       <x-baris-isi label="Keterangan Setba" :untuk="'ket-bpk-'.$k"
-        info="Gunanya memperjelas maksud BPK supaya satuan kerja mudah memperbaikinya.">
+        info="Petunjuk tambahan untuk membantu satuan kerja memperbaiki tindak lanjut sesuai catatan BPK.">
         <textarea id="ket-bpk-{{ $k }}" rows="2" name="keterangan" maxlength="500"
           placeholder="Perjelas maksud catatan BPK supaya satuan kerja mudah memperbaikinya."></textarea>
       </x-baris-isi>

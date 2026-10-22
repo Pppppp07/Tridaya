@@ -5,11 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Surat hasil bernomor: LHV dari UKI, CHV dari Inspektorat.
- *
- * Satu nomor boleh memutus beberapa baris dan beberapa rekomendasi — itu
- * kenyataan kertasnya. Keputusan atas tiap rekomendasi ada di
- * `KeputusanVerifikasi`.
+ * Surat hasil bernomor: LHV (UKI), CHV (Inspektorat). Satu nomor boleh memutus beberapa baris dan
+ * rekomendasi.
  */
 class Verifikasi extends Model
 {
@@ -17,7 +14,7 @@ class Verifikasi extends Model
     public const CHV = 'CHV';
 
     protected $fillable = [
-        'jenis', 'periode', 'nomor_surat', 'tgl_surat', 'perihal', 'pejabat',
+        'jenis', 'nomor_surat', 'tgl_surat', 'perihal', 'pejabat',
         'nomor_lhv', 'tgl_lhv', 'lampiran_id', 'dicatat_oleh',
     ];
 

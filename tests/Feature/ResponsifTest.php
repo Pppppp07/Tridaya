@@ -9,16 +9,7 @@ use Illuminate\Support\Str;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Tampilan menurut lebar layar, sejak 22 Sep.
- *
- * Kata Hizkia: "pada mode desktop sidebar menu saat di scrool dia malah ikut
- * naik ke atas", lalu "tingkatkan kembali ... fleksibilitas dan responsive ...
- * informasi yang ditampilkan itu berbeda tergantung kondisi layar". Tata
- * letaknya sendiri diatur CSS salinan prototipe; yang dijaga di sini kaitan
- * markup yang dibutuhkan CSS itu — kelas kolom, nama isian di mode kartu —
- * dan penyebab menu ikut tergulir yang tidak boleh kembali.
- */
+/** Tampilan menurut lebar layar. */
 class ResponsifTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -31,8 +22,7 @@ class ResponsifTest extends TestCase
 
     public function test_body_tidak_dipatok_setinggi_layar(): void
     {
-        /* Body kerangka halaman ini; kalau dipatok setinggi layar, menu samping
-           dan batang atas yang lengket di dalamnya ikut tergulir. */
+        /* Body adalah kerangka halaman; jangan dipatok setinggi layar. */
         $css = preg_replace('#/\*.*?\*/#s', '', file_get_contents(public_path('css/simtlhp-tambahan.css')));
         $this->assertDoesNotMatchRegularExpression('/(^|[\s,}])body\s*(,[^{]*)?\{[^}]*(?<!-)height\s*:\s*100%/', $css);
         $this->assertMatchesRegularExpression('/body\s*\{[^}]*min-height\s*:\s*100%/', $css);

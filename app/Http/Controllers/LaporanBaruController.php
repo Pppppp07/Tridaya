@@ -19,49 +19,29 @@ use App\Models\Sasaran;
 use App\Models\Satker;
 use App\Models\Temuan;
 use App\Models\Tindakan;
-use App\Support\BentukTindakLanjut;
+use App\Rules\LinkBukti;
+use App\Support\Aktivitas;
 use App\Support\Jejak;
+use App\Support\KebijakanBukti;
 use App\Support\Pemberitahuan;
 use App\Support\Tampil;
-use App\Rules\LinkAman;
-use App\Support\Aktivitas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Catat laporan baru — padanan `FormBaru` dan `simpanBaru` prototipe.
- *
- * Dua langkah (sejak 25 Sep 2026, mengikuti prototipe 24 Sep): isi laporan —
- * surat dan seluruh temuan dalam satu halaman seperti mengisi dokumen — lalu
- * tinjau dan kirim. Temuan, rekomendasi, dan tindak lanjut berjajar ke samping
- * sebagai tab (Hizkia: "section atau container baru saat ditambahkan itu kalau
- * bisa jangan bertambah kebawah"), jadi halamannya tidak memanjang berapa pun
- * jumlahnya. SEMUA panel tetap dirender — yang tidak terpilih disembunyikan —
- * supaya satu kiriman memuat seluruh isian; berpindah tab dikerjakan skrip,
- * atau tombol tabnya sendiri kalau skrip mati.
- *
- * Isian disimpan sebagai draf di basis data, satu per pengguna. Rapat Agustus:
- * "Save Draft wajib (bukan fitur tambahan) karena form bertingkat jadi sangat
- * panjang." Draf hanya terlihat pembuatnya dan belum terkirim ke satuan kerja
- * mana pun.
- *
- * Seluruh perbuatan lewat kiriman formulir biasa, bukan JavaScript: menekan
- * tombol apa pun membawa seluruh isian yang sedang tampak, jadi tidak ada
- * ketikan yang hilang. Sejak 29 Sep skrip mengirim formulir yang sama di
- * belakang layar dan menukar isinya di tempat, tanpa memuat ulang halaman
- * (lihat keFormulir); aturan dan penyimpanannya tetap di sini.
+ * Catat laporan baru: isi laporan (satu halaman bertab), lalu tinjau dan kirim. Semua panel
+ * dirender — yang tidak terpilih disembunyikan — supaya satu kiriman memuat seluruh isian. Draf
+ * disimpan per pengguna.
  */
 class LaporanBaruController extends Controller
 {
-    /* ================================================================
-       BENTUK DRAF
-       ================================================================ */
+    /* ---- Bentuk draf ---- */
 
     private function boleh(): void
     {
-        abort_unless(in_array(auth()->user()->peran, [PeranPengguna::SETBA, PeranPengguna::ADMIN], true),
+        abort_unless(in_array(auth()->user()->peranAktif(), [PeranPengguna::SETBA, PeranPengguna::ADMIN], true),
             403, 'Hanya Setba yang mencatat laporan pemeriksaan.');
     }
 
@@ -72,34 +52,28 @@ class LaporanBaruController extends Controller
 
     private function kosong(): array
     {
-        /* Pengenal temuan, rekomendasi, dan tindak lanjut pertama pada
-           formulir yang baru dibuka tetap, bukan acak (29 Sep). Selama belum
-           ada draf, tiap permintaan membangun formulir kosong dari awal —
-           dengan pengenal acak, isian temuan pada kiriman pertama tidak
-           menemukan temuannya dan terbuang diam-diam: satuan kerja yang
-           pertama dicentang hilang lagi. Yang ditambahkan sesudahnya tetap
-           acak; pengenal acak selalu tujuh huruf, jadi tidak bertabrakan. */
+        /* Pengenal awal tetap (t0/r0/k0), bukan acak: tanpa draf formulir dibangun ulang tiap
+           permintaan, dan isian kiriman pertama bisa hilang. */
         $t = $this->temKosong();
         $t['id'] = 't0';
         $t['rekom'][0]['id'] = 'r0';
         $t['rekom'][0]['tindakan'][0]['id'] = 'k0';
 
         return [
-            'n'      => 1,
-            'surat'  => ['sumber' => 'LHP', 'nomor' => '', 'tgl_surat' => '', 'tgl_terima' => ''],
+            'n' => 1,
+            'surat' => ['sumber' => 'LHP', 'nomor' => '', 'tgl_surat' => '', 'tgl_terima' => ''],
             'berkas' => ['judul' => '', 'link' => ''],
             'temuan' => [$t],
-            'aktif'  => $t['id'],
+            'aktif' => $t['id'],
             /* Rekomendasi terpilih pada temuan yang terpilih. `null` = bawaan,
                rekomendasi pertama temuan itu. */
-            'buka'     => null,
-            /* Tindak lanjut terpilih per rekomendasi (indeks), dan bagian surat
-               terbuka atau tidak (`null` = bawaan: terbuka selama suratnya
-               belum lengkap). */
-            'tl'         => [],
+            'buka' => null,
+            /* Tindak lanjut terpilih per rekomendasi, dan bagian surat terbuka (`null` = terbuka
+               selama surat belum lengkap). */
+            'tl' => [],
             'surat_buka' => null,
-            'disimpan'   => null,
-            'versi'      => 2,
+            'disimpan' => null,
+            'versi' => 2,
         ];
     }
 
@@ -107,21 +81,17 @@ class LaporanBaruController extends Controller
     {
         return [
             'id' => $this->id('t'), 'nomor' => '', 'judul' => '', 'sebab' => '', 'akibat' => '',
-            /* Kosong, bukan satuan kerja pertama daftar: pilihan bawaan yang
-               diam-diam menugaskan satuan kerja yang tidak diperiksa kalau
-               terlewat. Daftar kosong itulah yang menahan langkah berikutnya. */
-            'satker'   => [],
+            /* Kosong, bukan satuan kerja pertama: pilihan bawaan bisa diam-diam menugaskan
+               satuan kerja yang salah. */
+            'satker' => [],
             'kategori' => '',
-            'intern'   => (string) (Referensi::where('jenis', JenisReferensi::KATEGORI_INTERN->value)
+            'intern' => (string) (Referensi::where('jenis', JenisReferensi::KATEGORI_INTERN->value)
                 ->where('aktif', true)->orderBy('urutan')->orderBy('id')->value('id') ?? ''),
-            'rekom'    => [$this->rekKosong()],
+            'rekom' => [$this->rekKosong()],
         ];
     }
 
-    /**
-     * Pilihan awal sifat rekomendasi: Administratif kalau masih aktif, kalau
-     * tidak sifat aktif yang pertama — sama dengan `sifatAwalDari` prototipe.
-     */
+    /** Sifat awal: Administratif bila aktif, selain itu sifat aktif pertama. */
     private function sifatAwal(): ?Referensi
     {
         $aktif = Referensi::where('jenis', JenisReferensi::SIFAT_REKOM->value)->where('aktif', true)
@@ -134,26 +104,81 @@ class LaporanBaruController extends Controller
     {
         return [
             'id' => $this->id('r'), 'uraian' => '', 'ref_lhp' => '',
-            'sifat'  => (string) ($this->sifatAwal()?->id ?? ''),
+            /* Ref LHP mengikuti nomor temuan sampai disunting tangan. */
+            'ref_otomatis' => true,
+            'sifat' => (string) ($this->sifatAwal()?->id ?? ''),
             'angsur' => '', 'kunci' => false,
-            /* Satu tindak lanjut untuk memulai. Satuan kerjanya dipilih di
-               dalamnya, dan tindak lanjut kedua ditambahkan sendiri kalau
-               memang ada satuan kerja lain yang dituntut hal berbeda. */
+            /* Satu tindak lanjut untuk memulai. */
             'tindakan' => [$this->tindakanKosong()],
         ];
     }
 
     private function tindakanKosong(?string $bentuk = null, string $renaksi = ''): array
     {
-        $bentuk ??= BentukTindakLanjut::nama()[0];
+        $bentuk ??= (string) ($this->bentukMaster()->firstWhere('aktif', true)?->id ?? '');
 
         return [
             'id' => $this->id('k'), 'bentuk' => $bentuk, 'satker' => [],
-            /* Terisi awal dari bentuk tindak lanjutnya. Setba tetap bisa
-               mengubah — daftarnya cuma usulan. */
-            'dokumen'     => BentukTindakLanjut::peta()[$bentuk] ?? [''],
+            /* Usulan dari bentuk tindak lanjut; Setba tetap bisa mengubah. */
+            'dokumen' => $this->usulanDokumen($bentuk),
             'tgl_renaksi' => $renaksi, 'target' => '', 'catatan' => '',
         ];
+    }
+
+    /* ---- Bentuk tindak lanjut (data master) ----
+       Isian `bentuk` menyimpan id referensinya. */
+
+    private ?\Illuminate\Support\Collection $daftarBentuk = null;
+
+    /** Seluruh bentuk, termasuk yang nonaktif (draf lama boleh tetap memakainya). */
+    public function bentukMaster(): \Illuminate\Support\Collection
+    {
+        return $this->daftarBentuk ??= Referensi::where('jenis', JenisReferensi::BENTUK_TL->value)
+            ->orderBy('urutan')->orderBy('id')->get();
+    }
+
+    public function namaBentuk(string $id): string
+    {
+        return $id === '' ? '' : (string) $this->bentukMaster()->firstWhere('id', (int) $id)?->nama;
+    }
+
+    /** Dokumen usulan sebuah bentuk; tanpa usulan = satu baris kosong untuk diisi. */
+    private function usulanDokumen(string $id): array
+    {
+        $dok = $id === '' ? [] : (array) ($this->bentukMaster()->firstWhere('id', (int) $id)?->dokumen ?? []);
+
+        return $dok ?: [''];
+    }
+
+    /**
+     * Id bentuk dari kiriman: id yang terdaftar, atau nama yang persis ada di data master (draf
+     * lama menyimpan nama). Selain itu kosong — bentuk tidak lagi bisa diketik bebas.
+     */
+    private function idBentuk(mixed $nilai): string
+    {
+        $nilai = trim((string) $nilai);
+        if ($nilai === '') {
+            return '';
+        }
+        $daftar = $this->bentukMaster();
+        $x = ctype_digit($nilai) ? $daftar->firstWhere('id', (int) $nilai)
+            : $daftar->first(fn ($b) => mb_strtolower($b->nama) === mb_strtolower($nilai));
+
+        return $x ? (string) $x->id : '';
+    }
+
+    /** Draf yang dibuat sebelum bentuk jadi data master menyimpan nama — dibaca jadi id. */
+    private function bakukanBentuk(array $d): array
+    {
+        foreach ($d['temuan'] ?? [] as $i => $t) {
+            foreach ($t['rekom'] ?? [] as $j => $r) {
+                foreach ($r['tindakan'] ?? [] as $k => $tk) {
+                    $d['temuan'][$i]['rekom'][$j]['tindakan'][$k]['bentuk'] = $this->idBentuk($tk['bentuk'] ?? '');
+                }
+            }
+        }
+
+        return $d;
     }
 
     private function draf(): array
@@ -163,14 +188,13 @@ class LaporanBaruController extends Controller
             return $this->kosong();
         }
         $d = array_replace($this->kosong(), $baris->isian);
-        /* Draf dari formulir tiga langkah (sebelum 25 Sep): langkah tinjau jadi
-           langkah kedua, dua langkah isian jadi satu halaman. */
+        /* Draf lama (formulir tiga langkah) dipetakan ke dua langkah. */
         if (($baris->isian['versi'] ?? 1) < 2) {
             $d['n'] = ($d['n'] ?? 1) >= 3 ? 2 : 1;
             $d['versi'] = 2;
         }
 
-        return $d;
+        return $this->bakukanBentuk($d);
     }
 
     private function simpanDraf(array $d): void
@@ -185,9 +209,7 @@ class LaporanBaruController extends Controller
         DrafLaporan::where('user_id', auth()->id())->delete();
     }
 
-    /* ================================================================
-       LAYAR
-       ================================================================ */
+    /* ---- Layar ---- */
 
     public function form()
     {
@@ -196,62 +218,58 @@ class LaporanBaruController extends Controller
         return $this->layar();
     }
 
-    /**
-     * Halaman formulirnya. `$gulir`: bagian yang baru dibuka, ditambahkan,
-     * atau ditunjuk — dibawa `data-gulir`, untuk jawaban kiriman skrip yang
-     * tidak punya alamat berjangkar.
-     */
+    /** `$gulir`: bagian yang dituju, dibawa `data-gulir` untuk jawaban kiriman skrip. */
     private function layar(?string $gulir = null)
     {
         $d = $this->draf();
+        if (session()->hasOldInput('berkas')) {
+            $d = $this->serap(Request::create('/', 'POST', session()->getOldInput()), $d);
+        }
 
-        /* Formulir kosong yang pernah ditinggalkan bukan draf (28 Sep). Sisanya
-           — tersimpan sebelum perbaikan ini — dibuang, dan formulirnya dibuka
-           baru tanpa keterangan "melanjutkan draf". */
+        /* Formulir kosong yang ditinggalkan bukan draf — dibuang. */
         if (($d['ditinggal'] ?? false) && ! $this->adaIsi($d)) {
             $this->hapusDraf();
             $d = $this->kosong();
         }
 
-        /* Keterangan "melanjutkan draf" hanya untuk yang kembali ke formulir
-           yang pernah ditinggalkan, bukan untuk yang sedang mengisinya. */
+        /* Keterangan "melanjutkan draf" hanya bagi yang kembali ke formulir yang ditinggalkan. */
         $ada = ($d['ditinggal'] ?? false) && $this->adaIsi($d);
         $i = array_search($d['aktif'], array_column($d['temuan'], 'id'), true);
 
         $ok1 = $this->ok1($d);
 
         return view('laporan.baru', [
-            'd'        => $d,
-            'iAktif'   => $i === false ? 0 : $i,
-            'adaDraf'  => $ada,
+            'd' => $d,
+            'iAktif' => $i === false ? 0 : $i,
+            'adaDraf' => $ada,
             'suratBuka' => $d['surat_buka'] ?? ! $ok1,
-            /* Penanggung jawabnya ikut dimuat: pemilih satuan kerja pada tiap
-               tindak lanjut menyebut siapa yang akan diberi tahu. */
-            'satker'   => Satker::with('penanggungJawab')->orderBy('id')->get(),
+            /* Penanggung jawab ikut dimuat untuk pemilih satuan kerja. */
+            'satker' => Satker::with('penanggungJawab')->orderBy('id')->get(),
             'kategori' => KategoriTemuan::where('aktif', true)->orderBy('urutan')->orderBy('id')->get(),
-            'intern'   => Referensi::where('jenis', JenisReferensi::KATEGORI_INTERN->value)
+            'intern' => Referensi::where('jenis', JenisReferensi::KATEGORI_INTERN->value)
                 ->orderBy('urutan')->orderBy('id')->get(),
-            'sifat'    => Referensi::where('jenis', JenisReferensi::SIFAT_REKOM->value)
+            'sifat' => Referensi::where('jenis', JenisReferensi::SIFAT_REKOM->value)
                 ->orderBy('urutan')->orderBy('id')->get(),
-            'bentuk'   => BentukTindakLanjut::nama(),
-            'ok1'      => $ok1,
-            'siap'     => $ok1 && $this->ok2($d),
-            'kurang'   => $d['n'] === 1 ? $this->kurangIsi($d) : null,
-            'ringkas'  => $this->ringkas($d),
-            'adaIsi'   => $this->adaIsi($d),
-            'form'     => $this,
-            'gulir'    => $gulir,
+            'bentuk' => $this->bentukMaster(),
+            'ok1' => $ok1,
+            'siap' => $ok1 && $this->ok2($d),
+            'kurang' => $d['n'] === 1 ? $this->kurangIsi($d) : null,
+            'ringkas' => $this->ringkas($d),
+            'adaIsi' => $this->adaIsi($d),
+            'form' => $this,
+            'gulir' => $gulir,
         ]);
     }
 
     /**
-     * Satu pintu untuk seluruh perbuatan di formulir ini: isian yang sedang
-     * tampak diserap dulu, baru tombolnya dikerjakan. Tanpa itu, menambah satu
-     * rekomendasi menghapus semua yang belum sempat tersimpan.
+     * Satu pintu untuk semua tombol: isian diserap dulu, supaya yang belum tersimpan tidak hilang.
      */
     public function simpan(Request $req)
     {
         $this->boleh();
+        if ($req->input('aksi') !== 'kosongkan') {
+            $req->validate(['berkas.link' => ['nullable', 'string', 'max:500', new LinkBukti]]);
+        }
 
         $d = $this->serap($req, $this->draf());
         $aksi = (string) $req->input('aksi', '');
@@ -266,11 +284,8 @@ class LaporanBaruController extends Controller
             return $req->ajax() ? $this->layar() : redirect()->route('laporan.baru');
         }
 
-        /* Ditahan di halaman isian kalau masih ada yang kurang — bukan
-           dilarang mengirim. Tombol yang dimatikan sampai isiannya lengkap
-           membuat halamannya buntu: isian yang tidak pernah sampai ke server
-           tidak pernah bisa diperiksa. Bagian yang kurang langsung dibuka,
-           sama dengan "Tunjukkan". */
+        /* Isian yang kurang ditahan di halaman isian (tombol tidak dimatikan) dan bagiannya
+           dibuka. */
         if ($aksi === 'maju' && $d['n'] === 1 && ! ($this->ok1($d) && $this->ok2($d))) {
             $kurang = $this->kurangIsi($d);
             [$d, $sorot, $fokus] = $this->lepasSorot($this->tunjuk($d));
@@ -279,13 +294,7 @@ class LaporanBaruController extends Controller
             return $this->keFormulir($req, $sorot, $fokus, $kurang['teks'] ?? '');
         }
 
-        /* Meninggalkan formulir yang kosong — "Kembali ke beranda", atau
-           "Simpan draft" yang tetap terkirim walau tombolnya mati — tidak
-           menyimpan draf apa pun, sama dengan `tinggalkan` prototipe. Dulu
-           keadaan kerjanya tetap tersimpan sebagai draf kosong: tombol di
-           batang atas jadi "Lanjutkan draf laporan", formulirnya menyebut
-           "Melanjutkan draf", padahal tidak ada isinya dan tidak ada yang bisa
-           dikosongkan (Hizkia, 28 Sep). */
+        /* Meninggalkan formulir kosong tidak menyimpan draf. */
         if (in_array($aksi, ['simpan-draf', 'tinggalkan'], true) && ! $this->adaIsi($d)) {
             $this->hapusDraf();
 
@@ -294,15 +303,9 @@ class LaporanBaruController extends Controller
 
         $d = $this->terapkan($d, $aksi);
         [$d, $sorot, $fokus] = $this->lepasSorot($d);
-        /* Keterangan "melanjutkan draf" cuma untuk yang kembali ke formulir
-           yang pernah ditinggalkan — bukan untuk yang sedang mengisinya. */
         $d['ditinggal'] = in_array($aksi, ['simpan-draf', 'tinggalkan'], true);
         if ($d['ditinggal']) {
-            /* Draf yang dilanjutkan dibuka seperti formulir yang baru dibuka di
-               prototipe: di halaman isian (tinjauan baru berarti kalau isiannya
-               lengkap), bagian surat terbuka hanya kalau belum lengkap, dan
-               rekomendasi serta tindak lanjut pertama yang tampil. Temuan yang
-               terakhir dikerjakan tetap terpilih. */
+            /* Draf dilanjutkan di halaman isian; temuan terakhir tetap terpilih. */
             $d['n'] = 1;
             $d['surat_buka'] = null;
             $d['buka'] = null;
@@ -310,11 +313,8 @@ class LaporanBaruController extends Controller
         }
         $this->simpanDraf($d);
 
-        /* "Simpan draft" dan "Kembali ke beranda" meninggalkan formulir —
-           isiannya sudah tersimpan, jadi tidak ada yang hilang. Langkah isian
-           di tengah jalan (membuka bagian, menambah temuan) tidak dicatat di
-           log — yang dicatat hanya draf yang ditinggalkan dan laporan yang
-           benar-benar dicatat. */
+        /* Simpan draft / Kembali ke beranda meninggalkan formulir. Log hanya mencatat draf yang
+           ditinggalkan dan laporan yang dicatat. */
         if ($aksi === 'simpan-draf' || $aksi === 'tinggalkan') {
             Aktivitas::catat('laporan.draf', 'Menyimpan draf laporan baru'
                 .(trim($d['surat']['nomor']) !== '' ? ' '.trim($d['surat']['nomor']) : ''));
@@ -326,14 +326,8 @@ class LaporanBaruController extends Controller
     }
 
     /**
-     * Kembali ke formulir sesudah satu perbuatan di dalamnya. Kiriman biasa
-     * dialihkan, dan bagian yang baru dibuka, ditambahkan, atau ditunjuk
-     * disebut di alamatnya — tanpa skrip pun halaman mendarat di sana.
-     *
-     * Kiriman dari skrip (29 Sep) langsung dijawab halaman formulirnya: skrip
-     * cuma menukar isi formulir di tempat, jadi halamannya tidak dimuat ulang,
-     * dan pengalihan hanya menambah satu perjalanan ke server. Keterangan
-     * sesaat (gagal, fokus) berlaku untuk jawaban ini saja.
+     * Kembali ke formulir: kiriman biasa dialihkan ke alamat berjangkar; kiriman skrip langsung
+     * dijawab isi formulirnya.
      */
     private function keFormulir(Request $req, ?string $sorot, bool $fokus, ?string $gagal = null)
     {
@@ -370,30 +364,36 @@ class LaporanBaruController extends Controller
         return redirect()->route('rekomendasi.index');
     }
 
-    /* ================================================================
-       MENYERAP ISIAN
-       ================================================================ */
+    /* ---- Menyerap isian ---- */
+
+    /**
+     * Satu isian dari kiriman. Isian kosong tiba sebagai null (ConvertEmptyStringsToNull), jadi
+     * "dikosongkan" dibedakan dari "tidak dikirim" lewat ada-tidaknya kuncinya.
+     */
+    private function isian(array $kiriman, string|int $k, string $lama): string
+    {
+        return array_key_exists($k, $kiriman) ? trim((string) $kiriman[$k]) : $lama;
+    }
 
     private function serap(Request $req, array $d): array
     {
         $s = (array) $req->input('surat', []);
         $lama = $d['surat'];
         $d['surat'] = [
-            'sumber'     => in_array($s['sumber'] ?? '', ['LHP', 'LHA'], true) ? $s['sumber'] : $lama['sumber'],
-            'nomor'      => trim((string) ($s['nomor'] ?? $lama['nomor'])),
-            'tgl_surat'  => (string) ($s['tgl_surat'] ?? $lama['tgl_surat']),
-            'tgl_terima' => (string) ($s['tgl_terima'] ?? $lama['tgl_terima']),
+            'sumber' => in_array($s['sumber'] ?? '', ['LHP', 'LHA'], true) ? $s['sumber'] : $lama['sumber'],
+            'nomor' => $this->isian($s, 'nomor', $lama['nomor']),
+            'tgl_surat' => $this->isian($s, 'tgl_surat', $lama['tgl_surat']),
+            'tgl_terima' => $this->isian($s, 'tgl_terima', $lama['tgl_terima']),
         ];
         $gantiSumber = $lama['sumber'] !== $d['surat']['sumber'];
 
         $b = (array) $req->input('berkas', []);
         $d['berkas'] = [
-            'judul'  => trim((string) ($b['judul'] ?? $d['berkas']['judul'])),
-            'link' => trim((string) ($b['link'] ?? $d['berkas']['link'])),
+            'judul' => array_key_exists('judul', $b) && ($b['judul'] === null || is_string($b['judul'])) ? trim($b['judul'] ?? '') : $d['berkas']['judul'],
+            'link' => array_key_exists('link', $b) && ($b['link'] === null || is_string($b['link'])) ? trim($b['link'] ?? '') : $d['berkas']['link'],
         ];
 
-        /* Seluruh temuan ikut terkirim — yang tidak terpilih cuma
-           disembunyikan. Temuan yang tidak ada di kiriman (langkah tinjau)
+        /* Seluruh temuan ikut terkirim (yang tak terpilih disembunyikan); yang tidak dikirim
            tetap seperti tersimpan. */
         $isi = (array) $req->input('tem', []);
         if ($isi) {
@@ -401,8 +401,7 @@ class LaporanBaruController extends Controller
                 ? $this->serapTemuan($t, $isi[$t['id']]) : $t, $d['temuan']);
         }
 
-        /* Tab yang dipilih lewat skrip (tanpa mengirim) dibawa masukan
-           tersembunyi, jadi kiriman berikutnya mendarat di tab yang sama. */
+        /* Tab yang dipilih lewat skrip dibawa masukan tersembunyi. */
         $ui = (array) $req->input('ui', []);
         if (in_array($ui['aktif'] ?? null, array_column($d['temuan'], 'id'), true)) {
             $d['aktif'] = $ui['aktif'];
@@ -417,8 +416,7 @@ class LaporanBaruController extends Controller
             $d['surat_buka'] = $ui['surat'] === '1';
         }
 
-        /* Sumber laporan berganti: daftar kategori temuannya ikut berganti,
-           jadi yang sudah dipilih tidak lagi ada di daftarnya. */
+        /* Sumber berganti → pilihan kategori temuan dikosongkan. */
         if ($gantiSumber) {
             $d['temuan'] = array_map(function ($t) {
                 $t['kategori'] = '';
@@ -432,32 +430,63 @@ class LaporanBaruController extends Controller
 
     private function serapTemuan(array $t, array $isi): array
     {
-        $t['nomor']    = trim((string) ($isi['nomor'] ?? $t['nomor']));
-        $t['judul']    = trim((string) ($isi['judul'] ?? $t['judul']));
-        $t['sebab']    = trim((string) ($isi['sebab'] ?? $t['sebab']));
-        $t['akibat']   = trim((string) ($isi['akibat'] ?? $t['akibat']));
-        $t['kategori'] = (string) ($isi['kategori'] ?? $t['kategori']);
-        $t['intern']   = (string) ($isi['intern'] ?? $t['intern']);
-        /* Kotak centang yang tidak dicentang tidak dikirim sama sekali, jadi
-           daftar kosong memang berarti kosong. */
+        $nomorLama = $t['nomor'];
+        /* Nomor yang dikosongkan ikut mengosongkan Ref LHP otomatisnya. */
+        $t['nomor'] = $this->isian($isi, 'nomor', $t['nomor']);
+        $t['judul'] = $this->isian($isi, 'judul', $t['judul']);
+        $t['sebab'] = $this->isian($isi, 'sebab', $t['sebab']);
+        $t['akibat'] = $this->isian($isi, 'akibat', $t['akibat']);
+        $t['kategori'] = $this->isian($isi, 'kategori', (string) $t['kategori']);
+        $t['intern'] = $this->isian($isi, 'intern', (string) $t['intern']);
+        /* Kotak centang kosong tidak terkirim: daftar kosong berarti kosong. */
         $t['satker'] = array_values(array_unique(array_map('intval', (array) ($isi['satker'] ?? []))));
 
-        $t['rekom'] = array_map(function ($r) use ($isi, $t) {
+        $t['rekom'] = array_map(function ($r, $j) use ($isi, $t, $nomorLama) {
             $ri = $isi['rekom'][$r['id']] ?? null;
             if (! is_array($ri)) {
                 return $r;
             }
-            $r['uraian']  = trim((string) ($ri['uraian'] ?? $r['uraian']));
-            $r['ref_lhp'] = trim((string) ($ri['ref_lhp'] ?? $r['ref_lhp']));
-            $r['sifat']   = (string) ($ri['sifat'] ?? $r['sifat']);
-            $r['angsur']  = preg_replace('/\D/', '', (string) ($ri['angsur'] ?? $r['angsur']));
-            $r['kunci']   = (bool) ($ri['kunci'] ?? false);
+            $r['uraian'] = $this->isian($ri, 'uraian', $r['uraian']);
+            /* Draf lama tanpa tanda: dianggap otomatis bila kosong atau sama dengan usulannya. */
+            $otomatis = $r['ref_otomatis'] ?? ($r['ref_lhp'] === '' || $r['ref_lhp'] === $this->refUsulan($nomorLama, $j));
+            $ref = $this->isian($ri, 'ref_lhp', $r['ref_lhp']);
+            /* Disunting tangan, termasuk dikosongkan: tidak lagi mengikuti nomor temuan. */
+            if ($ref !== $r['ref_lhp'] && $ref !== $this->refUsulan($t['nomor'], $j)) {
+                $otomatis = false;
+            }
+            $r['ref_lhp'] = $ref;
+            $r['ref_otomatis'] = $otomatis;
+            $r['sifat'] = $this->isian($ri, 'sifat', (string) $r['sifat']);
+            $r['angsur'] = preg_replace('/\D/', '', $this->isian($ri, 'angsur', (string) $r['angsur']));
+            $r['kunci'] = (bool) ($ri['kunci'] ?? false);
             $r['tindakan'] = array_map(fn ($tk) => is_array($ri['tindakan'][$tk['id']] ?? null)
                 ? $this->serapTindakan($tk, $ri['tindakan'][$tk['id']], $t['satker'])
                 : $tk, $r['tindakan']);
 
             return $r;
-        }, $t['rekom']);
+        }, $t['rekom'], array_keys($t['rekom']));
+
+        return $this->segarkanRef($t);
+    }
+
+    /** Ref LHP usulan: nomor temuan + huruf rekomendasi ("1.1" → "1.1.a"); kosong tanpa nomor. */
+    public function refUsulan(string $nomor, int $j): string
+    {
+        $nomor = rtrim(trim($nomor), '.');
+
+        return $nomor === '' ? '' : $nomor.'.'.$this->huruf($j);
+    }
+
+    /** Ref LHP yang belum disunting tangan ikut nomor temuan dan urutan rekomendasinya. */
+    private function segarkanRef(array $t): array
+    {
+        $j = 0;
+        foreach ($t['rekom'] as $k => $r) {
+            if ($r['ref_otomatis'] ?? false) {
+                $t['rekom'][$k]['ref_lhp'] = $this->refUsulan($t['nomor'], $j);
+            }
+            $j++;
+        }
 
         return $t;
     }
@@ -465,45 +494,39 @@ class LaporanBaruController extends Controller
     private function serapTindakan(array $tk, array $ki, array $satkerTemuan): array
     {
         $bentukLama = $tk['bentuk'];
-        $tk['bentuk'] = trim((string) ($ki['bentuk'] ?? $tk['bentuk']));
+        $tk['bentuk'] = $this->idBentuk($this->isian($ki, 'bentuk', (string) $tk['bentuk']));
 
-        /* Usul dokumen ikut berganti saat bentuknya berganti — tapi hanya kalau
-           daftarnya belum pernah disunting tangan. Kalau sudah, suntingan Setba
-           yang menang, termasuk suntingan yang datang bersamaan dengan
-           pergantian bentuknya. */
-        $utuh = $tk['dokumen'] === (BentukTindakLanjut::peta()[$bentukLama] ?? []);
+        /* Usul dokumen ikut bentuk tindak lanjut, kecuali daftarnya sudah disunting tangan. */
+        $utuh = $tk['dokumen'] === $this->usulanDokumen($bentukLama);
         $kiriman = array_values(array_map(fn ($x) => trim((string) $x),
             (array) ($ki['dokumen'] ?? $tk['dokumen'])));
         $disunting = $kiriman !== $tk['dokumen'];
         $tk['dokumen'] = $kiriman;
         if ($tk['bentuk'] !== $bentukLama && $utuh && ! $disunting) {
-            $tk['dokumen'] = BentukTindakLanjut::peta()[$tk['bentuk']] ?? [''];
+            $tk['dokumen'] = $this->usulanDokumen($tk['bentuk']);
         }
 
-        $tk['tgl_renaksi'] = (string) ($ki['tgl_renaksi'] ?? $tk['tgl_renaksi']);
-        $tk['target']      = (string) ($ki['target'] ?? $tk['target']);
-        $tk['catatan']     = trim((string) ($ki['catatan'] ?? $tk['catatan']));
+        /* Rencana aksi yang dikosongkan diisi lagi tenggat bawaannya oleh isiRenaksi(). */
+        $tk['tgl_renaksi'] = $this->isian($ki, 'tgl_renaksi', (string) $tk['tgl_renaksi']);
+        $tk['target'] = $this->isian($ki, 'target', (string) $tk['target']);
+        $tk['catatan'] = $this->isian($ki, 'catatan', $tk['catatan']);
 
-        /* Nilai yang sudah diketik dipertahankan untuk satuan kerja yang masih
-           terpilih — mengetiknya ulang tiap kali daftarnya disentuh cuma
-           mengundang salah ketik. Yang bukan satuan kerja terperiksa dibuang:
-           ia tidak akan pernah bisa menindaklanjutinya. */
+        /* Nilai yang sudah diketik dipertahankan untuk satuan kerja yang masih terpilih; satuan
+           kerja yang tidak diperiksa dibuang. */
         $lama = collect($tk['satker'])->keyBy('satker');
         $dipilih = array_values(array_intersect(
             array_map('intval', (array) ($ki['satker'] ?? [])), $satkerTemuan));
         $tk['satker'] = array_map(fn ($id) => [
             'satker' => $id,
-            'nilai'  => preg_replace('/\D/', '',
-                (string) ($ki['nilai'][$id] ?? $lama[$id]['nilai'] ?? '')),
+            'nilai' => preg_replace('/\D/', '',
+                $this->isian((array) ($ki['nilai'] ?? []), $id, (string) ($lama[$id]['nilai'] ?? ''))),
         ], $dipilih);
 
         return $tk;
     }
 
     /**
-     * Mengisi tanggal rencana aksi seluruh tindak lanjut. Yang sudah disetel
-     * tangan dibiarkan — kecuali sumber laporannya berganti: tenggatnya memang
-     * berubah dasar hukumnya, jadi yang lama tidak lagi berlaku.
+     * Isi tanggal rencana aksi; yang disetel tangan dibiarkan, kecuali sumber laporannya berganti.
      */
     private function isiRenaksi(array $d, bool $paksa): array
     {
@@ -526,9 +549,7 @@ class LaporanBaruController extends Controller
         return $d;
     }
 
-    /* ================================================================
-       TOMBOL
-       ================================================================ */
+    /* ---- Tombol ---- */
 
     private function terapkan(array $d, string $aksi): array
     {
@@ -547,7 +568,7 @@ class LaporanBaruController extends Controller
                 $d['n'] = max(1, min(2, (int) $a));
                 break;
 
-            /* Kepala bagian surat: dibuka-tutup. */
+                /* Kepala bagian surat: dibuka-tutup. */
             case 'surat':
                 $d['surat_buka'] = ! ($d['surat_buka'] ?? ! $this->ok1($d));
                 $d['_sorot'] = 'fb-surat';
@@ -556,9 +577,7 @@ class LaporanBaruController extends Controller
             case 'temuan':
                 if ($iTem($a) !== false) {
                     $d['aktif'] = (string) $a;
-                    /* Berpindah temuan melepas pilihan rekomendasi yang
-                       terbuka: pilihan lama masih menunjuk rekomendasi milik
-                       temuan lain. */
+                    /* Pindah temuan melepas pilihan rekomendasi lama. */
                     $d['buka'] = null;
                     $d['_sorot'] = 'fb-tem-'.$a;
                 }
@@ -597,6 +616,7 @@ class LaporanBaruController extends Controller
                 if ($i !== false) {
                     $r = $this->rekKosong();
                     $d['temuan'][$i]['rekom'][] = $r;
+                    $d['temuan'][$i] = $this->segarkanRef($d['temuan'][$i]);
                     /* Yang baru langsung terpilih. */
                     $d['buka'] = $r['id'];
                     $d['_sorot'] = 'fb-rek-'.$r['id'];
@@ -608,6 +628,8 @@ class LaporanBaruController extends Controller
                 if ($i !== false && count($d['temuan'][$i]['rekom']) > 1) {
                     $d['temuan'][$i]['rekom'] = array_values(array_filter(
                         $d['temuan'][$i]['rekom'], fn ($r) => $r['id'] !== $b));
+                    /* Huruf rekomendasi bergeser; Ref LHP otomatis ikut. */
+                    $d['temuan'][$i] = $this->segarkanRef($d['temuan'][$i]);
                     $d['buka'] = null;
                 }
                 break;
@@ -616,9 +638,7 @@ class LaporanBaruController extends Controller
                 /* Yang baru langsung terpilih. */
                 $d['tl'][(string) $b] = count($this->cariRek($d, $a, $b)['tindakan'] ?? []);
                 $d = $this->padaRek($d, $a, $b, fn ($r) => array_merge($r, [
-                    /* Tanggalnya ikut tindakan pertama sebagai titik mula —
-                       lebih sering benar daripada kosong, dan tetap bisa
-                       diubah. */
+                    /* Tanggal awal ikut tindakan pertama; tetap bisa diubah. */
                     'tindakan' => array_merge($r['tindakan'],
                         [$this->tindakanKosong(null, (string) ($r['tindakan'][0]['tgl_renaksi'] ?? ''))]),
                 ]));
@@ -651,10 +671,8 @@ class LaporanBaruController extends Controller
                 });
                 break;
 
-            /* Naik-turun jumlah angsuran. Batas bawahnya dua kali, karena "satu
-               kali" bukan angsuran melainkan pembayaran sekaligus — dan itu
-               diwakili isian kosong. Batas atasnya 24, mengikuti tenggang paling
-               lama surat pernyataan kesanggupan menurut PP 38/2016. */
+                /* Angsuran 2–24 kali (PP 38/2016); satu kali = pembayaran sekaligus (isian
+                   kosong). */
             case 'angsur':
                 $d = $this->padaRek($d, $b, $c, function ($r) use ($a) {
                     $kini = (int) $r['angsur'];
@@ -699,9 +717,7 @@ class LaporanBaruController extends Controller
         return $d;
     }
 
-    /* ================================================================
-       KELENGKAPAN
-       ================================================================ */
+    /* ---- Kelengkapan ---- */
 
     public function adaIsi(array $d): bool
     {
@@ -725,11 +741,7 @@ class LaporanBaruController extends Controller
         return false;
     }
 
-    /**
-     * Pengguna ini punya draf yang memang berisi — hanya itu yang disebut
-     * draf: tombol "Lanjutkan draf laporan" di batang atas (Rangka). Keadaan
-     * kerja formulir yang masih kosong tidak dihitung (28 Sep).
-     */
+    /** Punya draf yang berisi (tombol "Lanjutkan draf laporan"). */
     public static function drafBerisi(int $userId): bool
     {
         $baris = DrafLaporan::where('user_id', $userId)->first();
@@ -783,11 +795,7 @@ class LaporanBaruController extends Controller
             && $this->salahTanggal($s) === '';
     }
 
-    /**
-     * Tindak lanjut tanpa satuan kerja tidak menuntut siapa pun. Bentuknya juga
-     * wajib sejak jadi baris isian berlabel (24 Sep): tanpa bentuk, satuan
-     * kerja tidak tahu apa yang diminta darinya.
-     */
+    /** Tindak lanjut wajib punya satuan kerja dan bentuk. */
     public function tindakanOk(array $tk): bool
     {
         return trim((string) $tk['bentuk']) !== '' && count($tk['satker']) > 0
@@ -812,14 +820,7 @@ class LaporanBaruController extends Controller
         return collect($d['temuan'])->every(fn ($t) => $this->temOk($t));
     }
 
-    /**
-     * Isian yang masih kurang, beserta tempatnya — padanan `kurangIsi`
-     * prototipe. Bilah bawah menyebut apa yang kurang, dan "Tunjukkan" membuka
-     * bagian itu lalu menggulir ke sana; temuan yang tidak terpilih tidak
-     * memaksa pengisinya mencari sendiri.
-     *
-     * @return array{teks:string, ke:array}|null
-     */
+    /** Isian yang kurang beserta tempatnya, untuk bilah bawah dan "Tunjukkan". */
     public function kurangIsi(array $d): ?array
     {
         $s = $d['surat'];
@@ -833,8 +834,7 @@ class LaporanBaruController extends Controller
         if (! $s['tgl_terima']) {
             $k[] = 'tanggal diterima';
         }
-        /* Tanggal yang terisi tapi keliru urutannya disebut apa salahnya,
-           bukan disebut "belum diisi" — isinya memang ada. */
+        /* Tanggal terisi tapi urutannya keliru disebut salahnya, bukan "belum diisi". */
         $salah = $this->salahTanggal($s);
         if ($salah) {
             return ['teks' => 'Surat laporan perlu dibetulkan: '.$salah, 'ke' => ['surat' => true]];
@@ -842,10 +842,9 @@ class LaporanBaruController extends Controller
         if ($k) {
             return ['teks' => 'Surat laporan belum lengkap: '.implode(', ', $k), 'ke' => ['surat' => true]];
         }
-        /* Link surat asli boleh kosong, tapi yang terisi harus alamat web
-           (27 Sep) — ia dibuka orang lain lewat tombol "Buka link". */
-        if (trim($d['berkas']['link']) !== '' && ! LinkAman::sah($d['berkas']['link'])) {
-            return ['teks' => 'Link surat asli perlu diperbaiki: harus alamat web lengkap, diawali https:// atau http://', 'ke' => ['surat' => true]];
+        /* Link surat asli boleh kosong; yang terisi harus alamat web. */
+        if (trim($d['berkas']['link']) !== '' && ! KebijakanBukti::sah($d['berkas']['link'])) {
+            return ['teks' => 'Link surat asli perlu diperbarui: '.KebijakanBukti::periksa($d['berkas']['link'])['alasan'], 'ke' => ['surat' => true]];
         }
 
         foreach (array_values($d['temuan']) as $i => $t) {
@@ -895,8 +894,7 @@ class LaporanBaruController extends Controller
                     $kk[] = 'rekomendasi '.$h;
                 }
                 $rid = $r['id'];
-                /* Tab tindak lanjut yang kurang ikut dibuka, bukan cuma
-                   rekomendasinya. */
+                /* Tab tindak lanjut yang kurang ikut dibuka. */
                 foreach (array_values($tl) as $kTl => $x) {
                     if (! $this->tindakanOk($x)) {
                         $tk = $kTl;
@@ -911,14 +909,14 @@ class LaporanBaruController extends Controller
 
             return [
                 'teks' => 'Temuan '.($i + 1).' belum lengkap: '.implode(', ', $kk),
-                'ke'   => ['tid' => $t['id'], 'rid' => $rid, 'tk' => $tk, 'gulir' => $gulir],
+                'ke' => ['tid' => $t['id'], 'rid' => $rid, 'tk' => $tk, 'gulir' => $gulir],
             ];
         }
 
         return null;
     }
 
-    /** Membuka bagian yang masih kurang — padanan `tunjukkan` prototipe. */
+    /** Membuka bagian yang masih kurang. */
     private function tunjuk(array $d): array
     {
         $k = $this->kurangIsi($d);
@@ -947,15 +945,10 @@ class LaporanBaruController extends Controller
         return $j < 26 ? chr(97 + $j) : (string) ($j + 1);
     }
 
-    /**
-     * Pembuka baku uraian rekomendasi LHP. Hampir semua dibuka dengan kalimat
-     * yang sama, jadi tab yang dipotong terbaca kembar: "Menteri PU agar me…"
-     * dan "Menteri PU agar mem…". Skrip formulir memakai pola yang sama untuk
-     * judul yang ikut berubah selagi uraiannya diketik.
-     */
+    /** Pembuka baku uraian rekomendasi LHP — dibuang dari judul tab supaya tidak terbaca kembar. */
     public const PEMBUKA_URAIAN = '/^(?:Menteri (?:Pekerjaan Umum(?: dan Perumahan Rakyat)?|PUPR|PU)|Kepala (?:BPSDM|Badan)|Sekretaris Badan)\s+agar\s+(?:memerintahkan\s+(?:Kepala BPSDM|Sekretaris Badan|(?:para )?kepala balai)\s+(?:untuk\s+)?)?/iu';
 
-    /** Inti uraian rekomendasi tanpa pembukanya — padanan `intiUraian` prototipe. */
+    /** Inti uraian rekomendasi tanpa pembukanya. */
     public function intiUraian(string $t): string
     {
         $s = preg_replace(self::PEMBUKA_URAIAN, '', $t) ?? $t;
@@ -963,11 +956,7 @@ class LaporanBaruController extends Controller
         return $s === '' || $s === $t ? $t : mb_strtoupper(mb_substr($s, 0, 1)).mb_substr($s, 1);
     }
 
-    /**
-     * Angka yang dipakai kotak "Ajukan laporan" dan kartu di kaki langkah dua.
-     * Dihitung dari tindak lanjutnya, bukan dari satuan kerja pertama tiap
-     * rekomendasi.
-     */
+    /** Angka untuk kotak "Ajukan laporan", dihitung dari tindak lanjut. */
     public function ringkas(array $d): array
     {
         $sat = [];
@@ -995,14 +984,9 @@ class LaporanBaruController extends Controller
             'pen' => $pen, 'ten' => count($ten), 'nilai' => $nilai];
     }
 
-    /* ================================================================
-       MENGAJUKAN
-       ================================================================ */
+    /* ---- Mengajukan ---- */
 
-    /**
-     * Laporan pecah jadi penugasan terpisah ke banyak satuan kerja sekaligus —
-     * tidak bisa ditarik lewat aplikasi. Padanan `simpanBaru` prototipe.
-     */
+    /** Laporan dipecah jadi penugasan ke banyak satuan kerja; tidak bisa ditarik lewat aplikasi. */
     private function ajukan(array $d)
     {
         if (! $this->ok1($d) || ! $this->ok2($d)) {
@@ -1023,27 +1007,25 @@ class LaporanBaruController extends Controller
 
         $laporan = DB::transaction(function () use ($d, $sumber, $tahun, $noSurat) {
             $lap = Laporan::create([
-                'sumber'     => $sumber->value,
-                'nomor'      => $d['surat']['nomor'],
-                'tgl_surat'  => $d['surat']['tgl_surat'],
+                'sumber' => $sumber->value,
+                'nomor' => $d['surat']['nomor'],
+                'tgl_surat' => $d['surat']['tgl_surat'],
                 'tgl_terima' => $d['surat']['tgl_terima'],
-                /* Diisi sistem, bukan diketik: tanggal pencatatan yang bisa
-                   diatur sendiri tidak ada gunanya sebagai catatan. */
+                /* Diisi sistem, bukan diketik. */
                 'dicatat_pada' => now()->toDateString(),
                 'dicatat_oleh' => auth()->id(),
             ]);
 
-            /* Surat aslinya tebal — LHP bisa ratusan halaman. Yang disimpan
-               link-nya, bukan berkasnya. */
+            /* Yang disimpan link surat, bukan berkasnya. */
             if ($d['berkas']['judul']) {
                 Lampiran::create([
-                    'laporan_id'    => $lap->id,
-                    'label_jenis'   => 'Surat laporan pemeriksaan',
-                    'nama_asli'     => $d['berkas']['judul'],
-                    'link'        => $d['berkas']['link'] ?: null,
+                    'laporan_id' => $lap->id,
+                    'label_jenis' => 'Surat laporan pemeriksaan',
+                    'nama_asli' => $d['berkas']['judul'],
+                    'link' => $d['berkas']['link'] ?: null,
                     'diunggah_oleh' => auth()->id(),
-                    'label_oleh'    => 'Setba',
-                    'surat_asli'    => true,
+                    'label_oleh' => 'Setba',
+                    'surat_asli' => true,
                     'diunggah_pada' => now(),
                 ]);
             }
@@ -1054,25 +1036,21 @@ class LaporanBaruController extends Controller
             foreach (array_values($d['temuan']) as $i => $t) {
                 $nomorTemuan++;
                 $tem = Temuan::create([
-                    'laporan_id'       => $lap->id,
-                    'kode'             => $this->kodeTemuan($tahun, $nomorTemuan),
+                    'laporan_id' => $lap->id,
+                    'kode' => $this->kodeTemuan($tahun, $nomorTemuan),
                     'nomor_pada_surat' => $t['nomor'] ?: null,
-                    'judul'            => $t['judul'],
-                    'sebab'            => $t['sebab'] ?: null,
-                    'akibat'           => $t['akibat'] ?: null,
+                    'judul' => $t['judul'],
+                    'sebab' => $t['sebab'] ?: null,
+                    'akibat' => $t['akibat'] ?: null,
                     'kategori_temuan_id' => $t['kategori'] ?: null,
                     'kategori_intern_id' => $t['intern'] ?: null,
-                    /* Nol berarti "ikut jumlah rekomendasinya", bukan
-                       "temuannya tidak bernilai" — yang membacanya
-                       `nilaiTemuan()`, bukan medan ini langsung. */
+                    /* Nol = ikut jumlah rekomendasinya (dibaca `nilaiTemuan()`). */
                     'nilai' => 0,
                 ]);
                 $tem->satkers()->syncWithoutDetaching($t['satker']);
 
                 foreach (array_values($t['rekom']) as $j => $r) {
-                    /* Kodenya Ref IDT, dirakit dari surat yang sama persis
-                       seperti yang dijanjikan formulirnya: tahun LHP . nomor
-                       pendek LHP . Ref LHP. */
+                    /* Kode = Ref IDT: tahun LHP . nomor pendek LHP . Ref LHP. */
                     $refLhp = trim($r['ref_lhp'])
                         ?: collect([$t['nomor'] ?: $i + 1, $this->huruf($j)])->filter()->join('.');
                     $kode = $this->kodeUnik(collect([$tahun, $noSurat, $refLhp])->filter()->join('.'), $dipakai);
@@ -1081,23 +1059,20 @@ class LaporanBaruController extends Controller
                     $tgt = collect($r['tindakan'])->pluck('target')->filter()->sort()->values();
 
                     $rek = Rekomendasi::create([
-                        'temuan_id'   => $tem->id,
-                        'kode'        => $kode,
-                        'ref_lhp'     => trim($r['ref_lhp']) ?: null,
-                        'nomor_urut'  => $j + 1,
-                        'uraian'      => $r['uraian'],
-                        'sifat_id'    => $r['sifat'] ?: null,
+                        'temuan_id' => $tem->id,
+                        'kode' => $kode,
+                        'ref_lhp' => trim($r['ref_lhp']) ?: null,
+                        'nomor_urut' => $j + 1,
+                        'uraian' => $r['uraian'],
+                        'sifat_id' => $r['sifat'] ?: null,
                         'nilai_pulih' => $this->nilaiRek($r),
-                        /* Tenggat rekomendasi = tanggal paling awal di antara
-                           tindak lanjutnya. Kalau satu tindakan sudah lewat,
-                           rekomendasinya memang sudah lewat. Target = paling
-                           akhir, karena baru tuntas kalau semuanya tuntas. */
-                        'tenggat_jawab'  => $tgl->first(),
+                        /* Tenggat = tanggal paling awal tindak lanjutnya; target = paling akhir. */
+                        'tenggat_jawab' => $tgl->first(),
                         'target_selesai' => $tgt->last(),
-                        'catatan'        => collect($r['tindakan'])->pluck('catatan')->filter()->first(),
-                        'status'         => StatusTindakLanjut::BT->value,
+                        'catatan' => collect($r['tindakan'])->pluck('catatan')->filter()->first(),
+                        'status' => StatusTindakLanjut::BT->value,
                         'rencana_angsur' => (int) $r['angsur'],
-                        'kunci_angsur'   => (bool) $r['kunci'] && (int) $r['angsur'] > 0,
+                        'kunci_angsur' => (bool) $r['kunci'] && (int) $r['angsur'] > 0,
                     ]);
 
                     foreach (array_values($r['tindakan']) as $u => $tk) {
@@ -1106,38 +1081,33 @@ class LaporanBaruController extends Controller
 
                         $tindakan = Tindakan::create([
                             'rekomendasi_id' => $rek->id,
-                            'bentuk_id'      => $this->bentukId($tk['bentuk']),
-                            'urutan'         => $u + 1,
-                            'tgl_renaksi'    => $tk['tgl_renaksi'] ?: null,
+                            'bentuk_id' => (int) $this->idBentuk($tk['bentuk']) ?: null,
+                            'urutan' => $u + 1,
+                            'tgl_renaksi' => $tk['tgl_renaksi'] ?: null,
                             'target_selesai' => $tk['target'] ?: null,
-                            'catatan'        => trim((string) $tk['catatan']) ?: null,
-                            'dokumen'        => $dok,
+                            'catatan' => trim((string) $tk['catatan']) ?: null,
+                            'dokumen' => $dok,
                         ]);
 
                         foreach ($tk['satker'] as $x) {
                             $baris = Sasaran::create([
                                 'tindakan_id' => $tindakan->id,
-                                'satker_id'   => $x['satker'],
-                                'nilai'       => (int) $x['nilai'],
-                                /* Posisi ditulis sejak awal. Tanpa itu baris
-                                   yang belum bergerak harus menebak posisinya
-                                   dari rekomendasi. */
+                                'satker_id' => $x['satker'],
+                                'nilai' => (int) $x['nilai'],
+                                /* Posisi ditulis sejak awal. */
                                 'posisi' => PosisiBerkas::SATKER->value,
                             ]);
 
-                            /* Satu daftar dokumen yang ditulis Setba melahirkan
-                               kewajiban terpisah untuk tiap satuan kerja yang
-                               dituju: tiga satuan kerja yang diminta surat
-                               teguran berarti tiga surat teguran, dan yang satu
-                               mengunggah tidak melunaskan yang dua lagi. */
+                            /* Satu daftar dokumen = kewajiban terpisah untuk tiap satuan kerja
+                               yang dituju. */
                             if ($dok) {
                                 $minta = PermintaanDokumen::create([
                                     'rekomendasi_id' => $rek->id,
-                                    'sasaran_id'     => $baris->id,
-                                    'peran_peminta'  => PeranPengguna::SETBA->value,
-                                    'dari'           => 'Setba',
-                                    'diminta_oleh'   => auth()->id(),
-                                    'tanggal'        => now()->toDateString(),
+                                    'sasaran_id' => $baris->id,
+                                    'peran_peminta' => PeranPengguna::SETBA->value,
+                                    'dari' => 'Setba',
+                                    'diminta_oleh' => auth()->id(),
+                                    'tanggal' => now()->toDateString(),
                                 ]);
                                 foreach ($dok as $nama) {
                                     ItemPermintaan::create([
@@ -1149,19 +1119,18 @@ class LaporanBaruController extends Controller
                         }
                     }
 
-                    /* Surat pemeriksaannya ikut melekat pada tiap rekomendasi —
-                       dan tidak pernah sampai ke satuan kerja: satu surat memuat
-                       temuan seluruh satuan kerja. */
+                    /* Surat pemeriksaan melekat pada rekomendasi, tidak pernah sampai ke satuan
+                       kerja. */
                     if ($d['berkas']['judul']) {
                         Lampiran::create([
                             'rekomendasi_id' => $rek->id,
-                            'label_jenis'    => 'Surat temuan',
-                            'nama_asli'      => $d['berkas']['judul'],
-                            'link'         => $d['berkas']['link'] ?: null,
-                            'diunggah_oleh'  => auth()->id(),
-                            'label_oleh'     => 'Setba',
-                            'surat_asli'     => true,
-                            'diunggah_pada'  => now(),
+                            'label_jenis' => 'Surat temuan',
+                            'nama_asli' => $d['berkas']['judul'],
+                            'link' => $d['berkas']['link'] ?: null,
+                            'diunggah_oleh' => auth()->id(),
+                            'label_oleh' => 'Setba',
+                            'surat_asli' => true,
+                            'diunggah_pada' => now(),
                         ]);
                     }
 
@@ -1171,10 +1140,7 @@ class LaporanBaruController extends Controller
                         ->filter()->unique()->join(', ');
                     Jejak::riwayat($rek, 'Setba', 'Rekomendasi dikirim ke '.($nama ?: '—'));
 
-                    /* Tiap satuan kerja yang ditugasi diberi tahu: rekomendasi mana,
-                       tindak lanjut apa yang dipikulnya, dan rencana aksinya.
-                       Satu pemberitahuan per satuan kerja, supaya tiap satuan kerja cuma
-                       membaca bebannya sendiri. */
+                    /* Satu pemberitahuan per satuan kerja, berisi bebannya sendiri. */
                     foreach ($rek->daftarSasaran()->pluck('satker_id')->unique() as $satkerId) {
                         $milik = $rek->tindakan->filter(
                             fn ($tk) => $tk->sasaran->contains('satker_id', $satkerId));
@@ -1199,10 +1165,7 @@ class LaporanBaruController extends Controller
 
         $this->hapusDraf();
 
-        /* Diantar ke Daftar laporan lalu kartunya ditandai. Mengembalikan
-           pengisi ke beranda tanpa keterangan membuat kiriman yang sudah
-           berhasil terasa seperti tidak terjadi apa-apa — dan tombolnya ditekan
-           lagi. */
+        /* Diantar ke Daftar laporan dengan kartunya ditandai, supaya jelas kiriman berhasil. */
         return redirect()->route('laporan.index', ['sorot' => 'lap-'.$laporan->id, 'nada' => 'hijau']);
     }
 
@@ -1217,13 +1180,7 @@ class LaporanBaruController extends Controller
         return $kode;
     }
 
-    /**
-     * Ref IDT yang sudah dipakai laporan lain. Surat yang sama dicatat dua kali
-     * memang salah — tapi dua rekomendasi berkode kembar lebih buruk: pencarian,
-     * pemberitahuan, dan riwayat menunjuk yang keliru tanpa ada yang sadar. Yang
-     * bertabrakan diberi akhiran, dan akhiran itu sendiri yang menandai ada yang
-     * perlu diperiksa.
-     */
+    /** Ref IDT kembar diberi akhiran — penanda ada yang perlu diperiksa. */
     private function kodeUnik(string $dasar, array &$dipakai): string
     {
         $kode = $dasar;
@@ -1234,27 +1191,5 @@ class LaporanBaruController extends Controller
         $dipakai[] = $kode;
 
         return $kode;
-    }
-
-    /**
-     * Bentuk tindak lanjut boleh diketik sendiri: yang tercatat harus sama
-     * dengan yang tertulis di suratnya, dan bunyi surat tidak terbatas pada
-     * daftar bakunya. Yang belum ada ditambahkan ke data master.
-     */
-    private function bentukId(string $nama): ?int
-    {
-        $nama = trim($nama);
-        if ($nama === '') {
-            return null;
-        }
-        $ada = Referensi::where('jenis', JenisReferensi::BENTUK_TL->value)
-            ->whereRaw('LOWER(nama) = ?', [mb_strtolower($nama)])->first();
-
-        return $ada?->id ?? Referensi::create([
-            'jenis'  => JenisReferensi::BENTUK_TL->value,
-            'nama'   => $nama,
-            'urutan' => (int) Referensi::where('jenis', JenisReferensi::BENTUK_TL->value)->max('urutan') + 1,
-            'aktif'  => true,
-        ])->id;
     }
 }

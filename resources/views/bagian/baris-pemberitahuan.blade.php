@@ -1,9 +1,7 @@
 @php
   use App\Support\Pemberitahuan;
 
-  /* Satu baris pemberitahuan — padanan `baris` di Pemberitahuan prototipe. Seluruh
-     barisnya satu link: yang dibaca orang kalimatnya, jadi kalimatnya yang
-     harus bisa ditekan. */
+  /* Satu baris pemberitahuan; seluruh barisnya satu link. */
   $r = $k->rekomendasi;
   $tujuan = Pemberitahuan::BAGIAN[$k->blok] ?? null;
   $bentuk = $k->tindakan?->bentuk?->nama;
@@ -21,8 +19,6 @@
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
     <span class="lbl">{{ $r?->temuan->judul ?? '—' }} · {{ Pemberitahuan::sebutSatker($k, auth()->user()) }}{{ $bentuk ? ' · '.$bentuk : '' }}</span>
     <div style="flex:1"></div>
-    {{-- Pemberitahuan yang tidak menyebut bagiannya tetap membuka berkasnya, cuma
-         tanpa menunjuk ke mana-mana. --}}
     @if($tujuan)
       <span class="tujuan">Buka {{ $tujuan }} <x-ikon n="ChevronRight" :s="12" /></span>
     @endif

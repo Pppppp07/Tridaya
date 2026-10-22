@@ -1,9 +1,8 @@
 @props(['id', 'judul', 'kelas' => null, 'info' => null, 'kunciTabel' => null, 'tabel' => false,
   'kosong' => null, 'wawasan' => null, 'alat' => null, 'isiTabel' => null])
 
-{{-- Satu panel rincian — padanan `Panel` di DasborUji.jsx. Tombol tabel
-     menukar grafik dengan tabelnya (keadaannya dibawa alamat: `tabel[]`).
-     Kosong = kalimat pengganti isi, dan tombol tabelnya ikut hilang. --}}
+{{-- Satu panel rincian Dashboard. Tombol tabel menukar grafik dengan tabelnya (`tabel[]` di
+     alamat). --}}
 <section class="dsb-panel{{ $kelas ? ' '.$kelas : '' }}" aria-labelledby="{{ $id }}">
   <div class="dsb-pkepala">
     <h3 id="{{ $id }}">{{ $judul }}</h3>

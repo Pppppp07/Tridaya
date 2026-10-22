@@ -1,13 +1,11 @@
-@extends('rangka')
+@extends(\App\Support\Halaman::bagian() ? 'rangka-bagian' : 'rangka')
 @section('judul', 'Catat laporan baru')
 @section('isi')
 @php
   use App\Support\Tampil;
 
-  /* Catat laporan baru — padanan `FormBaru`. Dua langkah (sejak 25 Sep): isi
-     laporan — surat dan seluruh temuan di satu halaman — lalu tinjau dan kirim.
-     Satu formulir: menekan tombol apa pun membawa SELURUH isian, jadi tidak
-     ada ketikan yang hilang saat berpindah. */
+  /* Catat laporan baru, dua langkah: isi lalu tinjau. Satu formulir: tombol apa pun membawa
+     seluruh isian. */
   $n = $d['n'];
 
   $langkah = [
@@ -15,8 +13,8 @@
     ['n' => 2, 'nama' => 'Tinjau & kirim', 'ket' => 'Periksa lalu kirim ke satuan kerja'],
   ];
 
-  /* Mengajukan laporan memecahnya jadi penugasan terpisah ke banyak satuan
-     kerja sekaligus — tidak bisa ditarik lewat aplikasi. */
+  /* Mengajukan memecahnya jadi penugasan ke banyak satuan kerja — tidak bisa ditarik lewat
+     aplikasi. */
   $cek = fn ($teks) => '<li><span style="color:var(--ok);flex:none">&#10003;</span><span>'.e($teks).'</span></li>';
   $tanyaAjukan = [
     'judul' => 'Ajukan laporan ini?',
@@ -32,9 +30,7 @@
     'nada' => 'hijau',
   ];
 
-  /* Meninggalkan formulir tidak pernah membuang isian diam-diam. Yang ada
-     isinya disimpan sebagai draf; yang benar-benar ingin membuang memakai
-     "Kosongkan formulir", dan itu bertanya dulu. */
+  /* Meninggalkan formulir tidak membuang isian; "Kosongkan formulir" bertanya dulu. */
   $tanyaKosong = [
     'judul' => 'Kosongkan formulir ini?',
     'ket' => 'Seluruh isian — data surat, temuan, dan rekomendasinya — dihapus, '
@@ -45,23 +41,15 @@
 @endphp
 
 <div class="body">
-  {{-- `data-langkah`: skrip mengembalikan posisi gulir sesudah halaman dimuat
-       ulang, kecuali langkahnya berganti — pindah ke tinjauan dan kembali
-       selalu mulai dari atas. `data-fokus`: isian kosong pertama di bagian
-       yang ditunjuk mendapat kursor. `data-gulir`: bagian yang dituju, untuk
-       jawaban kiriman skrip yang ditukar di tempat (29 Sep) — kiriman biasa
-       menyebutnya di jangkar alamat. --}}
+  {{-- `data-langkah`: posisi gulir dipulihkan kecuali langkahnya berganti. `data-fokus`: kursor
+       ke isian kosong pertama di bagian yang ditunjuk. `data-gulir`: bagian yang dituju. --}}
   <form method="post" action="{{ route('laporan.baru.simpan') }}" data-form-baru data-langkah="{{ $n }}"
     @if(session('fokus')) data-fokus @endif @if($gulir ?? null) data-gulir="{{ $gulir }}" @endif>
     @csrf
-    {{-- Tombol bawaan: Enter di isian satu baris memakai tombol kirim pertama.
-         Tanpa ini yang pertama "Kembali ke beranda" — Enter di Nomor surat
-         meninggalkan formulir. Yang ini cuma menyimpan lalu kembali ke tempat
-         yang sama. Dengan skrip, Enter tidak mengirim apa pun. --}}
+    {{-- Tombol bawaan untuk Enter: tanpa ini Enter memakai "Kembali ke beranda". Yang ini hanya
+         menyimpan lalu kembali ke tempat yang sama. --}}
     <button type="submit" name="aksi" value="simpan" class="fb-sr" style="visibility:hidden" tabindex="-1" aria-hidden="true">Simpan</button>
 
-    {{-- Satu lajur untuk seluruh halaman — bilah tombol, stepper, dan isian
-         sama lebar, tepi kanannya segaris. --}}
     <div class="lajurisi fb">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px">
         <button class="link" type="submit" name="aksi" value="tinggalkan">
@@ -76,9 +64,8 @@
         <button class="btn" type="submit" name="aksi" value="simpan-draf" @disabled(! $adaIsi)>
           <x-ikon n="Save" :s="15" /> Simpan draft
         </button>
-        {{-- Tidak dimatikan selagi isiannya belum lengkap (berbeda dari
-             prototipe): isian yang belum sampai ke server tidak pernah bisa
-             diperiksa. Server yang menahan, sambil membuka bagian yang kurang. --}}
+        {{-- Tidak dimatikan selagi belum lengkap: server yang menahan sambil membuka bagian
+             yang kurang. --}}
         @if($n === 1)
           <button class="btn btn-p" type="submit" name="aksi" value="maju">
             Tinjau &amp; kirim <x-ikon n="ArrowRight" :s="15" />
@@ -113,11 +100,6 @@
         @endforeach
       </div>
 
-      {{-- Satu daftar usulan untuk seluruh isian bentuk tindak lanjut. --}}
-      <datalist id="bentuk-tl">
-        @foreach($bentuk as $b)<option value="{{ $b }}"></option>@endforeach
-      </datalist>
-
       @if($n === 1)
         @include('laporan.baru-isi')
       @else
@@ -139,9 +121,8 @@
             <x-ikon n="Send" :s="14" /> Ajukan laporan
           </button>
         @endif
-        {{-- Yang masih kurang disebut isiannya, dan "Tunjukkan" membuka bagian
-             itu lalu menggulir ke sana. Di halaman isian keduanya dirender dan
-             skrip menukarnya selagi diisi, seperti di prototipe. --}}
+        {{-- Yang kurang disebut isiannya; "Tunjukkan" membuka bagian itu lalu menggulir ke
+             sana. --}}
         <span class="ket">
           @if($n === 1)
             <span data-kurang @unless($kurang) hidden @endunless><x-ikon n="AlertTriangle" :s="15" class="fb-ikon kurang" /><span data-kurang-teks>{{ $kurang['teks'] ?? '' }}</span> <button type="submit" name="aksi" value="tunjukkan" class="fb-tunjuk">Tunjukkan</button></span>

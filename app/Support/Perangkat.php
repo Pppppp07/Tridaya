@@ -3,12 +3,8 @@
 namespace App\Support;
 
 /**
- * "Edge · Windows" dari User-Agent (28 Sep) — padanan `sebutPerangkat`
- * prototipe. Dipakai daftar perangkat yang sedang masuk dan riwayat masuk di
- * Profil → Keamanan.
- *
- * Cukup untuk dikenali orangnya sendiri, bukan sidik perangkat. Urutannya
- * penting: Edge dan Opera ikut menulis "Chrome", Android ikut menulis "Linux".
+ * "Edge · Windows" dari User-Agent, cukup untuk dikenali pemiliknya. Urutan penting: Edge/Opera
+ * juga menulis "Chrome", Android juga "Linux".
  */
 class Perangkat
 {

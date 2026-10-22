@@ -8,7 +8,7 @@
 <div class="kartu" style="max-width:560px">
   <div class="mono" style="font-size:13px;word-break:break-all">{{ $b->nama_asli }}</div>
   <div class="lbl" style="margin-top:4px">
-    {{ $b->jenisDokumen?->nama }} &middot; {{ Tampil::tgl($b->diunggah_pada) }}
+    {{ $b->jenis() }} &middot; {{ Tampil::tgl($b->diunggah_pada) }}
   </div>
 
   <div style="margin:22px 0;padding:36px 30px;background:#fff;border:1px solid var(--rule);
@@ -26,10 +26,16 @@
     @endfor
   </div>
 
-  <div class="hint" style="line-height:1.6">
-    Data contoh belum memiliki berkas asli di penyimpanan. Pada sistem resmi, berkas
-    aslinya terbuka di sini lewat akses yang terotorisasi &mdash; bukan link langsung
-    ke folder penyimpanan.
-  </div>
+  @if($b->link)
+    @if($linkInfo['boleh'] && ! $b->ditolak_pada)
+      <p class="hint">{{ $linkInfo['alasan'] }}</p>
+      <a class="btn btn-pri" href="{{ route('berkas.buka', $b) }}" target="_blank" rel="noopener noreferrer">Buka dokumen <x-ikon n="ExternalLink" :s="14" /></a>
+    @else
+      <div class="pesan bad" role="status">Perlu diperbarui. {{ $b->ditolak_pada ? 'Bukti ditolak: '.$b->alasan_penolakan : $linkInfo['alasan'] }}</div>
+    @endif
+    <p class="mono lbl" style="word-break:break-all">{{ $b->link }}</p>
+  @else
+    <p class="hint">Belum ada link dokumen asli. Arsip keterangannya tetap tersedia.</p>
+  @endif
 </div>
 @endsection

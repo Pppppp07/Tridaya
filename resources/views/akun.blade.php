@@ -7,10 +7,9 @@
   use App\Support\Rangka;
   use App\Support\Tampil;
 
-  /* Profil & pengaturan — padanan `LayarAkun` prototipe (28 Sep). Kerangkanya
-     sama dengan Data master: kartu pengenal akun, deret tab (link
-     `?tab=`), lalu satu kartu. Isi tiap tab di resources/views/akun/. */
-  $sebutan = $u->peran === P::SATKER
+  /* Profil & pengaturan: kartu pengenal akun, deret tab (`?tab=`), lalu satu kartu. Isi tab di
+     views/akun/. */
+  $sebutan = $u->peranAktif() === P::SATKER
     ? 'Satuan kerja · '.($u->satker?->namaPendek() ?? '')
     : Rangka::pengguna($u)['peran'];
   $tabs = [
@@ -49,8 +48,7 @@
   <section class="kartu dm-panel" role="tabpanel" aria-labelledby="ak-tab-{{ $tab }}">
     @include('akun.'.$tab)
   </section>
-  {{-- Jalur keluar tetap tersedia saat tombol akun menjadi link biasa
-       ke halaman ini (JavaScript dimatikan atau gagal dimuat). --}}
+  {{-- Jalur keluar tetap ada bila tombol akun jadi link biasa (tanpa JavaScript). --}}
   <form method="post" action="{{ route('keluar') }}">
     @csrf
     <button type="submit" class="btn"><x-ikon n="LogOut" :s="16" /> Keluar dari akun</button>

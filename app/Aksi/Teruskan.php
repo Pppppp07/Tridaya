@@ -12,14 +12,8 @@ use App\Support\Pemberitahuan;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Setba meneruskan berkas satu baris — padanan `aksi.teruskan`.
- *
- *   setba_tinjau    → uki           surat permohonan validasi
- *   setba_teruskan  → inspektorat   surat permohonan verifikasi
- *
- * Suratnya ikut tercatat: nomor inilah yang ditelusuri orang saat mencari
- * perkara ini di luar aplikasi — "UKI nggak mau kalau nggak ada surat dari
- * Setba".
+ * Setba meneruskan berkas satu baris: setba_tinjau → uki, setba_teruskan → inspektorat. Nomor
+ * suratnya ikut tercatat.
  */
 class Teruskan
 {
@@ -31,6 +25,7 @@ class Teruskan
         $nama = $ke === PosisiBerkas::UKI ? 'UKI' : 'Inspektorat';
 
         DB::transaction(function () use ($r, $s, $surat, $dari, $ke, $nama) {
+            $s->kunciSejak();
             $teks = "Berkas diteruskan ke {$nama}".($surat['nomor'] ? " dengan surat {$surat['nomor']}" : '');
 
             Jejak::geser($r, $dari, $ke, $s->satker_id, $s->tindakan_id);
@@ -56,8 +51,7 @@ class Teruskan
                 'r-perkembangan', [$s->satker_id], $s->tindakan);
         });
 
-        /* Surat yang sama sering dipakai untuk beberapa berkas sekaligus;
-           panel berikutnya menawarkannya lagi. */
+        /* Surat yang sama sering dipakai beberapa berkas; panel berikutnya menawarkannya lagi. */
         session(['surat_terakhir.'.$ke->value => $surat]);
     }
 }

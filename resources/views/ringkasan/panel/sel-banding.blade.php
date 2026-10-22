@@ -1,8 +1,5 @@
-{{-- Satu sel matriks status — padanan `SelBanding`: batang 100% untuk satu
-     versi pada satu ukuran (jumlah atau nilai). Persennya di dalam potongan
-     kalau muat; nilai tiap keadaan selalu tertulis di deret bawahnya.
-     Rupiahnya tanpa "Rp" — kepala kolomnya sudah menyebut satuannya.
-     Masukan: $label, $ket, $isi, $uang, $pilih, $aksi ("hasil"/"bpk"). --}}
+{{-- Satu sel matriks status: batang 100% untuk satu versi pada satu ukuran. Persen di dalam
+     potongan bila muat. --}}
 @php
   $nilaiDari = fn ($x) => $uang ? $x['rp'] : $x['n'];
   $jumlah = array_sum(array_map($nilaiDari, $isi));
@@ -11,8 +8,7 @@
 <div class="dsb-bb">
   {{-- Di panel sempit kepala kolom matriksnya hilang; sebutannya pindah ke sini. --}}
   <span class="mk-ket">{{ $ket }}</span>
-  {{-- Tanpa rupiah sama sekali (LHA umumnya begitu): batang abu kosong dan
-       "0 diakui · 0 sisa" terbaca seperti data yang hilang. --}}
+  {{-- Tanpa rupiah sama sekali (umumnya LHA): batang abu kosong terbaca seperti data hilang. --}}
   @if($jumlah === 0)
     <div class="dsb-catatan-bb">Tanpa nilai rupiah.</div>
   @else

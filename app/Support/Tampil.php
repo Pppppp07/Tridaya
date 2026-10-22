@@ -7,7 +7,7 @@ use Carbon\Carbon;
 /** Pembantu tampilan. Tidak ada aturan bisnis di sini — hanya cara menuliskan. */
 class Tampil
 {
-    /** "Rp 18.600.000", atau "—" untuk nol — `rp` prototipe. */
+    /** "Rp 18.600.000", atau "—" untuk nol. */
     public static function rupiah($n): string
     {
         $n = (int) $n;
@@ -15,11 +15,7 @@ class Tampil
         return $n ? 'Rp '.number_format($n, 0, ',', '.') : '—';
     }
 
-    /**
-     * "Rp 1.5 M", "Rp 24 jt" — `rpk` prototipe, termasuk titik desimalnya
-     * (toFixed di sana). Kedua artefak diperagakan berdampingan; angka yang
-     * ditulis beda bentuk terbaca seperti angka yang berbeda.
-     */
+    /** "Rp 1.5 M", "Rp 24 jt". */
     public static function rupiahSingkat($n): string
     {
         $n = (int) $n;
@@ -37,11 +33,8 @@ class Tampil
     }
 
     /**
-     * Tanggal boleh datang sebagai Carbon atau teks "2026-08-05".
-     *
-     * Nama bulan ditulis sendiri, tidak lewat locale Carbon: singkatan Carbon
-     * untuk Agustus "Agt", prototipe "Agu" — bedanya satu huruf, tapi muncul di
-     * ratusan tempat.
+     * Tanggal (Carbon atau "2026-08-05"). Nama bulan ditulis sendiri: Carbon menyingkat Agustus
+     * "Agt", di sini "Agu".
      */
     public static function tgl($t): string
     {
@@ -55,11 +48,7 @@ class Tampil
         return $t->format('d').' '.self::BULAN[(int) $t->format('n') - 1].' '.$t->format('Y');
     }
 
-    /**
-     * "17 Agu 2026 · 09.14" — waktu di log aktivitas, padanan `waktuLog`
-     * prototipe. Baris yang disalin dari riwayat berkas lama cuma bertanggal
-     * (jamnya 00.00.00), jadi jamnya tidak ditulis.
-     */
+    /** "17 Agu 2026 · 09.14" untuk log; baris bertanggal saja (jam 00.00.00) tanpa jam. */
     public static function waktuLog($t): string
     {
         if (! $t) {
@@ -70,10 +59,18 @@ class Tampil
         return $t->format('H:i:s') === '00:00:00' ? self::tgl($t) : self::tgl($t).' · '.$t->format('H.i');
     }
 
-    /**
-     * "baru saja", "5 menit lalu", "2 jam lalu" (hari yang sama), lalu tanggal
-     * dan jamnya — padanan `sejak` prototipe (28 Sep).
-     */
+    /** "17 Agu 2026, 09.14": kapan seseorang mencatat atau mengirim. */
+    public static function tglJam($t): string
+    {
+        if (! $t) {
+            return '—';
+        }
+        $t = is_string($t) ? Carbon::parse($t) : $t;
+
+        return self::tgl($t).', '.$t->format('H.i');
+    }
+
+    /** "baru saja", "5 menit lalu", "2 jam lalu", lalu tanggal dan jamnya. */
     public static function sejak($t): string
     {
         if (! $t) {
@@ -85,9 +82,8 @@ class Tampil
     }
 
     /**
-     * Sama dengan sejak(), dari selisih detik yang sudah dihitung (sesi yang
-     * sedang masuk, App\Support\Sesi). Tanpa `$t`, yang lebih dari sehari
-     * ditulis "N hari lalu".
+     * Sama dengan sejak(), dari selisih detik; tanpa `$t` yang lebih dari sehari ditulis "N hari
+     * lalu".
      */
     public static function lalu(int $detik, $t = null): string
     {
@@ -105,10 +101,7 @@ class Tampil
     private const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
                            'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    /**
-     * Lama keterlambatan dalam satuan yang masih bisa dibayangkan. "Lewat 3665
-     * hari" memaksa pembacanya membagi sendiri untuk tahu itu sepuluh tahun.
-     */
+    /** Lama keterlambatan dalam satuan yang mudah dibayangkan (bukan "lewat 3665 hari"). */
     public static function lamaTelat(int $n): string
     {
         if ($n < 31) {

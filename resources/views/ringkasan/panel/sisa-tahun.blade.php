@@ -1,7 +1,6 @@
-{{-- Nilai per tahun laporan — rincian kartu Sisa nilai, bentuknya sama
-     dengan "Nilai per satuan kerja". Klik batangnya memfilter tahun itu. --}}
+{{-- Nilai per tahun laporan; klik batang memfilter tahun itu. --}}
 @php
-  $kosongTahun = ['M' => 0, 'BM' => 0, 'nilai' => 0, 'sisa' => 0, 'lhp' => 0, 'SS' => 0, 'BS' => 0, 'BT' => 0, 'TD' => 0, 'sisaBpk' => 0, 'tugas' => 0];
+  $kosongTahun = ['M' => 0, 'BM' => 0, 'nilai' => 0, 'sisa' => 0, 'lhp' => 0, 'siptl' => 0, 'SS' => 0, 'BS' => 0, 'BT' => 0, 'sisaBpk' => 0, 'tugas' => 0];
   $sisaTahun = array_map(fn ($th) => ($d['tahun'][$th] ?? $kosongTahun + ['k' => $th]), $tahunSemua);
   $sisaTahun = array_map(fn ($o) => $o + ['diakui' => max(0, $o['nilai'] - $o['sisa'])], $sisaTahun);
   $sisaTahun = array_values(array_filter($sisaTahun, fn ($o) => $o['nilai'] > 0));
@@ -10,7 +9,7 @@
   $tabelOn = in_array('sisatahun', $k['tabel'], true);
 @endphp
 <x-dsb-panel id="dsb-p-sisatahun" :kelas="$kelas" judul="Nilai per tahun laporan"
-  info="Batang = nilai tindak lanjut tahun itu: hijau sudah diakui, kuning sisa. Angka di kanan = sisa."
+  info="Nilai kewajiban dikelompokkan menurut tahun surat laporan. Hijau menunjukkan nilai yang diakui berdasarkan verifikasi Inspektorat; kuning dan angka di kanan menunjukkan sisa yang belum diakui."
   :kosong="! $sisaTahun ? 'Tidak ada nilai rupiah.' : null"
   kunci-tabel="sisatahun" :tabel="$tabelOn">
   <x-slot:isiTabel>
@@ -28,7 +27,7 @@
         data-petunjuk="{{ $petunjuk(['judul' => 'Tahun '.$o['k'],
           'baris' => [['warna' => $W['M'], 'nilai' => $rpk($o['diakui']), 'nama' => 'diakui'], ['warna' => 'var(--warn)', 'nilai' => $rpk($o['sisa']), 'nama' => 'sisa']],
           'ket' => 'dari '.$rpk($o['nilai']).' · '.$o['BM'].' dari '.($o['M'] + $o['BM']).' tindak lanjut '.$kecil($kataBM)
-            .($o['lhp'] ? ' · sisa SIPTL '.$rpk($o['sisaBpk']) : '')]) }}">
+            .($o['siptl'] ? ' · sisa SIPTL '.$rpk($o['sisaBpk']) : '')]) }}">
         <span class="nm">{{ $o['k'] }}</span>
         @include('ringkasan.panel.batang-nilai', ['o' => $o, 'maks' => $maksSisaTahun])
         <span class="n">@if($o['sisa'] > 0)<b>{{ $rpk($o['sisa']) }}</b>@else<span class="dsb-lunas">tanpa sisa</span>@endif</span>

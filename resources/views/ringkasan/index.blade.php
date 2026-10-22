@@ -1,5 +1,4 @@
-@extends('rangka')
-{{-- Judulnya sama persis dengan menunya untuk semua peran (22 Sep). --}}
+@extends(\App\Support\Halaman::bagian() ? 'rangka-bagian' : 'rangka')
 @section('judul', 'Dashboard')
 @section('isi')
 @php
@@ -12,46 +11,56 @@
   $rpk = fn ($n) => Tampil::rupiahSingkat($n);
   $persen = fn ($a, $b) => Dasbor::persen($a, $b);
   $kecil = fn ($s) => mb_strtolower(mb_substr($s, 0, 1)).mb_substr($s, 1);
-  /* Keterangan melayang: isinya dibawa atribut, digambar skrip — sama untuk
-     tetikus dan papan ketik. */
+  /* Keterangan melayang: isinya dibawa atribut, digambar skrip (tetikus dan papan ketik). */
   $petunjuk = fn (array $isi) => json_encode($isi, JSON_UNESCAPED_UNICODE);
   $namaHasil = fn ($h) => $h === 'M' ? $kataM : $kataBM;
   $STATUS = fn ($x) => \App\Enums\StatusTindakLanjut::from($x)->pendek();
+  /* Satu bunyi keterangan untuk setiap label "BPSDM" di dashboard. */
+  $INFO_BPSDM = [
+    'Status BPSDM mengikuti hasil verifikasi Inspektorat.',
+    'Penugasan yang belum diverifikasi atau belum disetujui masuk kelompok '.$kataBM.'. Satu Satker pada satu bentuk tindak lanjut dihitung sebagai satu penugasan.',
+  ];
   $TERATAS = \App\Http\Controllers\RingkasanController::TERATAS;
   $sisaLain = array_values(array_diff(Dasbor::URUT_LAIN, array_keys($f['lain'])));
   $kosongSemua = ! $d['K'];
-  /* Dari yang belum memadai, yang berkasnya di satuan kerja — menunggu tanggapannya. */
-  $nTunggu = $t['meja']['satker'] ?? 0;
+  /* Warna tahap untuk yang belum lolos; "selesai" di sini abu, bukan hijau lolos. */
+  $warnaProses = fn ($m) => $m === 'selesai' ? $W['proses'] : Dasbor::WARNA_MEJA[$m];
 @endphp
 
-{{-- Seluruh halaman satu formulir GET: tombol mengirim perbuatannya
-     (`ubah`) bersama keadaan sekarang (masukan tersembunyi); server
-     menerapkannya dan mengalihkan ke alamat bersihnya. Skrip mengganti isi
-     halaman di tempat, jadi halaman tidak melompat ke atas. --}}
+{{-- Satu formulir GET: tombol mengirim perbuatannya (`ubah`) bersama keadaan sekarang; server
+     mengalihkan ke alamat bersihnya. Skrip mengganti isi di tempat. --}}
 <form class="body dsb" method="get" action="{{ route('ringkasan') }}" data-dasbor>
   @foreach(DasborKeadaan::tersembunyi($k) as [$nama, $nilai])
     <input type="hidden" name="{{ $nama }}" value="{{ $nilai }}">
   @endforeach
 
-  {{-- 1. FILTER — satu kali untuk seluruh halaman. Satu pertanyaan tiap
-       baris, label di kolom yang sama. Jenis lebih dulu — Mbak Puspi:
-       "sebelum milih ini dia mau LHP laporan pemeriksaan apa". --}}
+  {{-- 0. Tab data, di atas filter: data historis dan data sistem dipantau sebagai tampilan
+       terpisah (bentuk tab sama dengan Data Master dan Log). Hanya bila ada data historis. --}}
+  @if($adaHistoris)
+    <div class="tl-tabs dm-tabs dsb-data" role="tablist" aria-label="Data yang ditampilkan">
+      @foreach(Dasbor::DATA as $kunci => $v)
+        <button type="submit" name="ubah" value="{{ 'data:'.$kunci }}" role="tab"
+          aria-selected="{{ $k['data'] === $kunci ? 'true' : 'false' }}" title="{{ $v['ket'] }}">
+          <x-ikon :n="$v['ikon']" :s="14" />{{ $v['nama'] }}<span class="dm-n">{{ $jumlahData[$kunci] }}</span>
+        </button>
+      @endforeach
+    </div>
+  @endif
+
+  {{-- 1. Filter — sekali untuk seluruh halaman; Jenis lebih dulu. --}}
   <section class="dsb-filter" aria-label="Filter dashboard">
     <span class="dsb-lbl" id="dsb-l-jenis"><x-ikon n="FileText" :s="14" />Jenis laporan</span>
-    {{-- Ujung kanan baris Jenis dipakai tombol "Tambah filter", supaya
-         kotak filter tidak perlu satu baris lagi. --}}
     <div class="dsb-baris-jenis">
       @include('ringkasan.pemilah', ['id' => 'dsb-l-jenis', 'judul' => 'Jenis laporan', 'satuan' => 'jenis laporan',
-        'tunggal' => true, 'opsi' => $opsiJenis, 'pilih' => $f['jenis'] === 'semua' ? [] : [$f['jenis']],
-        'hitung' => $d['hitung']['jenis'], 'aksi' => 'jenis', 'buang' => null])
+        'tunggal' => true, 'opsi' => $opsiJenis, 'pilih' => [$f['jenis']],
+        'hitung' => $d['hitung']['jenis'], 'aksi' => 'jenis', 'buang' => null, 'tanpaSemua' => true])
       @if($sisaLain)
         <button type="button" class="dsb-tambah" aria-haspopup="dialog" aria-expanded="false" aria-controls="dsb-tambah-menu"
           data-buka-menu="dsb-tambah-menu"
           title="Tambah filter: {{ implode(', ', array_map(fn ($x) => mb_strtolower(Dasbor::DIM_LAIN[$x]['nama']), $sisaLain)) }}">
           <x-ikon n="Plus" :s="14" /> Tambah filter
         </button>
-        {{-- Menu dimensi yang belum dipasang, masing-masing dengan keterangan
-             singkatnya. Dibuka dan ditempatkan skrip. --}}
+        {{-- Menu dimensi yang belum dipasang; dibuka dan ditempatkan skrip. --}}
         <div id="dsb-tambah-menu" class="dsb-menu" role="dialog" aria-label="Tambah filter" hidden data-menu data-lebar="330">
           <div class="isi-menu">
             @foreach($sisaLain as $x)
@@ -74,7 +83,7 @@
     <span class="dsb-lbl" id="dsb-l-satker"><x-ikon n="Building2" :s="14" />Satuan kerja</span>
     @include('ringkasan.pemilah', ['id' => 'dsb-l-satker', 'judul' => 'Satuan kerja', 'satuan' => 'satuan kerja',
       'tunggal' => false, 'opsi' => $kelompok['semua'], 'pilih' => $f['satker'], 'hitung' => $d['hitung']['satker'],
-      'aksi' => 'satker', 'buang' => null])
+      'aksi' => 'satker', 'buang' => null, 'tanpaSemua' => auth()->user()->peranAktif()->terbatasSatker()])
 
     @foreach($f['lain'] as $x => $pilihLain)
       <span class="dsb-lbl" id="dsb-l-{{ $x }}" title="{{ Dasbor::DIM_LAIN[$x]['ket'] }}">
@@ -86,16 +95,18 @@
     @endforeach
   </section>
 
-  {{-- Bar hasil: berapa yang tersisa, dan seluruh filter yang berlaku.
-       Menempel di bawah bilah atas saat digulir. --}}
+  {{-- Bar hasil: berapa yang tersisa dan filter yang berlaku; menempel saat digulir. --}}
   <div class="dsb-hasil" data-dsb-hasil>
     <span class="jumlah" aria-live="polite">
       <x-ikon n="SlidersHorizontal" :s="15" />
+      {{-- Jenis laporan disebut: bar ini tetap terlihat saat keping jenisnya sudah tergulir. --}}
       @if(Dasbor::adaFilter($f))
-        <span><b>{{ $jmlTindakT }}</b> dari {{ $tindakSemua }} tindak lanjut</span>
+        <span><b>{{ $jmlTindakT }}</b> dari {{ $tindakSemua }} tindak lanjut {{ $f['jenis'] }}</span>
       @else
-        <span>Seluruh <b>{{ $tindakSemua }}</b> tindak lanjut satuan kerja</span>
+        <span>Seluruh <b>{{ $tindakSemua }}</b> tindak lanjut {{ $f['jenis'] }}</span>
       @endif
+      {{-- Tab datanya ikut disebut: bar ini tetap terlihat saat tabnya sudah tergulir. --}}
+      @if($k['data'] !== 'semua')<span class="dsb-data-sebut">· {{ Dasbor::DATA[$k['data']]['nama'] }}</span>@endif
     </span>
     @if($aktif)
       <span class="dsb-aktif">
@@ -126,8 +137,9 @@
     <div class="subjudul dsb-judul-tabel">
       <button type="submit" name="ubah" value="hal:dasbor" class="dsb-pindah"><x-ikon n="ArrowLeft" :s="14" /> Dashboard</button>
       <b>Tabel keseluruhan</b>
-      <x-info :teks="['Dihitung per tindak lanjut satuan kerja: satu satuan kerja pada satu bentuk tindak lanjut. SIPTL hanya LHP.',
-        'Klik tahun untuk membuka satuan kerjanya, klik angka untuk melihat rekomendasinya.']" />
+      <x-info :teks="['Jumlah dihitung per penugasan: satu satuan kerja pada satu bentuk tindak lanjut.',
+        'Setiap kolom angka bisa dijumlah ke baris tahunnya.',
+        'Klik tahun untuk melihat satuan kerja, lalu klik angka untuk membuka rekomendasi yang terkait. Data mengikuti filter aktif dan hak akses Anda.']" />
       <span class="garis"></span>
       @if($tk)
         @php $semuaTertutup = collect($tk['kelompok'])->every(fn ($g) => ! in_array((string) $g['k'], $k['buka'], true)); @endphp
@@ -151,8 +163,7 @@
       @include('ringkasan.pintas')
     @endif
   @else
-    {{-- 2. RINGKASAN UTAMA — hanya lima kartu yang tampil di awal. Tiap kartu
-         membuka rinciannya sendiri, satu kartu sekali buka. --}}
+    {{-- 2. Ringkasan utama — tiap kartu membuka rinciannya. --}}
     <div class="subjudul"><b>Ringkasan utama</b><span class="garis"></span>
       {{-- Pintu ke tabel keseluruhan, di halamannya sendiri. --}}
       <button type="submit" name="ubah" value="hal:tabel" class="dsb-pindah">
@@ -165,8 +176,7 @@
       @include('ringkasan.kosong')
     @endif
 
-    {{-- 3. RINCIAN — terbuka di bawah kartu yang diklik: bagian-bagian
-         angkanya, satu kalimat sumber datanya, lalu grafik rinciannya. --}}
+    {{-- 3. Rincian — terbuka di bawah kartu yang diklik. --}}
     @unless($kosongSemua)
       @if($k['kartu'] !== '')
         @include('ringkasan.rincian')

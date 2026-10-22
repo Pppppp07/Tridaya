@@ -1,8 +1,8 @@
 @props(['jenis', 'hasil' => null, 'gaya' => null])
 
 @php
-  /* Dua keadaan saja, dan yang kosong ikut yang belum: belum memadai memang
-     keadaan bakunya. Singkatannya ikut jenis laporan — LHP M/BM, LHA S/BS. */
+  /* Dua keadaan; yang kosong ikut belum memadai. Singkatan mengikuti jenis laporan (LHP M/BM,
+     LHA S/BS). */
   $h = $hasil instanceof \App\Enums\HasilTelaah ? $hasil : (\App\Enums\HasilTelaah::tryFrom((string) $hasil) ?? \App\Enums\HasilTelaah::BM);
   $jenis = $jenis instanceof \App\Enums\SumberLaporan ? $jenis : \App\Enums\SumberLaporan::from($jenis);
 @endphp

@@ -2,24 +2,26 @@
 
 namespace Tests;
 
+use App\Models\SumberBukti;
 use App\Models\User;
-use Database\Seeders\DataMasterSeeder;
+use App\Support\KebijakanBukti;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\DataMasterSeeder;
 use Illuminate\Support\Carbon;
 
-/**
- * Data contoh yang sama dengan yang diperagakan, berikut tanggalnya.
- *
- * Angka di uji ini boleh disebut apa adanya — 49 rekomendasi, 26 laporan, 7
- * pemberitahuan — karena data contohnya tetap. Kalau datanya berubah, ujinya yang
- * memberi tahu lebih dulu, bukan orang yang membaca layar.
- */
+/** Data contoh yang diperagakan, berikut tanggalnya; angka di uji boleh disebut apa adanya. */
 trait PakaiDataContoh
 {
     /** Tanggal demo; `AppServiceProvider` sengaja tidak memasangnya saat uji. */
     protected function siapkanDataContoh(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-17 09:00:00'));
+        /* Domain rekaan hanya di basis data pengujian, tidak di aturan bawaan aplikasi. */
+        foreach (['contoh.test', 'drive.pu.go.id', 'intranet.pu.go.id'] as $host) {
+            SumberBukti::firstOrCreate(['host' => $host],
+                ['nama' => 'Penyimpanan uji '.$host, 'pola' => 'repositori', 'prefix' => '/', 'aktif' => true]);
+        }
+        KebijakanBukti::lupakan();
         $this->seed(DatabaseSeeder::class);
     }
 
@@ -30,14 +32,13 @@ trait PakaiDataContoh
     }
 
     /**
-     * Akun menurut email-nya — atau, untuk satuan kerja, menurut nama singkat
-     * unitnya ('medan', 'bandung'). Sejak 18 Sep akun satuan kerja milik
-     * penanggung jawabnya, dan email-nya email orang itu dari IRM.
+     * Akun menurut email, atau untuk satuan kerja menurut nama singkat unitnya ('medan',
+     * 'bandung').
      */
     protected function akun(string $email): User
     {
         if (! str_contains($email, '@')) {
-            $kode = collect(DataMasterSeeder::satker())->firstWhere(4, $email)[0] ?? '-';
+            $kode = collect(DataMasterSeeder::satker())->firstWhere(3, $email)[0] ?? '-';
 
             return User::where('peran', 'satker')->where('aktif', true)
                 ->whereHas('satker', fn ($q) => $q->where('kode', $kode))->firstOrFail();

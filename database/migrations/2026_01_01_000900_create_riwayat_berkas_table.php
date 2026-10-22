@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Hanya bertambah. Tidak ada jalur ubah maupun hapus di aplikasi,
-        // untuk siapa pun.
+        // Hanya bertambah; tidak ada jalur ubah maupun hapus.
         Schema::create('riwayat_berkas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rekomendasi_id')->constrained('rekomendasis')->cascadeOnDelete();

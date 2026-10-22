@@ -1,37 +1,24 @@
 @php
-  use App\Aksi\Kemajuan;
   use App\Support\Tampil;
 
-  /* Satuan kerja mengisi tindak lanjut satu baris — padanan PanelBalai.
-     Isian dimuat dari draf yang tersimpan, bukan dari kosong: itu yang
-     membuatnya bisa disunting lagi. Hitungan tombol dan kalimat bilah
-     dikerjakan skrip; penjaganya tetap di TanggapanController. Sejak 25 Sep
-     berbentuk panel kerja (`x-panel-kerja`): baris berlabel di kiri, bintang
-     pada yang wajib. */
+  /* Satuan kerja mengisi tindak lanjut satu baris. Isian dimuat dari draf; hitungan tombol oleh
+     skrip, penjaganya di TanggapanController. */
   $draf = $x->draf;
   $bukti = collect($draf?->bukti ?? []);
   $setoran = collect($draf?->setoran ?? []);
-  $item = $r->permintaanUntuk($x->satker_id, $x->tindakan_id)->flatMap->item->where('terpenuhi', false)->values();
+  $semuaItem = $r->permintaanUntuk($x->satker_id, $x->tindakan_id)->flatMap->item;
+  $item = $semuaItem->where('terpenuhi', false)->values();
   $dana = $r->progresDana($x->satker_id, $x->tindakan_id);
   $angsur = $r->rencanaAngsur();
-  $kirimDraf = $draf ? ['umur' => \App\Models\Rekomendasi::selisih($draf->terakhir)] : null;
-  if ($kirimDraf) {
-    $kirimDraf['sisa'] = max(0, Kemajuan::HARI_KIRIM_OTOMATIS - $kirimDraf['umur']);
-    $kirimDraf['jatuh'] = $kirimDraf['umur'] >= Kemajuan::HARI_KIRIM_OTOMATIS;
-    $kirimDraf['hari'] = Kemajuan::HARI_KIRIM_OTOMATIS;
-  }
   $bentukLain = $r->tindakan->filter(fn ($tk) => $r->semuaBaris()->contains(fn ($y) => $y->tindakan_id === $tk->id && $y->satker_id === $x->satker_id))->count() > 1;
   $berkasLama = $r->lampiran->filter(fn ($d) => $d->label_oleh === $x->satker->namaPendek()
     && (! $d->tindakan_id || $d->tindakan_id === $x->tindakan_id))->map(fn ($d) => $d->nama_asli)->values();
   $idx = 0;
-  /* Dikirim ulang untuk pemberkasan ulang: siapa yang menolak, alasannya,
-     batas waktunya, dan keterangan Setba — berbaris seperti isian lain,
-     tepat di atas isian perbaikannya. Dokumen yang diminta tidak diulang di
-     sana: ia sudah jadi daftar yang harus dilampiri di bawah. */
+  /* Dikirim ulang: penolak, alasan, batas waktu, dan keterangan Setba, tepat di atas isian
+     perbaikan. */
   $kembali = $x->kembali_dari || $x->batas_perbaikan;
   $lewat = $x->batas_perbaikan && $x->batas_perbaikan->copy()->startOfDay()->lt(now()->startOfDay());
-  /* Isian pemulihan nilai terbuka sendiri kalau sudah ada barisnya — draf
-     yang dimuat ulang tidak boleh menyembunyikan isian yang sudah ditulis. */
+  /* Isian pemulihan terbuka sendiri bila sudah ada barisnya. */
   $bukaPulih = $r->pemulihan->count() + $setoran->count() > 0;
   $k = $x->id;
 @endphp
@@ -41,13 +28,13 @@
   data-angsur-rencana="{{ $angsur['rencana'] ?? 0 }}" data-angsur-kunci="{{ ($angsur['kunci'] ?? false) ? 1 : 0 }}"
   data-angsur-sudah="{{ $r->pemulihan->count() }}" data-setoran-lama="{{ $r->pemulihan->count() }}"
   data-bentuk="{{ $x->tindakan?->namaBentuk() }}" data-bentuk-lain="{{ $bentukLain ? 1 : 0 }}"
-  data-berkas-lama='@json($berkasLama)'
-  data-kirim-draf='@json($kirimDraf)'>
+  data-dok-sudah="{{ $semuaItem->where('terpenuhi', true)->count() }}"
+  data-berkas-lama='@json($berkasLama)'>
   @csrf
   <input type="hidden" name="tanggal" value="{{ $draf?->tanggal?->toDateString() ?? now()->toDateString() }}">
 
   <x-panel-kerja ikon="ClipboardCheck" judul="Isi tindak lanjut" wajib
-    info="Isian ini khusus untuk bentuk tindak lanjut tersebut. Bentuk lain pada rekomendasi yang sama punya isiannya sendiri.">
+    info="Tanggapan dan bukti pada form ini hanya untuk bentuk tindak lanjut yang sedang dibuka.">
     <x-slot:kalimat>@if($x->tindakan?->bentuk)Tindak lanjut <b>{{ $x->tindakan->namaBentuk() }}</b> dari unit Anda, dikirim ke Setba.@else{{ 'Tindak lanjut unit Anda, dikirim ke Setba.' }}@endif</x-slot:kalimat>
 
     @if($kembali)
@@ -69,20 +56,18 @@
       <div class="fb-subkep kerja-subkep"><b>Laporan perbaikan</b></div>
     @endif
 
-    {{-- Uraian di paling atas. Kalimat inilah yang dibaca Setba lebih dulu,
-         sebelum ia membuka berkasnya — jadi ia juga yang ditulis lebih dulu. --}}
     <x-baris-isi label="Apa yang sudah dikerjakan" :untuk="'uraian-'.$k" wajib
-      info="Kalimat ini yang dibaca Setba lebih dulu, sebelum membuka berkasnya.">
+      info="Jelaskan tindakan yang sudah dilakukan dan hasilnya. Setba menggunakan uraian ini untuk meninjau bukti yang dikirim.">
       <textarea id="uraian-{{ $k }}" rows="3" name="uraian" aria-required="true"
         placeholder="Jelaskan tindakan yang sudah diambil pada tahap ini." data-uraian>{{ $draf?->uraian }}</textarea>
     </x-baris-isi>
 
-    {{-- Link langsung pada butirnya. Satu tindakan, bukan centang lalu unggah
-         di tempat lain. Butir terpenuhi begitu link-nya lengkap. --}}
+    {{-- Butir terpenuhi begitu link-nya lengkap (tidak ada centang terpisah). Boleh dicicil:
+         tanpa bintang wajib. --}}
     @if($item->isNotEmpty())
-      <x-baris-isi label="Dokumen yang diminta" gabung wajib kosong :kunci="'dok-'.$k" :info="[
-        'Setiap dokumen dilampirkan sebagai link: judul berkas dan alamatnya.',
-        'Berkas baru bisa dikirim kalau seluruhnya sudah terlampir.',
+      <x-baris-isi label="Dokumen yang diminta" gabung :kunci="'dok-'.$k" :info="[
+        'Bukti yang diminta untuk penugasan ini. Isi judul dan link file pada setiap dokumen.',
+        'Dokumen boleh dikirim bertahap. Yang belum terlampir tetap tercatat dan bisa dikirim menyusul.',
       ]">
         <ul class="ceklis kerja-dok">
           @foreach($item as $i)
@@ -149,12 +134,10 @@
       <span class="fb-catatan salah" data-lepas-kurang hidden></span>
     </x-baris-isi>
 
-    {{-- Bukan langkah bernomor yang selalu berdiri di formulir. Kata Bang
-         Kamal: "setelah uraian, buka... pemulihan nilai? Kalau dia pemulihan
-         nilai, klik-klik pemulihan nilai, muncul form ini." --}}
+    {{-- Pemulihan nilai dibuka bila diperlukan, bukan langkah tetap. --}}
     @if($dana)
       <x-baris-isi label="Pemulihan nilai" gabung :kunci="'pulih-'.$k"
-        :info="$angsur ? 'Rencana '.$angsur['rencana'].' angsuran'.(($angsur['kunci'] ?? false) ? ', dikunci pada jumlah itu' : '').'.' : 'Setoran ke kas negara, atau perbaikan fisik dan pengembalian barang.'">
+        :info="$angsur ? 'Rencana '.$angsur['rencana'].' transaksi angsuran'.(($angsur['kunci'] ?? false) ? '; jumlah transaksi dibatasi sesuai rencana' : '; jumlah transaksi dapat berbeda dari rencana').'.' : 'Catat nilai pemulihan dari setoran ke kas negara, perbaikan fisik, atau pengembalian barang, beserta buktinya.'">
         <div class="kerja-setor-kep">
           <span class="bar dana"><i data-bar-pulih style="width:0%"></i></span>
           <b class="mono" data-bakal>Rp 0</b>
@@ -185,22 +168,23 @@
       </x-baris-isi>
     @endif
 
-    {{-- Hitungan mundur kiriman otomatis hanya ditampilkan saat benar-benar
-         berjalan — selama kewajibannya belum tuntas, yang perlu dibaca adalah
-         keterangan kekurangan di bilah bawah. --}}
-    <x-baris-lajur data-pesan-kirim-draf hidden>
-      <div class="kerja-awas tenang" data-kotak-kirim-draf>
-        <x-ikon n="Clock" :s="15" /><span data-teks-kirim-draf></span>
-      </div>
-    </x-baris-lajur>
+    {{-- Yang dipantau disebut kepada yang dipantau: draf terbaca Setba. --}}
+    @if($draf)
+      <x-baris-lajur>
+        <p class="kerja-teks kerja-redup">Draf tersimpan {{ $draf->updated_at ? Tampil::tglJam($draf->updated_at) : Tampil::tgl($draf->terakhir) }}. Setba dapat memantau kemajuannya, tetapi draf belum terkirim.</p>
+      </x-baris-lajur>
+    @endif
 
     <x-slot:aksi>
-      {{-- Dua tombol, dua maksud berbeda: menyimpan tidak memindahkan berkas,
-           mengirim memindahkannya. --}}
+      {{-- Menyimpan tidak memindahkan berkas; mengirim memindahkannya. --}}
       <button type="submit" class="btn" name="aksi" value="draf" data-simpan-draf>
         <x-ikon n="Check" :s="14" /> {{ $draf ? 'Perbarui draf' : 'Simpan draf' }}
       </button>
-      <x-info teks="Berkas tidak pindah ke mana-mana. Isinya masih bisa diubah sampai Anda menekan Kirim." />
+      <x-info :teks="[
+        'Simpan draf untuk melanjutkan pengisian nanti. Draf belum terkirim dan berkas tetap di unit Anda sampai Anda menekan Kirim ke Setba.',
+        'Hanya Setba yang dapat memantau kemajuan draf: uraian, dokumen yang sudah disiapkan, nilai pemulihan, serta nama dan waktu penyimpanannya. Link berkas di draf tidak ditampilkan.',
+        'Setba menerima pemberitahuan di sistem (tanpa email) setiap kali draf disimpan.',
+      ]" />
       <button type="submit" class="btn btn-p" name="aksi" value="kirim" data-kirim-setba data-pastikan='{}'>
         <x-ikon n="Send" :s="14" /> Kirim ke Setba
       </button>

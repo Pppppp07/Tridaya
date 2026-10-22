@@ -9,15 +9,12 @@ use App\Models\Rekomendasi;
 use App\Models\Sasaran;
 use Illuminate\Http\Request;
 
-/**
- * Urusan SIPTL per satuan kerja, milik Setba. Hanya jalur LHP — LHA berhenti
- * di Inspektorat dan tidak pernah sampai ke BPK.
- */
+/** Urusan SIPTL per satuan kerja, milik Setba. Hanya LHP — LHA tidak sampai ke BPK. */
 class SiptlController extends Controller
 {
     private function jaga(Sasaran $s): Rekomendasi
     {
-        abort_unless(auth()->user()->peran === PeranPengguna::SETBA, 403);
+        abort_unless(auth()->user()->peranAktif() === PeranPengguna::SETBA, 403);
         $rek = $s->tindakan->rekomendasi->load('temuan.laporan');
         abort_unless($rek->jenis()->melewatiSiptl(), 422, 'Laporan ini tidak melewati SIPTL.');
         abort_unless($s->tuntas(), 422, 'Tindak lanjut ini belum selesai diperiksa.');
@@ -26,15 +23,11 @@ class SiptlController extends Controller
         return $rek;
     }
 
-    /**
-     * Tanggal unggah dikunci sekali tercatat. Ditolak SEBELUM menyentuh apa pun
-     * kalau barisnya sudah naik — riwayat dan pemberitahuan yang terlanjur tercatat
-     * justru jadi bahan manipulasi.
-     */
+    /** Tanggal unggah dikunci sekali tercatat; ditolak sebelum menyentuh apa pun. */
     public function unggah(Request $req, Sasaran $sasaran)
     {
         $rek = $this->jaga($sasaran);
-        abort_if((bool) $sasaran->siptl_tanggal, 422, 'Tanggal unggah SIPTL sudah tercatat dan dikunci.');
+        abort_if($sasaran->sudahSiptl(), 422, 'Data SIPTL sudah tercatat dan dikunci.');
 
         $data = $req->validate([
             'tanggal' => ['required', 'date', 'before_or_equal:today'],
@@ -49,30 +42,22 @@ class SiptlController extends Controller
     }
 
     /**
-     * Status disalin apa adanya dari SIPTL. BT tidak pernah dipilih orang.
-     *
-     * Dicatat SEKALI tiap unggahan, lalu terkunci. Kata Hizkia: "perubahan
-     * status SS dan BS itu hanya boleh dilakukan sekali setelah proses Upload
-     * SIPTL." Sudah Sesuai mengakhiri pemantauan baris ini; Belum Sesuai baru
-     * bisa dinilai lagi sesudah berkasnya dikirim ulang lewat `ulangBpk` —
-     * yang melepas catatan unggahannya dan memulangkan statusnya ke BT.
-     *
-     * Penjaganya di sini, bukan cuma di layar: menyimpan lewat alamat langsung
-     * tetap menulis riwayat dan mengirim pemberitahuan.
+     * Status disalin dari SIPTL dan dicatat sekali tiap unggahan, lalu terkunci. Belum Sesuai baru
+     * bisa dinilai lagi sesudah kirim ulang (`ulangBpk`). Penjaganya di sini, bukan cuma di layar.
      */
     public function status(Request $req, Sasaran $sasaran)
     {
         $rek = $this->jaga($sasaran);
-        abort_unless((bool) $sasaran->siptl_tanggal, 422, 'Catat dulu unggahannya ke SIPTL.');
+        abort_unless($sasaran->sudahSiptl(), 422, 'Catat dulu unggahannya ke SIPTL.');
         abort_unless(($sasaran->status_bpk ?? StatusTindakLanjut::BT) === StatusTindakLanjut::BT, 422,
             'Hasil pemantauan BPK untuk unggahan ini sudah dicatat dan tidak bisa diubah lagi.');
 
         $data = $req->validate([
-            'status'     => ['required', 'in:BS,SS'],
-            'catatan'    => [$req->input('status') === 'BS' ? 'required' : 'nullable', 'string', 'max:500'],
+            'status' => ['required', 'in:BS,SS'],
+            'catatan' => [$req->input('status') === 'BS' ? 'required' : 'nullable', 'string', 'max:500'],
             'tgl_pantau' => ['nullable', 'date', 'before_or_equal:today'],
         ], [
-            'status.required'  => 'Pilih hasil pemantauannya.',
+            'status.required' => 'Pilih hasil pemantauannya.',
             'catatan.required' => 'Catatan BPK harus terisi.',
         ]);
 
@@ -84,18 +69,17 @@ class SiptlController extends Controller
     /** BPK menolak satu tindak lanjut: dikirim ulang ke satuan kerjanya. */
     public function ulangBpk(Request $req, Rekomendasi $rekomendasi)
     {
-        /* Nilai diketik sebagai teks, boleh bertitik ribuan ("1.500.000") —
-           sama dengan angka() di prototipe, yang dipakai hanya digitnya. */
+        /* Nilai boleh bertitik ribuan ("1.500.000"); yang dipakai hanya digitnya. */
         if ($req->filled('nilai')) {
             $req->merge(['nilai' => preg_replace('/\D/', '', (string) $req->input('nilai')) ?: null]);
         }
         $data = $req->validate([
             'sasaran_id' => ['required', 'integer'],
-            'alasan'     => ['required', 'string', 'max:500'],
+            'alasan' => ['required', 'string', 'max:500'],
             'keterangan' => ['nullable', 'string', 'max:500'],
-            'nilai'      => ['nullable', 'integer', 'min:0'],
-            'dokumen'    => ['array'],
-            'dokumen.*'  => ['nullable', 'string', 'max:255'],
+            'nilai' => ['nullable', 'integer', 'min:0'],
+            'dokumen' => ['array'],
+            'dokumen.*' => ['nullable', 'string', 'max:255'],
         ], [
             'alasan.required' => 'Catatan untuk satuan kerja harus terisi.',
         ]);

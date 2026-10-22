@@ -1,11 +1,7 @@
 @props(['kat' => null, 'polos' => false])
 
 @php
-  /* `kat` model Referensi kategori internal — padanan `TagKategori` prototipe.
-     Tanpa warna sejak 27 Sep. Bang Kamal: "Ini biru, biru sama merah apa
-     artinya?" — merah dan hijau di aplikasi ini berarti keadaan, jadi kategori
-     yang berwarna terbaca sebagai keadaan. Kolom `warna` tetap di basis data,
-     tidak dipakai lagi. */
+  /* Kategori internal tanpa warna: merah dan hijau di aplikasi ini berarti keadaan. */
   $mati = $kat && ! $kat->aktif;
   $ket = $mati ? 'Kategori ini sudah tidak aktif di data master' : null;
 @endphp

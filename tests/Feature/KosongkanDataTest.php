@@ -14,13 +14,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * `tlhp:kosongkan` — padanan `?kosong` prototipe.
- *
- * Yang dikosongkan seluruh data berkas, bukan sebagian: satu tabel yang
- * terlewat meninggalkan catatan yang menunjuk laporan yang sudah tidak ada, dan
- * itu baru ketahuan waktu halamannya dibuka.
- */
+/** `tlhp:kosongkan`: seluruh data berkas dikosongkan, tanpa sisa. */
 class KosongkanDataTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -46,6 +40,9 @@ class KosongkanDataTest extends TestCase
 
     public function test_seluruh_tabel_berkas_ikut_terkosongkan(): void
     {
+        /* Draf impor historis menyimpan isi file mentah; ikut dikosongkan bersama laporannya. */
+        DB::table('draf_historis')->insert(['user_id' => User::first()->id, 'nama_berkas' => 'lama.xlsx', 'berkas' => 'lama.xlsx',
+            'sha256' => str_repeat('b', 64), 'isian' => json_encode(['baris' => []]), 'versi' => 1, 'created_at' => now(), 'updated_at' => now()]);
         Artisan::call('tlhp:kosongkan', ['--force' => true]);
 
         /* Tabel yang menunjuk laporan — langsung maupun lewat rekomendasi —
@@ -54,7 +51,7 @@ class KosongkanDataTest extends TestCase
             'lampirans', 'riwayat_berkas', 'riwayat_statuses', 'notifikasis', 'notifikasi_satker',
             'notifikasi_bacas', 'permintaan_dokumens', 'item_permintaans', 'pemulihans',
             'tolakan_bpks', 'pengembalians', 'telaahs', 'surats', 'verifikasis',
-            'keputusan_verifikasis', 'draf_tanggapans', 'draf_laporans', 'tindak_lanjuts'];
+            'keputusan_verifikasis', 'draf_tanggapans', 'draf_laporans', 'tindak_lanjuts', 'draf_historis'];
 
         foreach ($tabel as $t) {
             if (! Schema::hasTable($t)) {

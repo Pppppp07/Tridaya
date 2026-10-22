@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Pengembalian berkas dicatat tersendiri, bukan hanya sebagai satu baris
-        // rekam jejak. Alasannya perlu terbaca di tempat orang mencari "kenapa
-        // berkas ini balik lagi" — bukan setelah menyusuri seluruh riwayat.
+        // Pengembalian dicatat tersendiri supaya alasannya mudah ditemukan.
         Schema::create('pengembalians', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rekomendasi_id')->constrained('rekomendasis')->cascadeOnDelete();

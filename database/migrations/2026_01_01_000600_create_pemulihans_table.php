@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Pemulihan nilai jarang lunas sekaligus. Tiap baris satu peristiwa,
-        // dan nilai terkumpul selalu dijumlahkan dari sini — tidak pernah
-        // diketik sebagai kolom tersendiri.
+        // Tiap baris satu peristiwa pemulihan; nilai terkumpul selalu dijumlahkan dari sini.
         Schema::create('pemulihans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rekomendasi_id')->constrained('rekomendasis')->cascadeOnDelete();

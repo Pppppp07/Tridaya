@@ -15,10 +15,7 @@ class Laporan extends Model
     public ?array $angkaTersimpan = null;
 
     protected $fillable = [
-        /* `jenis_periksa` (LK / PDTT) adalah sumbu TERSENDIRI, bukan pengganti
-           LHP/LHA. Dari 312 baris lembar pemantauan: 297 Laporan Keuangan,
-           15 Pemeriksaan Dengan Tujuan Tertentu — keduanya sama-sama LHP. */
-        'sumber', 'jenis_periksa', 'nomor', 'tgl_surat', 'tgl_terima',
+        'sumber', 'nomor', 'tgl_surat', 'tgl_terima',
         'dicatat_pada', 'dicatat_oleh',
     ];
 
@@ -45,14 +42,9 @@ class Laporan extends Model
         return $this->lampiran->first(fn ($l) => $l->rekomendasi_id === null);
     }
 
-    /* ================================================================
-       SATUAN KERJA YANG DIPERIKSA
-       ================================================================ */
+    /* ---- Satuan kerja yang diperiksa ---- */
 
-    /**
-     * Diturunkan dari temuannya, urut menurut kemunculan pertamanya di surat —
-     * bukan abjad, supaya terbaca berurutan seperti dokumen aslinya.
-     */
+    /** Diturunkan dari temuannya, urut kemunculan di surat (bukan abjad). */
     public function satkerDiperiksa(): Collection
     {
         return $this->temuan
@@ -63,20 +55,14 @@ class Laporan extends Model
     }
 
     /** Berapa temuan yang mengenai satuan kerja ini. */
-    public function jumlahTemuanSatker(int $satkerId): int
+    public function jumlahTemuanSatker(int|array $satkerId): int
     {
-        return $this->temuan->filter(fn ($t) => $t->satkers->contains('id', $satkerId))->count();
+        return $this->temuan->filter(fn ($t) => $t->satkers->whereIn('id', (array) $satkerId)->isNotEmpty())->count();
     }
 
-    /* ================================================================
-       ANGKA — padanan `angkaLaporan` prototipe
-       ================================================================ */
+    /* ---- Angka ---- */
 
-    /**
-     * Angka ringkas satu laporan. Dibaca dari medan yang sudah dipangkas
-     * menurut yang melihat: pada tampilan satuan kerja, `nilai_pulih` sudah
-     * dikecilkan jadi bagiannya dan barisnya tinggal miliknya.
-     */
+    /** Angka ringkas satu laporan, dari medan yang sudah dipangkas menurut yang melihat. */
     public function angka(): array
     {
         $rek = $this->temuan->flatMap->rekomendasi->values();
@@ -90,23 +76,16 @@ class Laporan extends Model
             'telat'       => $rek->filter(fn ($r) => $r->telat())->count(),
             'perlu'       => $rek->filter(fn ($r) => $r->perluPerhatian())->count(),
             'tuntas'      => $rek->filter(fn ($r) => $r->status === StatusTindakLanjut::SS)->count(),
-            /* Laporan tanpa rekomendasi yang terlihat bukan berarti sudah beres —
-               tanpa penjaga ini, every() pada daftar kosong membuatnya dianggap
-               selesai dan berkasnya menghilang dari daftar yang masih berjalan. */
+            /* Tanpa rekomendasi yang terlihat bukan berarti beres — every() pada daftar kosong
+               bernilai benar. */
             'beres'       => $rek->isNotEmpty() && $rek->every(fn ($r) => $r->beres()),
             'hanyaPantau' => $rek->isEmpty(),
             'nilaiTemuan' => (int) $this->temuan->sum(fn ($t) => $t->nilaiTemuan()),
         ];
     }
 
-    /**
-     * Sebaran tindak lanjut laporan ini menurut mejanya. Tiap baris satuan kerja
-     * dihitung sendiri — satu rekomendasi bisa punya beberapa tindak lanjut di
-     * meja berbeda. Satuan kerja menghitung bagiannya sendiri.
-     *
-     * @return list<array{nama:string, n:int}>
-     */
-    public function sebaranTindakLanjut(PeranPengguna $peran, ?int $satkerId): array
+    /** Sebaran tindak lanjut menurut mejanya; tiap baris satuan kerja dihitung sendiri. */
+    public function sebaranTindakLanjut(PeranPengguna $peran, int|array|null $satkerId): array
     {
         $peta = [];
         foreach ($this->temuan->flatMap->rekomendasi as $r) {
@@ -121,18 +100,12 @@ class Laporan extends Model
             ->values()->all();
     }
 
-    /**
-     * Jarak wajar antara surat sampai dan surat dicatat. Lewat dari ini,
-     * jaraknya disebut di daftar laporan — bukan sebagai kesalahan, tapi
-     * supaya terbaca.
-     */
+    /** Jarak wajar surat sampai → dicatat; lewat dari ini jaraknya disebut di daftar laporan. */
     public const BATAS_JEDA_CATAT = 7;
 
-    /* Keterangan angka pemulihan dana — satu bunyi untuk Pemulihan dana di
-       kepala rincian laporan dan angka di tiap blok temuan. Padanan
-       KET_TAGIHAN dan KET_ADMINISTRATIF di prototipe. */
-    public const KET_TAGIHAN = 'Bagian yang memang harus disetor ke kas negara sesuai bunyi rekomendasinya.';
-    public const KET_ADMINISTRATIF = 'Bagian yang tidak perlu disetor — cukup dilengkapi dokumennya atau diperbaiki prosedurnya. Bisa berubah jadi tagihan kalau buktinya tidak pernah ada.';
+    /* Keterangan angka pemulihan dana — satu bunyi untuk kepala rincian dan blok temuan. */
+    public const KET_TAGIHAN = 'Total nilai yang harus dipulihkan pada rekomendasi yang ditampilkan, dihitung dari kewajiban tiap penugasan Satker.';
+    public const KET_ADMINISTRATIF = 'Selisih nilai temuan dengan tagihan rekomendasi yang ditampilkan. Bagian ini tidak dibebankan sebagai kewajiban pemulihan nilai pada penugasan tersebut.';
 
     /** Jarak antara surat sampai dan surat dicatat. */
     public function jedaPencatatan(): ?int
@@ -144,7 +117,7 @@ class Laporan extends Model
         return (int) $this->tgl_terima->copy()->startOfDay()->diffInDays($this->dicatat_pada->copy()->startOfDay(), false);
     }
 
-    public function statusSimpulan(): StatusTindakLanjut
+    public function statusSimpulan(): ?StatusTindakLanjut
     {
         return Rekomendasi::simpulkan($this->temuan->flatMap->rekomendasi);
     }

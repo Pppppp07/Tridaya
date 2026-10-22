@@ -5,19 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Akun siap disambungkan ke SSO/eHRM (27 Sep).
- *
- * Masuk lewat SSO berarti orangnya dikenali dari NIP-nya, jadi satu NIP harus
- * menunjuk tepat satu akun — dijaga basis data, bukan cuma kode. NIP lama yang
- * ditulis berspasi (seperti di kartu pegawai) dirapikan dulu jadi 18 angka
- * polos, baru indeks uniknya dipasang. Kalau ternyata ada NIP kembar, migrasi
- * berhenti dengan pesan yang menyebut NIP-nya — lebih baik berhenti daripada
- * diam-diam memilih salah satu akun.
- *
- * `terakhir_masuk_pada` untuk daftar Pengguna dan Keaktifan akun: DTI bisa
- * melihat akun mana yang lama tidak dipakai ("Log lu mati, ada apa?").
- */
+/** Satu NIP tepat satu akun, dijaga basis data (untuk SSO). */
 return new class extends Migration
 {
     public function up(): void

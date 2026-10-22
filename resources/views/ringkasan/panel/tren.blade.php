@@ -1,11 +1,8 @@
-{{-- Per bulan — padanan `panelTren`. Pilihan rentang: 12 bulan terakhir atau
-     satu tahun kalender yang ada di data (Hizkia, 24 Sep: "tidak hanya
-     berdasarkan 12 bulan terakhir"). Garis silangnya mencari bulannya sendiri
-     (skrip): pembaca cukup menunjuk ke arah bulan. --}}
+{{-- Per bulan dalam satu tahun kalender; bawaannya tahun terbaru di data. --}}
 @php
   use App\Support\Dasbor;
 
-  $namaPeriode = $periode === '12' ? '12 bulan terakhir' : 'tahun '.$periode;
+  $namaPeriode = 'tahun '.$periode;
   $jmlMasuk = array_sum($d['tren']['masuk']);
   $jmlSelesai = array_sum($d['tren']['selesai']);
   $seri = [
@@ -22,16 +19,19 @@
   :info="['Masuk: tindak lanjut dari laporan yang diterima bulan itu.', $kataM.': dinyatakan '.$kecil($kataM).' oleh Inspektorat bulan itu.']"
   kunci-tabel="tren" :tabel="$tabelOn">
   <x-slot:alat>
-    <label class="dsb-periode">
-      <span class="dsb-sr">Rentang waktu</span>
-      <select name="periode" data-kirim-otomatis>
-        <option value="12" @selected($periode === '12')>12 bulan terakhir</option>
-        @foreach($tahunTren as $th)
-          <option value="{{ $th }}" @selected($periode === $th)>Tahun {{ $th }}</option>
-        @endforeach
-      </select>
-    </label>
-    <button type="submit" class="btn btn-s" data-tanpa-js>Terapkan</button>
+    @if(count($tahunTren) > 1)
+      <label class="dsb-periode">
+        <span class="dsb-sr">Tahun</span>
+        <select name="periode" data-kirim-otomatis>
+          @foreach($tahunTren as $th)
+            <option value="{{ $th }}" @selected($periode === $th)>Tahun {{ $th }}</option>
+          @endforeach
+        </select>
+      </label>
+      <button type="submit" class="btn btn-s" data-tanpa-js>Terapkan</button>
+    @else
+      <span class="dsb-periode-satu">Tahun {{ $periode }}</span>
+    @endif
   </x-slot:alat>
   <x-slot:wawasan>
     @if($jmlMasuk || $jmlSelesai)<b>{{ $jmlMasuk }}</b> masuk, <b>{{ $jmlSelesai }}</b> {{ $kecil($kataM) }}.@else Tidak ada yang masuk atau {{ $kecil($kataM) }} pada {{ $namaPeriode }}.@endif

@@ -1,0 +1,4 @@
+# Konfigurasi minimal untuk membuat kunci RSA sementara dalam pengujian.
+[req]
+distinguished_name = req_distinguished_name
+[req_distinguished_name]

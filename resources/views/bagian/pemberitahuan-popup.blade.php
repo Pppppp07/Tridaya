@@ -1,11 +1,8 @@
 @php
   use App\Support\Pemberitahuan;
 
-  /* Pemberitahuan yang muncul — padanan `Popup` (26 Sep): di kanan atas, di bawah
-     lonceng asalnya; hanya pemberitahuan BARU yang belum pernah dimunculkan sebagai pop-up; menutup
-     sendiri sesudah 8 detik (berhenti selama ditunjuk atau difokus; sisanya
-     dibawa ke halaman berikutnya lewat simtlhp.js). Satu pemberitahuan ditampilkan
-     isinya, lebih dari satu cukup jumlahnya. */
+  /* Pop-up pemberitahuan BARU di kanan atas; menutup sendiri sesudah 8 detik (berhenti selama
+     ditunjuk atau difokus). */
   $satu = $jumlah === 1;
   $r = $k->rekomendasi;
   $rupa = $satu ? Pemberitahuan::rupa($k) : ['nada' => 'biru', 'ikon' => 'Bell'];
@@ -17,8 +14,12 @@
     @if($satu)
       <div class="kb-apa"><b>{{ $k->label_pelaku }}</b> &mdash; {{ $k->aksi }}</div>
       <div class="kb-meta">
-        <x-sumber :j="$r?->jenis() ?? 'LHP'" /><span class="mono">{{ $r?->kode }}</span>
-        <span>&middot; {{ Pemberitahuan::sebutSatker($k, auth()->user()) }}@if($bentuk) &middot; {{ $bentuk }}@endif</span>
+        @if($k->sistem())
+          <span>Perubahan sistem &middot; {{ Pemberitahuan::bagianSistem($k) }}</span>
+        @else
+          <x-sumber :j="$r?->jenis() ?? 'LHP'" /><span class="mono">{{ $r?->kode }}</span>
+          <span>&middot; {{ Pemberitahuan::sebutSatker($k, auth()->user()) }}@if($bentuk) &middot; {{ $bentuk }}@endif</span>
+        @endif
       </div>
     @else
       <div class="kb-apa"><b>{{ $jumlah }} pemberitahuan baru</b></div>

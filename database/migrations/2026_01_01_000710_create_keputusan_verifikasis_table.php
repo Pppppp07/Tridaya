@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Satu baris = keputusan surat itu atas satu rekomendasi.
-        // Sebuah rekomendasi bisa punya banyak baris di sini karena
-        // pemantauan berulang tiap periode.
+        // Keputusan surat atas satu rekomendasi; bisa berulang tiap periode.
         Schema::create('keputusan_verifikasis', function (Blueprint $table) {
             $table->id();
             $table->foreignId('verifikasi_id')->constrained('verifikasis')->cascadeOnDelete();

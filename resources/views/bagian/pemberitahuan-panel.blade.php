@@ -1,7 +1,5 @@
-{{-- Isi panel di bawah lonceng — padanan `PanelPemberitahuan` (26 Sep). Diambil
-     skrip saat lonceng ditekan (PemberitahuanController@panel); tanpa skrip lonceng
-     tetap link ke halaman Pemberitahuan. Memuat 40 pemberitahuan terbaru untuk tab
-     "Semua" ditambah yang belum dibaca untuk tab "Belum dibaca". --}}
+{{-- Isi panel lonceng, diambil skrip (PemberitahuanController@panel); tanpa skrip lonceng tetap
+     link ke halaman Pemberitahuan. --}}
 <div class="kb-kepala">
   <b>Pemberitahuan</b>
   <x-info :teks="\App\Support\Pemberitahuan::KET" />

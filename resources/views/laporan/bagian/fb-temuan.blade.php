@@ -1,7 +1,5 @@
-{{-- Panel satu temuan — padanan `panelTemuan`: kepala dengan judul utuh,
-     isian temuannya, lalu deret tab rekomendasinya. Seluruh panel dirender;
-     yang tidak terpilih disembunyikan, supaya satu kiriman memuat semua isian.
-     Masukan: $t, $i, $tampil. --}}
+{{-- Panel satu temuan. Seluruh panel dirender; yang tidak terpilih disembunyikan. Masukan: $t,
+     $i, $tampil. --}}
 @php
   use App\Support\Tampil;
 
@@ -15,8 +13,7 @@
   ]));
   $idT = 'fb-'.$t['id'];
   $nama = 'tem['.$t['id'].']';
-  /* Rekomendasi terpilih: yang dibuka kalau milik temuan ini, selain itu
-     yang pertama — sama dengan `rekAktif` prototipe. */
+  /* Rekomendasi terpilih: yang dibuka bila milik temuan ini, selain itu yang pertama. */
   $rAktif = collect($t['rekom'])->firstWhere('id', $d['buka'])['id'] ?? $t['rekom'][0]['id'];
   /* Menghapus yang sudah berisi ditanyakan dulu; yang masih kosong langsung. */
   $berisi = trim($t['judul']) !== '' || trim($t['sebab']) !== '' || trim($t['akibat']) !== ''
@@ -38,20 +35,18 @@
     @endif
   </x-kepala-panel>
   <div class="fb-isi">
-    {{-- Urutannya mengikuti cara orang membaca LHP: perkaranya dulu, baru
-         siapa yang kena, sebab dan akibatnya. Judul paling atas karena itulah
-         yang muncul di seluruh daftar dan pemberitahuan. --}}
-    <x-baris-isi label="Judul temuan" untuk="{{ $idT }}-judul" :wajib="true" info="Judul ini yang terbaca di daftar dan pemberitahuan.">
+    <x-baris-isi label="Judul temuan" untuk="{{ $idT }}-judul" :wajib="true" info="Ringkasan masalah yang ditemukan dalam pemeriksaan, ditulis dalam satu kalimat.">
       <input id="{{ $idT }}-judul" type="text" name="{{ $nama }}[judul]" aria-required="true" value="{{ $t['judul'] }}"
         placeholder="Satu kalimat yang menyebut perkaranya" data-ikut-judul="tem:{{ $t['id'] }}">
     </x-baris-isi>
     <x-baris-isi label="Nomor di surat" untuk="{{ $idT }}-nomor">
-      <input id="{{ $idT }}-nomor" type="text" name="{{ $nama }}[nomor]" class="mono fb-pendek" value="{{ $t['nomor'] }}" placeholder="1.1">
+      <input id="{{ $idT }}-nomor" type="text" name="{{ $nama }}[nomor]" class="mono fb-pendek" value="{{ $t['nomor'] }}" placeholder="1.1"
+        data-nomor-temuan>
     </x-baris-isi>
     <x-baris-isi label="Kategori temuan" untuk="{{ $idT }}-kategori" :wajib="true"
       :info="$d['surat']['sumber'] === 'LHA'
-        ? 'Penggolongan dari Inspektorat. Pilihannya mengikuti sumber laporan.'
-        : 'Penggolongan dari BPK. Pilihannya mengikuti sumber laporan.'">
+        ? 'Klasifikasi temuan sesuai LHA Inspektorat.'
+        : 'Klasifikasi temuan sesuai LHP BPK.'">
       <select id="{{ $idT }}-kategori" name="{{ $nama }}[kategori]" class="fb-sedang" aria-required="true">
         <option value="">— pilih —</option>
         @foreach($kategoriSumber as $k)
@@ -64,14 +59,13 @@
         @endif
       </select>
     </x-baris-isi>
-    {{-- Daftar ini yang nanti membatasi pilihan pada tiap rekomendasi — satuan
-         kerja yang tidak diperiksa tidak bisa dituntut menindaklanjuti.
-         Dicentang langsung terkirim, supaya pemilih di tindak lanjutnya ikut. --}}
+    {{-- Daftar ini membatasi pilihan satuan kerja pada tiap rekomendasi; dicentang langsung
+         terkirim. --}}
     <x-baris-isi label="Satuan kerja terperiksa" kunci="{{ $idT }}-satker" :gabung="true" :wajib="true" :kosong="! $nSat"
-      :info="['Boleh lebih dari satu.', 'Hanya satuan kerja ini yang bisa ditugasi di rekomendasinya.']">
-      <x-pilih-satker :satker="$satker" :terpilih="$t['satker']" nama="{{ $nama }}[satker][]" :kirim="true" :hanya-aktif="true" />
+      :info="['Unit kerja yang menjadi objek pemeriksaan pada temuan ini.', 'Satker yang dipilih di sini menjadi pilihan pelaksana tindak lanjut untuk rekomendasi terkait.']">
+      <x-pilih-satker :satker="$satker" :terpilih="$t['satker']" nama="{{ $nama }}[satker][]" :hanya-aktif="true" />
     </x-baris-isi>
-    <x-baris-isi label="Sebab" untuk="{{ $idT }}-sebab" :wajib="true" info="Cukup yang menyangkut satuan kerja sendiri.">
+    <x-baris-isi label="Sebab" untuk="{{ $idT }}-sebab" :wajib="true" info="Penyebab terjadinya masalah yang dijelaskan dalam laporan pemeriksaan.">
       <textarea id="{{ $idT }}-sebab" name="{{ $nama }}[sebab]" rows="2" aria-required="true"
         placeholder="Mengapa hal itu bisa terjadi">{{ $t['sebab'] }}</textarea>
     </x-baris-isi>
@@ -80,13 +74,13 @@
         placeholder="Kerugian atau risiko yang ditimbulkan">{{ $t['akibat'] }}</textarea>
     </x-baris-isi>
     <x-baris-isi label="Kategori internal" untuk="{{ $idT }}-intern" :wajib="true"
-      info="Penggolongan sendiri untuk rekap. Diatur di menu Data master.">
+      info="Kelompok temuan untuk monitoring internal BPSDM, terpisah dari klasifikasi pada laporan pemeriksaan.">
       <select id="{{ $idT }}-intern" name="{{ $nama }}[intern]" class="fb-sedang" aria-required="true">
         @foreach($intern->where('aktif', true) as $k)
           <option value="{{ $k->id }}" @selected((string) $t['intern'] === (string) $k->id)>{{ $k->nama }}</option>
         @endforeach
-        {{-- Kategori lama yang sudah dinonaktifkan tetap boleh dipertahankan
-             pada temuan yang memang memakainya. --}}
+        {{-- Kategori yang sudah dinonaktifkan tetap boleh dipertahankan pada temuan yang
+             memakainya. --}}
         @php $inAktif = $intern->firstWhere('id', (int) $t['intern']); @endphp
         @if($inAktif && ! $inAktif->aktif)
           <option value="{{ $inAktif->id }}" selected>{{ $inAktif->nama }}</option>

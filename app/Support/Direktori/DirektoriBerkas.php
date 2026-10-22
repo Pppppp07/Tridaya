@@ -4,10 +4,7 @@ namespace App\Support\Direktori;
 
 use Illuminate\Support\Collection;
 
-/**
- * Direktori pegawai dari berkas JSON — padanan `IRM_CONTOH` prototipe.
- * Dibangkitkan `Prototipe/alat/buat-irm-contoh.py`; seluruh orangnya rekaan.
- */
+/** Direktori pegawai dari berkas JSON rekaan (dibangkitkan Prototipe/alat/buat-irm-contoh.py). */
 class DirektoriBerkas implements SumberPegawai
 {
     private ?Collection $isi = null;

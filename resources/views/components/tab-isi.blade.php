@@ -1,10 +1,7 @@
 @props(['id', 'panel', 'aksi', 'aktif' => false, 'no', 'teks' => '', 'kosong' => '', 'ok' => false, 'kecil' => false, 'utuh' => null])
 
-{{-- Satu tab pada deret temuan, rekomendasi, atau tindak lanjut — padanan
-     `TabIsi`: nomor, judul singkat, dan tanda lengkap/belum. Keadaannya tetap
-     terlihat walau isinya tidak sedang ditampilkan. Tombol kirim: tanpa skrip,
-     memilih tab mengirim isian dan menampilkan panelnya; dengan skrip panelnya
-     ditukar di tempat (panah kiri-kanan, Home, End juga berpindah tab). --}}
+{{-- Satu tab temuan/rekomendasi/tindak lanjut: nomor, judul singkat, tanda lengkap. Tanpa
+     skrip, memilih tab mengirim isian lalu menampilkan tab itu. --}}
 <button type="submit" name="aksi" value="{{ $aksi }}" role="tab" id="{{ $id }}"
   aria-selected="{{ $aktif ? 'true' : 'false' }}" aria-controls="{{ $panel }}" tabindex="{{ $aktif ? '0' : '-1' }}"
   class="fb-tab{{ $aktif ? ' aktif' : '' }}{{ $kecil ? ' kecil' : '' }}" title="{{ $utuh ?: ($teks ?: $kosong) }}" data-tab>

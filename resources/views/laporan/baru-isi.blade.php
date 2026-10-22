@@ -3,11 +3,8 @@
   use App\Models\Rekomendasi;
   use App\Support\Tampil;
 
-  /* Langkah 1 — isi laporan, satu halaman seperti mengisi dokumen (Hizkia,
-     24 Sep): surat laporan di atas, lalu temuan dengan rekomendasi dan tindak
-     lanjut di dalamnya. Temuan, rekomendasi, dan tindak lanjut berjajar ke
-     samping sebagai tab; yang tampil hanya yang terpilih, jadi halamannya tidak
-     memanjang berapa pun jumlahnya. */
+  /* Langkah 1: isi laporan dalam satu halaman. Temuan, rekomendasi, dan tindak lanjut sebagai
+     deret tab. */
   $s = $d['surat'];
   $sumber = SumberLaporan::from($s['sumber']);
   $salah = $form->salahTanggal($s);
@@ -26,9 +23,8 @@
 <p class="fb-legenda"><span class="fb-bintang" aria-hidden="true">*</span> wajib diisi</p>
 
 <section id="fb-surat" class="fb-bag{{ $suratBuka ? ' buka' : '' }}" aria-label="Surat laporan" data-bagian-surat>
-  {{-- Kepala bagian yang bisa dibuka-tutup — padanan `KepalaBagian`. Tanpa
-       skrip, tombolnya mengirim isian dan menampilkan halaman dengan bagian
-       ini terbuka atau tertutup. --}}
+  {{-- Kepala bagian buka-tutup; tanpa skrip tombolnya mengirim isian lalu menampilkan bagian
+       itu. --}}
   <div class="fb-kep{{ $suratBuka ? ' buka' : '' }}">
     <button type="submit" name="aksi" value="surat" class="fb-alih" aria-expanded="{{ $suratBuka ? 'true' : 'false' }}"
       aria-controls="fb-surat-isi" data-alih-surat>
@@ -47,15 +43,14 @@
   <div class="fb-isi" id="fb-surat-isi" @unless($suratBuka) hidden @endunless>
     <x-baris-isi label="Sumber laporan" untuk="fb-jenis" :wajib="true">
       <div class="fb-sebaris">
-        {{-- Mengganti sumber mengganti daftar kategori temuan dan dasar
-             hitungan tenggatnya, jadi halamannya langsung disegarkan. --}}
+        {{-- Mengganti sumber langsung menyegarkan halaman (kategori dan tenggat ikut berganti). --}}
         <select id="fb-jenis" name="surat[sumber]" class="fb-sedang" aria-required="true" data-kirim>
           <option value="LHP" @selected($s['sumber'] === 'LHP')>LHP — Laporan Hasil Pemeriksaan</option>
           <option value="LHA" @selected($s['sumber'] === 'LHA')>LHA — Laporan Hasil Audit</option>
         </select>
         <span class="fb-catatan">
           Tenggat {{ $sumber->hariTenggat() }} {{ $sumber->satuanTenggat() }}
-          <x-info :teks="$sumber->dasarHukum()" />
+          <x-info :teks="'Batas penyampaian jawaban atas rekomendasi: '.$sumber->hariTenggat().' '.$sumber->satuanTenggat().' sejak tanggal laporan diterima.'" />
         </span>
       </div>
     </x-baris-isi>
@@ -63,14 +58,13 @@
       <input id="fb-nomor" type="text" name="surat[nomor]" class="mono fb-sedang" aria-required="true"
         value="{{ $s['nomor'] }}" placeholder="000/LHP/XVIII/00/2026">
     </x-baris-isi>
-    {{-- `max` supaya browser ikut menolak tanggal di depan. Bukan penjaga
-         sesungguhnya — itu `salahTanggal` di server. --}}
+    {{-- `max` hanya bantuan browser; penjaganya `salahTanggal` di server. --}}
     <x-baris-isi label="Tanggal surat" untuk="fb-tgldok" :wajib="true">
       <input id="fb-tgldok" type="date" name="surat[tgl_surat]" aria-required="true" value="{{ $s['tgl_surat'] }}" max="{{ $ini }}">
     </x-baris-isi>
     <x-baris-isi label="Tanggal diterima" untuk="fb-tglterima" :wajib="true"
-      :info="['Dari cap terima suratnya, bukan tanggal Anda mengisi formulir ini.',
-        'Tenggat seluruh rekomendasi laporan ini dihitung dari tanggal ini.']">
+      :info="['Isi tanggal laporan benar-benar diterima sesuai catatan penerimaan surat.',
+        'Tanggal ini menjadi dasar perhitungan tenggat jawab rekomendasi pada laporan.']">
       <div class="fb-sebaris">
         <input id="fb-tglterima" type="date" name="surat[tgl_terima]" aria-required="true" value="{{ $s['tgl_terima'] }}"
           @if($s['tgl_surat']) min="{{ $s['tgl_surat'] }}" @endif max="{{ $ini }}" data-kirim>
@@ -81,18 +75,18 @@
         @endif
       </div>
     </x-baris-isi>
-    {{-- Surat aslinya tebal — LHP bisa ratusan halaman. Yang disimpan
-         link-nya, bukan berkasnya, dan ketiadaannya ditandai di halaman
-         laporannya, bukan ditahan di sini. --}}
+    {{-- Yang disimpan link surat; ketiadaannya ditandai di halaman laporan, tidak ditahan di
+         sini. --}}
     <x-baris-isi label="Surat asli" untuk="fb-berkas-judul"
-      :info="['Boleh dilengkapi belakangan — suratnya kerap sampai lebih dulu daripada salinan arsipnya.',
-        'Yang disimpan link-nya, bukan berkasnya.']">
+      info="Link laporan pemeriksaan asli beserta lampirannya sebagai rujukan temuan dan rekomendasi.">
       <div class="fb-dua">
         <input id="fb-berkas-judul" type="text" name="berkas[judul]" value="{{ $d['berkas']['judul'] }}"
           placeholder="Judul berkas, mis. LHP beserta lampirannya">
         <input type="text" class="mono" name="berkas[link]" aria-label="Link surat asli" value="{{ $d['berkas']['link'] }}"
           placeholder="Link, mis. https://…">
       </div>
+      <x-panduan-link-bukti />
+      @error('berkas.link')<span class="pesan bad" role="alert">{{ $message }}</span>@enderror
     </x-baris-isi>
   </div>
   <input type="hidden" name="ui[surat]" value="{{ $suratBuka ? '1' : '0' }}" data-ui-surat>
@@ -103,8 +97,7 @@
   <span>{{ $ringkas['tem'] }} temuan · {{ $ringkas['rek'] }} rekomendasi · {{ $ringkas['pen'] }} penugasan</span>
 </div>
 
-{{-- Deret tab temuan menempel di bawah batang atas selagi isinya digulir,
-     jadi temuan lain dan "Tambah temuan" selalu terjangkau. --}}
+{{-- Deret tab temuan menempel di bawah batang atas selagi digulir. --}}
 <div class="fb-temuan">
   <div class="fb-tab-baris fb-tab-tem">
     <div role="tablist" aria-label="Temuan" class="fb-tabs">

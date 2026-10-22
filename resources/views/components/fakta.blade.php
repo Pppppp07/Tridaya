@@ -1,9 +1,7 @@
 @props(['isi', 'kelas' => null])
 
-{{-- Daftar keterangan bersusun ke bawah. Tiap butir: `l` namanya, `v` isinya
-     (HTML yang sudah aman), `k` keterangan tambahan di belakang isi, `ket`
-     keterangan panjang di balik ikon Info, `mono` untuk angka dan tanggal,
-     `c` warna. Butir bernilai palsu dilewati. --}}
+{{-- Daftar keterangan. Butir: `l` nama, `v` isi (HTML aman), `k` keterangan di belakang isi,
+     `ket` Info, `mono`, `c` warna. Butir bernilai palsu dilewati. --}}
 <dl class="fakta{{ $kelas ? ' '.$kelas : '' }}">
   @foreach(array_filter($isi) as $m)
     <div>

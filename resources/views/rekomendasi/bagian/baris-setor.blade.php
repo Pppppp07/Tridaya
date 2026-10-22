@@ -2,9 +2,8 @@
   $tunai = ($st['jenis'] ?? 'setor') !== 'perbaikan';
   $adaBukti = ! empty(trim($st['berkas'] ?? '')) || ! empty($st['link']);
 @endphp
-{{-- Satu baris pemulihan — kotak tipis di dalam isian Pemulihan nilai (25 Sep).
-     Nomor urutnya, keadaan lengkapnya, dan sebutan buktinya (bukti setor atau
-     berita acara) ditulis ulang skrip menurut cara pemulihannya. --}}
+{{-- Satu baris pemulihan; nomor, keadaan, dan sebutan buktinya ditulis ulang skrip menurut cara
+     pemulihannya. --}}
 <div class="brs" data-setor>
   <div class="kepala">
     <b data-judul-setor>Pemulihan</b>

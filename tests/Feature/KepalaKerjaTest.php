@@ -8,17 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Kepala panel kerja di tab Kerjakan baris satuan kerja, sejak 22 Sep — sejak
- * 25 Sep kepala berpita abu `x-panel-kerja`, sama dengan formulir Catat
- * laporan baru.
- *
- * Kata Hizkia, menunjuk "TINDAKAN SETBA  Balai Wil. IV Bandung": "terlihat
- * ambigu penempatannya, nanti dikira tindakan setba itu yang mengisi Balai
- * Wil.IV Bandung". Yang dijaga: nama tindakannya jadi judul, satuan kerjanya
- * disebut sebagai pemilik berkas dalam satu kalimat — di kelima panel Setba —
- * dan label lama yang berisi nama satuan kerja tidak kembali.
- */
+/** Kepala panel kerja di tab Kerjakan (x-panel-kerja). */
 class KepalaKerjaTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;

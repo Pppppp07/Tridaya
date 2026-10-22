@@ -6,16 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Kategori internal punya warnanya sendiri.
- *
- * Prototipe mewarnai lencana kategori dari data master; simtlhp menampilkan
- * semuanya abu-abu karena kolomnya tidak ada. Warnanya bukan hiasan — sekali
- * lihat sudah ketahuan perkaranya jenis apa, dan grafik sebaran di Ringkasan
- * memakai warna yang sama supaya batang dan lencananya bisa dihubungkan.
- *
- * Nilai awalnya disalin dari prototipe supaya kedua proyek berwarna sama.
- */
+/** Warna kategori internal. */
 return new class extends Migration
 {
     public function up(): void

@@ -8,12 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Hasil telaah UKI dan verifikasi Inspektorat. Berdiri sendiri dari
-        // tindak lanjut satuan kerja karena penulisnya pihak lain, dan yang
-        // membaca perlu tahu siapa yang menilai apa.
-        //
-        // Sebelumnya keduanya cuma menekan satu tombol "bukti cukup" tanpa bisa
-        // menulis apa pun — berkasnya lewat, kesimpulannya tidak ke mana-mana.
+        // Hasil telaah UKI dan verifikasi Inspektorat, terpisah dari tindak lanjut satuan kerja.
         Schema::create('telaahs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rekomendasi_id')->constrained('rekomendasis')->cascadeOnDelete();
@@ -22,8 +17,7 @@ return new class extends Migration
             $table->string('label_oleh');          // "UKI" atau "Inspektorat"
             $table->text('catatan');               // wajib — telaah tanpa kesimpulan bukan telaah
 
-            // Catatan telaah tersendiri kerap ada dan perlu ikut tersimpan.
-            // Berkasnya tetap masuk lampiran; ini penunjuknya.
+            // Penunjuk berkas catatan telaah (berkasnya di lampiran).
             $table->foreignId('lampiran_id')->nullable()->constrained('lampirans')->nullOnDelete();
 
             $table->timestamps();

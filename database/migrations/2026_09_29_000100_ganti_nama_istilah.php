@@ -5,29 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Nama di basis data mengikuti istilah tampilan (29 Sep 2026). Kata Hizkia:
- * "untuk penamaan kolom di database atau lainnya juga coba sesuaikan ulang
- * penamaannya" — lanjutan penggantian istilah 28 Sep (surel → email,
- * tautan → link, kabar → pemberitahuan/notifikasi, sembulan → pop-up).
- *
- * Kolom:
- *   - lampirans.tautan, surats.tautan  → link
- *   - users.kabar_dilihat_pada          → notifikasi_dilihat_pada (sejalan
- *     dengan tabel notifikasis, notifikasi_bacas, notifikasi_satker)
- *
- * Isi JSON yang tersimpan ikut, supaya kode baru membaca data lama:
- *   - users.pengaturan: sembul → popup, surel → email, gerak → animasi;
- *     halaman pertama "kabar" → "pemberitahuan"
- *   - draf_tanggapans.bukti/setoran dan draf_laporans.isian: tautan → link
- *   - log_aktivitas: kode aksi akun.sandi → akun.password,
- *     master.pengguna.tautkan → master.pengguna.hubungkan; kunci rincian
- *     surel/sembul/gerak → email/popup/animasi; cara masuk "sandi" → "password".
- *     Kalimat ringkasan yang sudah tercatat TIDAK diubah — itu catatan resmi.
- *
- * Migrasi lama (tambah_tautan_lampiran, tambah_kabar_dilihat, …) sengaja
- * tidak disentuh: namanya sudah tercatat di tabel migrations.
- */
+/** Nama di basis data mengikuti istilah tampilan. */
 return new class extends Migration
 {
     private const KUNCI = ['sembul' => 'popup', 'surel' => 'email', 'gerak' => 'animasi'];

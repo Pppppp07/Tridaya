@@ -1,8 +1,5 @@
-{{-- Lima kartu ringkasan utama — semuanya per TINDAK LANJUT SATUAN KERJA
-     (Hizkia, 24 Sep: "seharusnya fokus utama ke tindak lanjut satuan kerja"),
-     seperti kepala dasbor Excel Setba ("Selesai Satker 303, Belum Selesai
-     Satker 9"). Kartu = tombol pembuka rinciannya; satu terbuka, klik lagi
-     menutup. Kartu TIDAK memfilter. --}}
+{{-- Kartu ringkasan, semuanya per tindak lanjut satuan kerja. Kartu = tombol pembuka
+     rinciannya. LHA tidak diunggah ke SIPTL, jadi kartu SIPTL hanya untuk LHP. --}}
 @php
   use App\Support\Dasbor;
 
@@ -10,71 +7,50 @@
     'value' => 'kartu:'.$x.'@dsb-rincian',
     'buka' => $k['kartu'] === $x,
   ];
-  /* Garis kecil di kartu "Belum memadai": tumpukan pada akhir tiap bulan. */
-  $maksTp = max(1, ...$tp);
-  $yTp = fn ($v) => 25 - ($v / $maksTp) * 21;
-  $titikTp = implode(' ', array_map(fn ($v, $i) => round($i / (count($tp) - 1) * 100, 3).','.round($yTp($v), 3),
-    $tp, array_keys($tp)));
-  $akhirTp = $tp[count($tp) - 1];
+  $daftarKartu = $adaSiptl ? ['M', 'tunggu', 'sisa', 'ss'] : ['M', 'tunggu', 'sisa'];
 @endphp
-{{-- data-tumbuh: kartunya masuk bergiliran dan batangnya tumbuh — hanya saat
-     deret ini baru muncul. Dilepas simtlhp.js (pasangTumbuh); data-wadah
-     pengenalnya waktu isi dasbor diganti di tempat. --}}
+{{-- data-tumbuh: kartu masuk bergiliran dan batang tumbuh hanya saat deret ini baru muncul
+     (pasangTumbuh); data-wadah = pengenal saat isi diganti di tempat. --}}
 <div class="dsb-kpi" data-tumbuh data-wadah="kpi">
-  @foreach(['M', 'BM', 'tunggu', 'sisa', 'ss'] as $kk)
+  @foreach($daftarKartu as $kk)
     @php $p = $propKartu($kk); @endphp
     <button type="submit" name="ubah" value="{{ $p['value'] }}" class="dsb-ubin" aria-expanded="{{ $p['buka'] ? 'true' : 'false' }}"
       @if($p['buka']) aria-controls="dsb-rincian" @endif title="{{ $p['buka'] ? 'Tutup rincian' : 'Lihat rinciannya' }}">
       @switch($kk)
         @case('M')
-          <span class="l"><i style="background:{{ $W['M'] }}"></i>{{ $kataM }}<x-ikon n="ChevronDown" :s="15" class="buka" /></span>
+          {{-- Hasil verifikasi Inspektorat saja; status SIPTL punya kartunya sendiri. Kalimatnya
+               sekaligus legenda warna pita. --}}
+          <span class="l">Status<x-ikon n="ChevronDown" :s="15" class="buka" /></span>
           <span class="n">{{ $persen($t['M'], $t['n']) }}%</span>
           <span class="vis">
-            <span class="dsb-meter"><i style="width:{{ $persen($t['M'], $t['n']) }}%;background:{{ $W['M'] }}"></i></span>
-          </span>
-          <span class="k">{{ $t['M'] }} dari {{ $t['n'] }} tindak lanjut</span>
-          @break
-        @case('BM')
-          <span class="l"><i style="background:{{ $W['BM'] }}"></i>{{ $kataBM }}<x-ikon n="ChevronDown" :s="15" class="buka" /></span>
-          <span class="n">{{ $t['BM'] }}</span>
-          <span class="vis">
-            <span class="dsb-sirip" aria-hidden="true">
-              <svg viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="{{ $titikTp }}" /></svg>
-              <i style="left:100%;top:{{ round($yTp($akhirTp) / 28 * 100, 3) }}%"></i>
-            </span>
-          </span>
-          <span class="k">
-            @if($gerak === 0)
-              sama dengan {{ $bulanLalu }}
-            @else
-              <span class="dsb-delta {{ $gerak < 0 ? 'baik' : 'buruk' }}">
-                @if($gerak < 0)<x-ikon n="TrendingDown" :s="13" />@else<x-ikon n="TrendingUp" :s="13" />@endif{{ $gerak < 0 ? 'turun ' : 'naik ' }}{{ abs($gerak) }} sejak {{ $bulanLalu }}
+            @if($t['n'] > 0)
+              <span class="dsb-pitamini" aria-hidden="true">
+                @if($t['M'] > 0)<i style="flex-grow:{{ $t['M'] }};background:{{ $W['M'] }}"></i>@endif
+                @if($t['BM'] > 0)<i style="flex-grow:{{ $t['BM'] }};background:{{ $W['BM'] }}"></i>@endif
               </span>
             @endif
           </span>
+          <span class="k legenda"><span class="dsb-utuh"><i class="dsb-tanda" style="background:{{ $W['M'] }}"></i>{{ $t['M'] }} {{ $kecil($kataM) }}<span class="dsb-sr">,</span></span><span class="dsb-utuh"><i class="dsb-tanda" style="background:{{ $W['BM'] }}"></i>{{ $t['BM'] }} {{ $kecil($kataBM) }}</span></span>
           @break
         @case('tunggu')
-          {{-- Bola di tangan siapa: dari yang belum memadai, berapa yang
-               menunggu tanggapan satuan kerja. Pitanya membagi yang belum
-               memadai — kuning di satuan kerja, abu sedang diproses. Di kartu
-               sempit labelnya versi pendek, supaya tetap satu baris. --}}
-          <span class="l"><i style="background:{{ $W['tunggu'] }}"></i><span class="dsb-pjg">Menunggu satuan kerja</span><span class="dsb-pdk">Menunggu satker</span><x-ikon n="ChevronDown" :s="15" class="buka" /></span>
-          <span class="n">{{ $nTunggu }}</span>
+          {{-- Yang belum lolos menurut posisi berkasnya, satu warna per tahap. Label versi pendek di
+               kartu sempit; kalimatnya sekaligus legenda warna pita. --}}
+          @php $tahapAda = array_values(array_filter(array_keys(Dasbor::NAMA_MEJA), fn ($m) => ($t['meja'][$m] ?? 0) > 0)); @endphp
+          <span class="l"><span class="dsb-pjg">Proses tindak lanjut</span><span class="dsb-pdk">Proses</span><x-ikon n="ChevronDown" :s="15" class="buka" /></span>
+          <span class="n">{{ $t['BM'] }}</span>
           <span class="vis">
-            @if($t['BM'] > 0)
+            @if($tahapAda)
               <span class="dsb-pitamini" aria-hidden="true">
-                @if($nTunggu > 0)<i style="flex-grow:{{ $nTunggu }};background:{{ $W['tunggu'] }}"></i>@endif
-                @if($t['BM'] - $nTunggu > 0)<i style="flex-grow:{{ $t['BM'] - $nTunggu }};background:{{ $W['proses'] }}"></i>@endif
+                @foreach($tahapAda as $m)<i style="flex-grow:{{ $t['meja'][$m] }};background:{{ $warnaProses($m) }}"></i>@endforeach
               </span>
             @endif
           </span>
-          <span class="k">dari {{ $t['BM'] }} {{ $kecil($kataBM) }}</span>
+          <span class="k legenda">@forelse($tahapAda as $m)<span class="dsb-utuh"><i class="dsb-tanda" style="background:{{ $warnaProses($m) }}"></i>{{ $t['meja'][$m] }} {{ Dasbor::PENDEK_MEJA[$m] }}@unless($loop->last)<span class="dsb-sr">,</span>@endunless</span>@empty Tidak ada yang sedang diproses @endforelse</span>
           @break
         @case('sisa')
           <span class="l">Sisa nilai<x-ikon n="ChevronDown" :s="15" class="buka" /></span>
           <span class="n">{{ $rpk($t['sisa']) }}</span>
-          {{-- Mbak Puspi: "kadang suka ditanya semuanya berapa, yang udah
-               berapa" — dan sisanya. Hijau yang sudah diakui, kuning sisanya. --}}
+          {{-- Total, yang sudah diakui (hijau), dan sisanya (kuning). --}}
           <span class="vis">
             <span class="dsb-pitamini" aria-hidden="true">
               @if($t['nilai'] - $t['sisa'] > 0)<i style="flex-grow:{{ $t['nilai'] - $t['sisa'] }};background:{{ $W['M'] }}"></i>@endif
@@ -96,7 +72,9 @@
             @endif
           </span>
           <span class="k">
-            @if($t['bpk']['n']){{ $t['bpk']['SS'] }} dari {{ $t['bpk']['n'] }} <span class="dsb-utuh">tindak lanjut LHP</span>@else LHA tidak masuk SIPTL @endif
+            @if($t['bpk']['n']){{ $t['bpk']['SS'] }} dari {{ $t['bpk']['n'] }} <span class="dsb-utuh">tindak lanjut di SIPTL</span>@if($t['belumUnggah']) · <span class="dsb-utuh">{{ $t['belumUnggah'] }} belum diunggah</span>@endif
+            @elseif($t['belumUnggah']){{ $t['belumUnggah'] }} <span class="dsb-utuh">belum diunggah ke SIPTL</span>
+            @else Belum ada data SIPTL @endif
           </span>
           @break
       @endswitch

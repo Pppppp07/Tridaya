@@ -12,22 +12,7 @@ use Illuminate\Support\Str;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Menu samping sejak 21 Sep.
- *
- * Kata Hizkia: "tingkatkan fungsional secara sistem dan fleksibilitas pada
- * fitur sidebar ini, optimalisasi dan sesuaikan dalam segala kondisi". Yang
- * dijaga: menu induk menyala di halaman turunan, angka menu disebut artinya,
- * tanda merah di Data master, laci yang bisa diakses, tombol ciut, dan panduan
- * singkat yang isinya menurut peran.
- *
- * 22 Sep: "hilangkan tombol fungsional seperti tombol panah memutar nya lalu
- * ganti gambar tombol ciutkan menu jadi gambar panah kekiri dan hapus tulisan
- * atau judulnya" — tombol ciut tinggal ikon panah di bawah logo, tanpa tombol
- * kembali ke otomatis; kartu bantuan satu link. Sejak identitas Tridaya,
- * informasi akun dan keluar tersedia melalui profil, termasuk pada mode rel.
- * Perilakunya (klik area kosong, tiga mode lebar, laci terkunci) di skrip.
- */
+/** Menu samping: lebar, ciut, dan perilakunya di segala kondisi. */
 class SidebarTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -70,8 +55,8 @@ class SidebarTest extends TestCase
         $isi = $this->masuk('setba@contoh.test')->get(route('rekomendasi.index'))->assertOk()->getContent();
         $rek = $this->menu($isi, 'Rekomendasi');
 
-        $this->assertStringContainsString('aria-label="Rekomendasi, 19 perlu Anda kerjakan"', $rek);
-        $this->assertStringContainsString('title="Rekomendasi — 19 perlu Anda kerjakan"', $rek);
+        $this->assertStringContainsString('aria-label="Rekomendasi, 18 perlu Anda kerjakan"', $rek);
+        $this->assertStringContainsString('title="Rekomendasi — 18 perlu Anda kerjakan"', $rek);
 
         $this->assertSame('7', Rangka::angka(7));
         $this->assertSame('99', Rangka::angka(99));
@@ -80,8 +65,8 @@ class SidebarTest extends TestCase
 
     public function test_data_master_bertanda_merah_bila_ada_unit_tanpa_penanggung_jawab(): void
     {
-        $this->masuk('setba@contoh.test');
-        $master = $this->menu($this->get(route('ringkasan'))->getContent(), 'Data master');
+        $this->masuk('admin@contoh.test');
+        $master = $this->menu($this->get(route('ringkasan'))->getContent(), 'Data Master');
         $this->assertStringNotContainsString('genting', $master);
 
         /* Penanggung jawab satu unit berhenti — akunnya nonaktif. */
@@ -89,13 +74,13 @@ class SidebarTest extends TestCase
             ->forceFill(['aktif' => false])->save();
         Rangka::lupakan();
 
-        $master = $this->menu($this->get(route('ringkasan'))->getContent(), 'Data master');
+        $master = $this->menu($this->get(route('ringkasan'))->getContent(), 'Data Master');
         $this->assertStringContainsString('menu genting', $master);
-        $this->assertStringContainsString('aria-label="Data master, 1 unit kerja belum punya penanggung jawab"', $master);
+        $this->assertStringContainsString('aria-label="Data Master, 1 satuan kerja belum punya penanggung jawab"', $master);
 
         /* Satuan kerja tidak punya menu Data master sama sekali. */
         $satker = $this->masuk('bandung')->get(route('rekomendasi.index'))->getContent();
-        $this->assertStringNotContainsString('<span class="tulisan">Data master</span>', $satker);
+        $this->assertStringNotContainsString('<span class="tulisan">Data Master</span>', $satker);
     }
 
     public function test_laci_dan_tombol_ciut_siap_dipakai(): void
@@ -107,18 +92,14 @@ class SidebarTest extends TestCase
         $this->assertStringContainsString('class="tutup-nav" data-tutup-nav aria-label="Tutup menu"', $isi);
         $this->assertStringContainsString('<div class="tirai-nav" data-tutup-nav aria-hidden="true"></div>', $isi);
 
-        /* Kontrol lebar di bagian atas sidebar, baru muncul lewat skrip. Pilihannya
-           dibaca sebelum halaman tergambar supaya menunya tidak melompat —
-           tanpa pilihan, rel di bawah 1121 px. */
+        /* Kontrol lebar baru muncul lewat skrip; pilihan dibaca sebelum halaman tergambar. */
         $nav = Str::between($isi, '<nav class="nav"', '</nav>');
         $this->assertLessThan(strpos($nav, 'class="menu'), strpos($nav, '<div class="kontrol-nav" data-kontrol-nav hidden>'));
         $this->assertStringContainsString('data-mode-menu="otomatis"', $isi);
         $this->assertStringNotContainsString("localStorage.getItem('simtlhp.navRingkas')", $isi);
         $this->assertStringContainsString("matchMedia('(min-width:1121px)')", $isi);
 
-        /* Tombolnya tinggal ikon panah: panah kiri untuk menciutkan, panah
-           kanan untuk melebarkan, tanpa tulisan; tombol kembali ke otomatis
-           (panah melingkar) tidak ada lagi. */
+        /* Tombol tinggal ikon panah, tanpa tulisan dan tanpa tombol kembali ke otomatis. */
         $ciut = Str::betweenFirst($nav, 'class="ciut" data-ciut-nav', '</button>');
         $this->assertStringContainsString('aria-label="Ciutkan menu"', $ciut);
         $this->assertStringContainsString('<path d="m15 18-6-6 6-6"/>', $ciut);
@@ -133,7 +114,7 @@ class SidebarTest extends TestCase
         $this->assertStringNotContainsString('action="'.route('keluar').'"', $nav);
     }
 
-    /** Sejak 25 Sep menunya bernama "Dashboard" (Hizkia: "ganti namanya jadi Dashboard saja"). */
+    /** Menu bernama "Dashboard". */
     public function test_judul_dashboard_sama_dengan_menunya_untuk_pimpinan(): void
     {
         $isi = $this->masuk('pimpinan@contoh.test')->get(route('ringkasan'))->assertOk()->getContent();
@@ -151,7 +132,7 @@ class SidebarTest extends TestCase
         $this->assertStringContainsString('Panduan singkat', $panduan);
         $this->assertStringContainsString('Setba — Sekretariat Badan', $panduan);
         $this->assertStringContainsString('Mencatat laporan baru, meneruskan berkas ke UKI dan Inspektorat', $panduan);
-        foreach (['Rekomendasi', 'Daftar laporan', 'Dashboard', 'Data master'] as $nama) {
+        foreach (['Rekomendasi', 'Daftar laporan', 'Dashboard'] as $nama) {
             $this->assertStringContainsString(' '.$nama.'</dt>', $panduan);
         }
         /* Tombol bantuan di kaki sidebar satu link. Menu profil juga boleh
@@ -166,8 +147,8 @@ class SidebarTest extends TestCase
         $satker = $this->masuk('bandung')->get(route('rekomendasi.index'))->getContent();
         $panduan = Str::between($satker, 'id="panduan"', '<div class="main">');
         $this->assertStringContainsString('Satuan kerja · Balai Wil. IV Bandung', $panduan);
-        $this->assertStringContainsString('Mengisi tindak lanjut unit Anda', $panduan);
+        $this->assertStringContainsString('Mengisi tanggapan tindak lanjut, melampirkan link bukti, dan mengirim berkas ke Setba', $panduan);
         $this->assertStringContainsString('Rekomendasi yang ditujukan ke unit Anda.', $panduan);
-        $this->assertStringNotContainsString(' Data master</dt>', $panduan);
+        $this->assertStringNotContainsString(' Data Master</dt>', $panduan);
     }
 }

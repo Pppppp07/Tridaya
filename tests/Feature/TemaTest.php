@@ -34,10 +34,11 @@ class TemaTest extends TestCase
         $this->assertSame('terang', $lain->fresh()->setelan('tema'));
 
         // Server menggambar tema sebelum JS berjalan, juga pada permintaan berikutnya.
-        foreach (['rekomendasi.index', 'laporan.index', 'ringkasan', 'master', 'akun', 'pemberitahuan'] as $rute) {
+        foreach (['rekomendasi.index', 'laporan.index', 'ringkasan', 'akun', 'pemberitahuan'] as $rute) {
             $this->actingAs($setba->fresh())->get(route($rute))->assertOk()
                 ->assertSee('data-tema="gelap"', false)->assertSee('data-mode-menu="ringkas"', false);
         }
+        $this->get(route('master'))->assertForbidden();
         Rangka::lupakan();
         $this->actingAs($lain)->get(route('akun'))->assertOk()->assertSee('data-tema="terang"', false);
     }

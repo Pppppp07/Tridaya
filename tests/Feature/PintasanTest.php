@@ -8,12 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Pintasan mengantar ke sasarannya (26 Sep). Kata Hizkia: tombol pintasan harus
- * "langsung diarahkan ke pilihan tersebut dan di highlight … sesuai dengan
- * lokasi objek tersebut". Yang diuji di sini alamat dan penandanya — skripnya
- * (pasangPintasan, pasangSorot) yang membuka, menggulir, dan menyorot.
- */
+/** Pintasan mengantar ke sasarannya dan menyorotnya. */
 class PintasanTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;

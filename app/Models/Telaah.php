@@ -6,10 +6,8 @@ use App\Enums\HasilTelaah;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Satu putusan UKI atau Inspektorat atas satu baris penugasan.
- *
- * `label_oleh` yang memutus, `label_pencatat` yang mengetik — putusan
- * Inspektorat kerap datang di kertas dan diketik Setba atas namanya.
+ * Putusan UKI atau Inspektorat atas satu baris. `label_oleh` = yang memutus, `label_pencatat` =
+ * yang mengetik.
  */
 class Telaah extends Model
 {

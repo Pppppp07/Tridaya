@@ -6,33 +6,44 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-/**
- * Urusan akun yang dipakai beberapa pintu sekaligus (27 Sep): formulir kata
- * password, SSO, Data master unit kerja, dan daftar Pengguna.
- */
+/** Urusan akun yang dipakai beberapa pintu (password, SSO, Data master, daftar Pengguna). */
 class Akun
 {
+    /** Akun baru memakai password acak; password demo selalu diabaikan di production. */
+    public static function passwordAwal(): string
+    {
+        $demo = app()->isProduction() ? null : config('simtlhp.password_demo');
+
+        return (string) ($demo ?: Str::random(40));
+    }
+
     /** Tandai berhasil masuk: waktu terakhir masuk, dan satu baris log. */
     public static function tandaiMasuk(User $u, string $cara): void
     {
-        $u->forceFill(['terakhir_masuk_pada' => now()])->saveQuietly();
+        if (request()->hasSession()) {
+            /* Halaman terakhir milik akun lain (sesinya habis di peramban ini) tidak dibawa. */
+            $oleh = request()->session()->pull('url.intended_oleh');
+            if ($oleh !== null && (int) $oleh !== (int) $u->id) {
+                request()->session()->forget('url.intended');
+            }
+            request()->session()->forget(['akses_aktif', 'sesi_berakhir']);
+            request()->session()->put('izin_akun', ['user' => $u->id, 'versi' => $u->versi_akses ?? 1]);
+        }
+        $u->forceFill(['terakhir_masuk_pada' => Aktivitas::waktuKini()])->saveQuietly();
         Aktivitas::catat('masuk', $cara === 'sso' ? 'Masuk lewat SSO' : 'Masuk dengan password', [
             'oleh' => $u, 'rincian' => ['cara' => $cara],
         ]);
     }
 
     /**
-     * Putuskan akun dari semua perangkatnya: sesi yang sedang berjalan dibuang
-     * dan tanda "ingat saya" lama tidak berlaku lagi. Dipanggil saat akun
-     * dinonaktifkan atau perannya diubah — orangnya tidak boleh terus bekerja
-     * dengan hak lamanya sampai sesinya habis sendiri.
-     *
-     * Penjaga `PastikanAkunAktif` tetap ada untuk sesi yang tidak tersimpan di
-     * basis data (penyimpan sesi selain `database`).
+     * Putuskan akun dari semua perangkatnya (sesi dibuang, "ingat saya" lama batal) saat
+     * dinonaktifkan atau perannya diubah.
      */
     public static function putuskanSesi(User $u): void
     {
-        $u->forceFill(['remember_token' => Str::random(60)])->saveQuietly();
+        // Dua pencabutan yang bersamaan tidak boleh menulis versi lama yang sama.
+        User::whereKey($u->id)->increment('versi_akses', 1, ['remember_token' => Str::random(60)]);
+        $u->refresh();
         if (config('session.driver') === 'database') {
             DB::connection(config('session.connection'))
                 ->table(config('session.table', 'sessions'))
@@ -41,16 +52,8 @@ class Akun
     }
 
     /**
-     * Hubungkan akun lama yang belum punya NIP ke pegawainya di direktori,
-     * menurut email-nya (27 Sep). Dipakai seeder demo dan perintah
-     * `php artisan simtlhp:hubungkan-pegawai` — akun yang dibuat sebelum SSO
-     * disiapkan dulu dengan cara ini, baru SSO dinyalakan.
-     *
-     * Yang diambil dari direktori: NIP, nama, jabatan. Peran, unit, dan kata
-     * password-nya tidak disentuh. NIP yang sudah dipegang akun lain dilewati.
-     *
-     * @param  iterable<User>  $akun
-     * @return int  berapa akun yang terhubung
+     * Hubungkan akun lama tanpa NIP ke pegawainya menurut email (seeder demo dan
+     * `simtlhp:hubungkan-pegawai`). Yang diambil: NIP, nama, jabatan.
      */
     public static function hubungkanKeDirektori(iterable $akun): int
     {

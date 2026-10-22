@@ -2,8 +2,8 @@
 
 namespace App\Enums;
 
-/* Nilai bisa dipulihkan dengan uang masuk maupun tanpa uang masuk.
-   SOP menyebut sisa nilai temuan setelah perbaikan fisik tetap wajib disetor. */
+/* Nilai bisa dipulihkan dengan atau tanpa uang masuk; sisa nilai sesudah perbaikan fisik tetap
+   wajib disetor. */
 enum JenisPemulihan: string
 {
     case SETOR     = 'setor';

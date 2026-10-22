@@ -5,20 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Lima tabel tindak lanjut pindah gantungan dari rekomendasi ke sasaran.
- *
- * Alasannya sama untuk kelimanya: yang menjawab, menyetor, dimintai dokumen,
- * dikembalikan berkasnya, dan dicatat perpindahannya adalah *satu satuan
- * kerja* — bukan rekomendasinya. Selama gantungannya di rekomendasi, jawaban
- * Balai Medan dan Politeknik PU bercampur dalam satu daftar, dan tidak ada
- * cara memisahkannya.
- *
- * `rekomendasi_id` sengaja dipertahankan di semua tabel ini. Dua alasan: data
- * lama tetap terbaca sesudah migrasi, dan `riwayat_berkas` memang butuh
- * keduanya — gerak tingkat 1 dicatat per satuan kerja, gerak tingkat 2 tidak
- * punya satuan kerja sama sekali.
- */
+/** Lima tabel tindak lanjut pindah gantungan dari rekomendasi ke sasaran. */
 return new class extends Migration
 {
     private const TABEL = [
@@ -39,9 +26,7 @@ return new class extends Migration
             });
         }
 
-        // Data lama disambungkan ke sasaran pertama rekomendasinya. Sebelum
-        // migrasi ini tiap rekomendasi memang hanya punya satu satuan kerja,
-        // jadi pemetaannya tidak ambigu.
+        // Data lama disambungkan ke sasaran pertama rekomendasinya (dulu hanya satu satuan kerja).
         $sasaranPertama = DB::table('sasarans')
             ->join('tindakans', 'sasarans.tindakan_id', '=', 'tindakans.id')
             ->select('tindakans.rekomendasi_id', DB::raw('MIN(sasarans.id) as sasaran_id'))

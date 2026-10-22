@@ -1,15 +1,10 @@
-{{-- Daftar rekomendasi di balik satu angka tabel keseluruhan — padanan
-     `DaftarPintas`. Hizkia (24 Sep): data di tabel "bisa dijadikan seperti
-     fungsi shortcut untuk berpindah atau masuk ke rincian laporan tersebut
-     berdasarkan letak, satuan kerja, baris dan kolom yang dipilih". Angka yang
-     di baliknya cuma satu rekomendasi langsung membuka rinciannya (server);
-     lebih dari satu membuka daftar ini, yang skrip tempatkan di dekat selnya. --}}
+{{-- Daftar rekomendasi di balik satu angka tabel keseluruhan (pintasan ke rinciannya). --}}
 @php
   use App\Support\Dasbor;
 
   $namaKolom = [
-    'rek' => 'Rekomendasi', 'tugas' => 'Tindak lanjut', 'M' => $kataM, 'BM' => $kataBM, 'lhp' => 'LHP',
-    'SS' => 'SS', 'BS' => 'BS', 'BT' => 'BT', 'TD' => 'TD', 'nilai' => 'Nilai', 'sisaBpk' => 'Sisa SIPTL', 'sisa' => 'Sisa Inspektorat',
+    'rek' => 'Rekomendasi', 'tugas' => 'Tindak lanjut', 'M' => $kataM, 'BM' => $kataBM, 'siptl' => 'Tindak lanjut di SIPTL',
+    'SS' => 'SS', 'BS' => 'BS', 'BT' => 'BT', 'belumUnggah' => 'Belum diunggah ke SIPTL', 'nilai' => 'Nilai', 'sisaBpk' => 'Sisa SIPTL', 'sisa' => 'Sisa Inspektorat',
   ][$pintas['kolom']] ?? $pintas['kolom'];
   $daftar = $pintas['daftar'];
   $nTugas = array_sum(array_map(fn ($e) => $e['baris']->count(), $daftar));

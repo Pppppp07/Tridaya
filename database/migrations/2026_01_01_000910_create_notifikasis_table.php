@@ -16,9 +16,7 @@ return new class extends Migration
             $table->text('aksi');
             $table->json('untuk_peran');   // peran yang berwenang atau berkepentingan
 
-            // Bagian mana di halaman rincian yang berubah karena tindakan ini.
-            // Tanpa ini kabar hanya bisa mengantar ke halamannya, dan pembacanya
-            // menyusuri sendiri untuk menemukan apa yang dikabarkan.
+            // Bagian halaman rincian yang berubah karena tindakan ini.
             $table->string('blok', 30)->nullable();
             $table->foreignId('satker_id')->nullable()->constrained('satkers')->nullOnDelete();
             $table->timestamps();

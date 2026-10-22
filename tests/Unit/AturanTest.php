@@ -13,11 +13,7 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * Aturan yang tidak menyentuh basis data: rangkuman status, posisi paling
- * belakang, hitungan tenggat, dan cara menulis angka.
- *
- * Semuanya disalin dari prototipe, jadi yang diuji di sini sekaligus menjaga
- * dua artefak itu tetap menyebut hal yang sama.
+ * Aturan tanpa basis data: rangkuman status, posisi paling belakang, tenggat, cara menulis angka.
  */
 class AturanTest extends TestCase
 {
@@ -26,17 +22,24 @@ class AturanTest extends TestCase
     public function test_rangkuman_status_bpk_dimenangkan_yang_paling_belakang(): void
     {
         $s = fn (array $kode) => Rekomendasi::rangkumBpk(
-            array_map(fn ($k) => $k ? StatusTindakLanjut::from($k) : null, $kode))->value;
+            array_map(fn ($k) => $k ? StatusTindakLanjut::from($k) : null, $kode))?->value;
 
         $this->assertSame('SS', $s(['SS', 'SS']));
         $this->assertSame('BS', $s(['SS', 'BS']));
         $this->assertSame('BT', $s(['SS', 'BT']));
-        /* Baris yang belum diunggah terhitung BT — BPK belum melihat apa pun. */
-        $this->assertSame('BT', $s(['SS', null]));
-        /* TD tertutup seperti SS; rekomendasinya TD hanya kalau seluruhnya TD. */
-        $this->assertSame('TD', $s(['TD', 'TD']));
-        $this->assertSame('SS', $s(['TD', 'SS']));
-        $this->assertSame('BT', $s([]));
+        /* Baris yang belum diunggah (null) tidak berstatus dan tidak terhitung BT. */
+        $this->assertSame('BT', $s(['BT', null]));
+        /* Sebagian sudah sesuai, sisanya belum naik: belum seluruhnya sesuai. */
+        $this->assertSame('BS', $s(['SS', null]));
+        $this->assertNull($s([null, null]));
+        $this->assertNull($s([]));
+    }
+
+    public function test_status_bpk_tanpa_td(): void
+    {
+        /* TD tidak dipakai BPSDM. */
+        $this->assertSame(['BT', 'SS', 'BS'], array_column(StatusTindakLanjut::cases(), 'value'));
+        $this->assertNull(StatusTindakLanjut::tryFrom('TD'));
     }
 
     /* ================= posisi ================= */
@@ -108,8 +111,6 @@ class AturanTest extends TestCase
     {
         $this->assertSame('Rp 18.600.000', Tampil::rupiah(18600000));
         $this->assertSame('—', Tampil::rupiah(0));
-        /* rupiahSisa ("lunas" untuk nol) dibuang 27 Sep bersama rpSisa
-           prototipe: "lunas" kini menempel di baris Sudah dipulihkan. */
 
         $this->assertSame('Rp 0', Tampil::rupiahSingkat(0));
         $this->assertSame('Rp 24 jt', Tampil::rupiahSingkat(24000000));

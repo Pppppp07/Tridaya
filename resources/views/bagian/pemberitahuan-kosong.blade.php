@@ -1,4 +1,3 @@
-{{-- Keadaan kosong tiap tab — padanan `PemberitahuanKosong`. Skrip memilih yang tampil. --}}
 <div class="kb-kosong" data-kosong-pemberitahuan="belum" @if(($tab ?? '') !== 'belum') hidden @endif>
   <x-ikon n="CheckCircle2" :s="22" />
   <b>Semua sudah dibaca</b>

@@ -1,12 +1,7 @@
 @php
   use App\Enums\PosisiBerkas;
 
-  /* Rel tahap SATU baris penugasan — padanan RelBaris. Yang menempuh tahapan
-     tindak lanjut tiap satuan kerja, bukan rekomendasinya.
-
-     Sejak 27 Sep kartu x-panel-kerja, sama dengan Bukti & tanggapan, Kerjakan,
-     dan Riwayat di bawahnya; kalimat kepalanya menyebut pemilik berkasnya
-     (`nama`) dan posisinya (`keadaan`, sama dengan kolom Posisi berkas). */
+  /* Rel tahap satu baris penugasan (bukan rekomendasinya), dalam kartu x-panel-kerja. */
   $keadaanTahap = function (int $n) use ($posisi) {
       $kini = $posisi->tahap();
       if ($posisi === PosisiBerkas::TUNTAS || $posisi->transit()) {
@@ -35,7 +30,7 @@
   <x-slot:kalimat>Berkas <b>{{ $nama }}</b> saat ini: {{ $keadaan }}.</x-slot:kalimat>
   <div class="relbaris" role="list" aria-label="Alur verifikasi tindak lanjut">
     @foreach($tahap as $i => $t)
-      {{-- --i: urutannya, untuk garis tahap yang terisi berurutan (26 Sep). --}}
+      {{-- --i: urutan, untuk garis tahap yang terisi berurutan. --}}
       <div class="{{ $t['keadaan'] }}" role="listitem" @if($t['keadaan'] === 'aktif') aria-current="step" @endif style="--i: {{ $i }}"
         aria-label="{{ $t['nama'] }}: {{ $t['keadaan'] === 'selesai' ? 'sudah dilalui' : ($t['keadaan'] === 'aktif' ? 'posisi saat ini' : 'tahap berikutnya') }}">
         @if($i > 0)<x-ikon n="ChevronRight" :s="12" class="tl-arah" />@endif

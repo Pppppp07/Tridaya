@@ -1,9 +1,7 @@
 @php
   use App\Enums\PosisiBerkas;
 
-  /* Setba meneruskan berkas SATU baris — padanan panelSetbaBaris. Isian
-     suratnya langsung terbuka; tidak ada tombol pembuka lebih dulu. Sejak
-     25 Sep berbentuk panel kerja (`x-panel-kerja`). */
+  /* Setba meneruskan berkas satu baris; isian suratnya langsung terbuka. */
   $keUki = $x->pos() === PosisiBerkas::SETBA_TINJAU;
   $terakhir = $suratTerakhir[$keUki ? 'uki' : 'inspektorat'] ?? null;
   $tujuan = $keUki ? 'UKI' : 'Inspektorat';
@@ -14,25 +12,33 @@
       .' keluar dari meja Setba. Untuk menariknya kembali harus menunggu pihak tujuan mengembalikannya. Satuan kerja lain pada rekomendasi ini tidak ikut berangkat.',
     'tombol' => "Ya, teruskan ke {$tujuan}",
   ];
+  /* Kiriman bertahap: dokumen yang belum terlampir disebut, tidak menahan penerusan. */
+  $dok = \App\Aksi\Kemajuan::hitung($r, $x);
   $k = $x->id;
 @endphp
 
 <form method="post" action="{{ route('sasaran.teruskan', $x) }}" id="r-terus" data-form-surat
   data-lanjut="Berkas keluar dari meja Setba menuju {{ $tujuan }}.">
   @csrf
-  {{-- Nama tindakannya judul, satuan kerjanya pemilik berkas (22 Sep). Dulu:
-       label "Tindakan Setba", isi nama satuan kerja. --}}
   <x-panel-kerja ikon="Send" :judul="'Teruskan ke '.$tujuan" wajib
     ket="Nomor, tanggal, dan perihal surat harus terisi" :lanjut="'Berkas keluar dari meja Setba menuju '.$tujuan.'.'"
     :info="[
-      $keUki ? 'UKI tidak menerima berkas tanpa surat pengantar dari Setba.' : 'Nomor surat ini yang dirujuk Inspektorat saat menerbitkan CHV.',
-      'Yang berangkat hanya satuan kerja pada baris ini. Yang lain tetap di tempatnya.',
+      $keUki ? 'Lengkapi surat pengantar Setba untuk penerusan berkas ke UKI.' : 'Lengkapi surat permohonan verifikasi Setba sebagai rujukan pemeriksaan Inspektorat.',
+      'Penerusan hanya berlaku untuk penugasan yang sedang dibuka. Penugasan lainnya tidak berubah.',
     ]">
     <x-slot:kalimat>Berkas <b>{{ $x->satker->namaPendek() }}</b> dikirim bersama surat di bawah ini.</x-slot:kalimat>
 
-    {{-- Surat terakhir ke tujuan yang sama ditawarkan, dan disebut terang-
-         terangan supaya tidak terkirim tanpa diperiksa. Barisnya hilang begitu
-         nomor suratnya terisi (`pasangFormSurat`). --}}
+    @if($dok['dari'] && $dok['ada'] < $dok['dari'])
+      <x-baris-lajur>
+        <div class="kerja-awas" data-dok-kurang>
+          <x-ikon n="AlertTriangle" :s="15" />
+          <span>Dokumen yang diminta baru {{ $dok['ada'] }} dari {{ $dok['dari'] }} terlampir. Berkas tetap bisa diteruskan; sisanya dikirim menyusul oleh satuan kerja.</span>
+        </div>
+      </x-baris-lajur>
+    @endif
+
+    {{-- Surat terakhir ke tujuan yang sama ditawarkan dan disebut jelas; barisnya hilang begitu
+         nomor surat terisi (`pasangFormSurat`). --}}
     @if($terakhir)
       <x-baris-isi label="Surat terakhir" :kunci="'surat-terakhir-'.$k"
         :info="'Surat pengantar terakhir yang dikirim Setba ke '.$tujuan.'.'" :data-surat-terakhir="json_encode($terakhir)">

@@ -8,15 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Susunan Rincian rekomendasi sejak 17 Sep.
- *
- * Kata Hizkia: tiap bagian "defaultnya dia bakal tertutup menyisahkan beberapa
- * informasi atau bisa judulnya saja", dan "kombinasikan table SIPTL dengan Table
- * Tindak Lanjut jadi 1 table". Yang dijaga di sini: kartu berlipat dengan
- * ringkasannya, tidak ada lagi kartu Urusan SIPTL tersendiri, urusan SIPTL
- * duduk di baris tabel tindak lanjut — dan batas lihat satuan kerja tetap utuh.
- */
+/** Susunan Rincian rekomendasi: bagian tertutup sejak awal, SIPTL lebur ke tabel tindak lanjut. */
 class RincianLipatTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -32,7 +24,7 @@ class RincianLipatTest extends TestCase
         return $this->masuk($email)->get(route('rekomendasi.show', $rek))->assertOk()->getContent();
     }
 
-    /** Rekomendasi dengan satu baris SS dan satu baris BS — sama dengan contoh Hizkia. */
+    /** Rekomendasi dengan satu baris SS dan satu baris BS. */
     private function rekSsBs(): Rekomendasi
     {
         return Rekomendasi::all()->first(function ($r) {
@@ -48,9 +40,7 @@ class RincianLipatTest extends TestCase
         $this->assertNotNull($rek);
         $isi = $this->halaman('setba@contoh.test', $rek);
 
-        /* Laporan asal dan Uraian temuan adalah kartu berlipat. Riwayat status
-           dulu kartu berlipat ketiga; sejak 21 Sep ia tab di baris tabel tindak
-           lanjut (lihat RiwayatDalamBarisTest). */
+        /* Laporan asal dan Uraian temuan kartu berlipat; Progres jadi tab di baris tabel. */
         $this->assertGreaterThanOrEqual(2, substr_count($isi, 'data-lipat>'));
         foreach (['Laporan asal', 'Uraian temuan'] as $judul) {
             $this->assertStringContainsString('<b>'.$judul, $isi, $judul.' harus jadi kepala kartu berlipat');
@@ -61,9 +51,7 @@ class RincianLipatTest extends TestCase
         /* Kepala rekomendasi: judulnya tetap, keterangannya dibaca selengkapnya. */
         $this->assertStringContainsString('data-baca-alih', $isi);
 
-        /* Arsip rekomendasi kini jadi tombol strategis di bilah atas, yang
-           membuka jendelanya. `id`-nya bagian lama kartunya, jadi pemberitahuan yang
-           menunjuk arsip mendarat di tombol itu. */
+        /* Arsip: tombol di bilah atas yang membuka jendelanya; `id`-nya bagian lama kartunya. */
         $this->assertStringContainsString('id="r-arsip" data-buka-arsip', $isi);
         $this->assertStringContainsString('id="arsip" class="tirai tirai-arsip" data-arsip', $isi);
         $this->assertStringContainsString('Arsip rekomendasi', $isi);
@@ -108,7 +96,7 @@ class RincianLipatTest extends TestCase
         $isi = $this->halaman('setba@contoh.test', $menunggu->tindakan->rekomendasi);
         $this->assertStringContainsString(route('siptl.status', $menunggu), $isi);
         $this->assertStringContainsString('Catat hasil pemantauan BPK', strip_tags($isi));
-        $this->assertStringContainsString('Dicatat sekali untuk unggahan ini, lalu terkunci.', strip_tags($isi));
+        $this->assertStringContainsString('Hasil disimpan sekali untuk setiap unggahan.', strip_tags($isi));
 
         $siap = Sasaran::whereNull('siptl_tanggal')->get()
             ->first(fn ($x) => $x->perluUnggah($x->tindakan->rekomendasi->jenis()));

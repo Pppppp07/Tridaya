@@ -7,11 +7,11 @@
   use App\Support\Tampil;
 
   $u = auth()->user();
-  $peran = $u->peran;
-  $balai = $peran === P::SATKER;
+  $peran = $u->peranAktif();
+  $balai = $peran->terbatasSatker();
   $jenis = $lap->sumber;
   $a = $lap->angka();
-  $sebaranTl = $lap->sebaranTindakLanjut($peran, $u->satker_id);
+  $sebaranTl = $lap->sebaranTindakLanjut($peran, $u->satkerAktifId());
   $IKON_PEGANG = ['Balai' => 'Building2', 'Setba' => 'Users', 'UKI' => 'ClipboardCheck', 'Inspektorat' => 'Stamp',
     'Sudah diperiksa' => 'CheckCircle2', 'Satker' => 'Building2', 'BPK' => 'Landmark', 'Selesai' => 'CheckCircle2'];
   $tugasku = $lap->temuan->reject(fn ($t) => $t->hanya_terperiksa)->values();
@@ -24,8 +24,7 @@
 
   $linkSatker = '<span class="linksatker">'.$satkerLap->map(function ($x) use ($lap) {
       $n = $lap->jumlahTemuanSatker($x->id);
-      /* Pintasan (26 Sep): membuka blok temuannya lalu menyorot baris
-         rekomendasi satuan kerja ini — dulu cuma menggulir ke seluruh daftar. */
+      /* Pintasan: buka blok temuannya lalu sorot baris rekomendasi satuan kerja ini. */
       return '<button type="button" data-ke-satker="'.$x->id.'">'.e($x->namaPendek()).($n > 1 ? ' ('.$n.' temuan)' : '').'</button>';
   })->join(', ').($satkerLap->isEmpty() ? '—' : '').'</span>';
 
@@ -39,17 +38,16 @@
     ['l' => 'Dicatat di sistem', 'v' => Tampil::tgl($lap->dicatat_pada), 'mono' => true,
       'k' => $jeda === null ? 'belum tercatat' : ($jeda > 0 ? $jeda.' hari setelah surat diterima' : 'hari yang sama'),
       'ket' => [
-        'Tanggal Setba memasukkan laporan ini ke sistem. Diisi sendiri oleh sistem saat disimpan, tidak diketik.',
-        'Jaraknya dari tanggal surat diterima penting: selama surat belum dicatat, tenggat jawabannya sudah berjalan tapi belum ada yang bisa mengerjakannya.',
+        'Tanggal laporan disimpan oleh Setba, diisi otomatis oleh sistem.',
+        'Selisih hari di bawah tanggal menunjukkan jarak antara surat diterima dan laporan dicatat.',
       ]],
-    ['l' => 'Tanggal rencana aksi', 'v' => Tampil::tgl($batas), 'mono' => true, 'c' => $sisa < 0 ? 'var(--verm)' : null,
+    ['l' => 'Tenggat jawab', 'v' => Tampil::tgl($batas), 'mono' => true, 'c' => $sisa < 0 ? 'var(--verm)' : null,
       'k' => $sisa < 0 ? 'lewat '.(-$sisa).' hari' : ($sisa === 0 ? 'jatuh tempo hari ini' : $sisa.' hari lagi'),
       'ket' => [
-        $jenis->hariTenggat().' '.($jenis->pakaiHariKerja() ? 'hari kerja' : 'hari kalender').' sejak laporan diterima.',
-        'Dasarnya '.($jenis->pakaiHariKerja() ? 'ketentuan pengawasan intern' : 'UU 15/2004 Pasal 20').'.',
+        'Batas waktu untuk menyampaikan jawaban atas rekomendasi, dihitung aplikasi sebagai '.$jenis->hariTenggat().' '.$jenis->satuanTenggat().' sejak laporan diterima Setba.',
         $jenis->pakaiHariKerja()
-          ? 'Dihitung hari kerja, jadi Sabtu, Minggu, dan hari libur tidak ikut dihitung.'
-          : 'Dihitung hari kalender, jadi Sabtu dan Minggu ikut dihitung.',
+          ? 'Perhitungan hari kerja di aplikasi melewati Sabtu dan Minggu.'
+          : 'Perhitungan hari kalender mencakup Sabtu dan Minggu.',
       ]],
     ['l' => 'Satuan kerja diperiksa', 'v' => $linkSatker],
   ];
@@ -58,8 +56,8 @@
       '<span>'.view('components.ikon', ['n' => $IKON_PEGANG[$p['nama']] ?? 'Clock', 's' => 13])->render().' '.e($p['nama']).' <b>'.$p['n'].'</b></span>'
   )->join('').'</span>';
   $faktaIsi = [
-    /* "N temuan" menyorot blok-blok temuannya; "N rekomendasi" membuka semua
-       blok lalu menyorot seluruh baris rekomendasinya (26 Sep). */
+    /* "N temuan" menyorot blok temuannya; "N rekomendasi" membuka semua blok dan menyorot
+       barisnya. */
     ['l' => 'Temuan', 'v' => '<span class="linksatker"><button type="button" data-ke-temuan><b class="angkafakta">'.$a['temuan'].'</b> temuan</button></span>'],
     ['l' => 'Rekomendasi', 'v' => '<span class="linksatker"><button type="button" data-ke-rek><b class="angkafakta">'.$a['jml'].'</b> rekomendasi</button></span>'],
     ['l' => 'Rekomendasi selesai', 'c' => 'var(--ok)', 'v' => '<b class="angkafakta">'.$a['tuntas'].'</b> dari '.$a['jml']],
@@ -68,7 +66,7 @@
 
   $faktaDana = array_merge(
     [['l' => 'Total nilai temuan', 'v' => '<b class="angkafakta">'.Tampil::rupiah($a['nilaiTemuan']).'</b>',
-      'ket' => 'Jumlah semua temuan di laporan ini. Tidak semuanya harus dikembalikan berupa uang.']],
+      'ket' => 'Jumlah nilai temuan yang ditampilkan pada laporan ini. Nilai temuan dapat berbeda dari total kewajiban pemulihan pada rekomendasinya.']],
     $a['target'] !== $a['nilaiTemuan'] ? [
       ['l' => 'Tagihan rekomendasi', 'v' => '<b class="angkafakta">'.Tampil::rupiah($a['target']).'</b>',
         'ket' => \App\Models\Laporan::KET_TAGIHAN],
@@ -86,7 +84,7 @@
 
 <div class="body">
   <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center;flex-wrap:wrap">
-    {{-- Kembali ke baris laporan ini di daftarnya, disorot (26 Sep). --}}
+    {{-- Kembali ke baris laporan ini di daftarnya, disorot. --}}
     <a class="link" href="{{ route('laporan.index', ['tuju' => $lap->id]) }}"><x-ikon n="ArrowLeft" :s="16" /> Kembali ke daftar laporan</a>
   </div>
 
@@ -103,10 +101,6 @@
     @if($a['beres'])<span class="cap cap-ss"><x-ikon n="Check" :s="12" /> Sudah selesai</span>@endif
   </div>
 
-  {{-- Satu lajur penuh. Rel kanannya dibuang bersama kartu "Jadwal penting":
-       tanggal rencana aksi berbeda-beda tiap rekomendasi, jadi satu tanggal di
-       kepala halaman menyebut milik rekomendasi pertama saja — dan dua angkanya
-       sudah tercetak di ringkasan kondisi laporan serta di tiap barisnya. --}}
 <div class="card" style="margin-bottom:20px">
   <div class="judulkartu">
     <span class="ic-kotak"><x-ikon n="LayoutGrid" :s="17" /></span>
@@ -140,9 +134,8 @@
     <span class="ic-kotak hijau"><x-ikon n="ListChecks" :s="17" /></span>
     <h3>{{ $pantau->isNotEmpty() ? 'Temuan yang menjadi tugas Anda' : 'Daftar temuan' }}</h3>
     <x-info :teks="[
-      'Tiap temuan berdiri sendiri dengan judulnya; kategorinya disebut di dalam rinciannya.',
-      'Satu temuan bisa melahirkan beberapa rekomendasi, jadi angka rekomendasi selalu lebih besar atau sama dengan angka temuan.',
-      'Satuan kerja yang menangani tiap rekomendasi disebut di dalam blok temuannya — satu temuan bisa mengenai beberapa satuan kerja sekaligus.',
+      'Temuan pada laporan ini beserta rekomendasi yang terkait. Satu temuan dapat memiliki beberapa rekomendasi.',
+      'Buka temuan untuk melihat uraian, sebab, akibat, dan rincian rekomendasinya.',
     ]" />
     <span class="hitungtr"><b>{{ $pantau->isNotEmpty() ? $tugasku->count() : $a['temuan'] }}</b> temuan <x-ikon n="ArrowRight" :s="12" /> <b>{{ $a['jml'] }}</b> rekomendasi</span>
   </div>

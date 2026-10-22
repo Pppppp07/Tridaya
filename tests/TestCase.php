@@ -9,12 +9,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
-    /**
-     * Bingkai halaman menyimpan hitungannya dalam peubah statis, dan statis
-     * bertahan selama PROSES — bukan selama permintaan. Satu proses uji
-     * menjalankan ratusan permintaan, jadi tanpa dilepas di sini halaman
-     * menggambar angka milik uji sebelumnya.
-     */
+    /** Hitungan bingkai disimpan di peubah statis yang bertahan selama proses; dilepas tiap uji. */
     protected function setUp(): void
     {
         parent::setUp();

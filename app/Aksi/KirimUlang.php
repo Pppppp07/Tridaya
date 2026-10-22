@@ -15,19 +15,15 @@ use App\Support\Tampil;
 use Illuminate\Support\Facades\DB;
 
 /**
- * PEMBERKASAN ULANG. Setba mengirim berkas satu baris yang ditolak UKI atau
- * Inspektorat kembali ke satuan kerjanya — padanan `aksi.kirimUlang`.
- *
- * Kata Hizkia (14 Sep): berkas "hanya boleh dikembalikan jika UKI, ITJEN, dan
- * BPK menolak … Setba-lah nanti yang akan melakukan tindak lanjut pengiriman
- * ulang". Dokumen yang disetel Setba jadi permintaan milik baris itu — formulir
- * satuan kerja menahan kiriman sampai seluruhnya terlampir.
+ * Setba mengirim ulang berkas satu baris yang ditolak UKI, Inspektorat, atau BPK ke satuan
+ * kerjanya. Dokumen yang disetel Setba jadi permintaan milik baris itu.
  */
 class KirimUlang
 {
     public static function jalankan(Rekomendasi $r, Sasaran $s, ?string $keterangan, array $dokumen): void
     {
         DB::transaction(function () use ($r, $s, $keterangan, $dokumen) {
+            $s->kunciSejak();
             $dari = $s->kembali_dari ?: 'pemeriksa';
             $ket = trim((string) $keterangan);
             $dok = PutusPeriksa::bersih($dokumen);

@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Daftarnya berbeda antara LHA dan LHP — itu sebabnya tabel ini
-        // terpisah dari referensi lain: pilihannya bertingkat.
+        // Daftarnya berbeda antara LHA dan LHP (pilihan bertingkat).
         Schema::create('kategori_temuans', function (Blueprint $table) {
             $table->id();
             $table->string('sumber', 3); // LHA atau LHP

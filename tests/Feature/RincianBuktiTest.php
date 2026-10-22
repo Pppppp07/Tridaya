@@ -11,15 +11,7 @@ use Illuminate\Support\Str;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Rincian tindak lanjut sejak 20 Sep.
- *
- * Kata Hizkia, melihat "Bukti yang sudah dikirim" berdampingan dengan
- * "Kelengkapan dokumen yang diminta": "menampilkan informasi berulang, jadi
- * gabungkan tampilannya jadi satu bagian informasi saja", dengan satu
- * kekecualian — bagian dokumen tambahan, yang "hanya ditampilkan jika ada
- * dokumen tambahan saja". Judul temuan juga pindah ke kartu Uraian temuan.
- */
+/** Rincian tindak lanjut tanpa informasi berulang. */
 class RincianBuktiTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -62,11 +54,7 @@ class RincianBuktiTest extends TestCase
         $this->assertStringNotContainsString('ceklisrapat', $isi);
         $this->assertMatchesRegularExpression('/\d+ dari \d+ sudah terlampir/', $teks);
 
-        /* Tiap butir yang terlampir tampil sebagai berkasnya sendiri, sekali —
-           bukan sekali sebagai berkas lalu sekali lagi sebagai ceklis. Dihitung
-           di dalam bagiannya sendiri: jendela Arsip mendaftar berkas yang sama
-           untuk keperluan lain. Sejak 25 Sep bagian itu satu baris berlabel
-           (`data-rinci="dokumen"`) yang ditutup hitungannya sendiri. */
+        /* Tiap butir yang terlampir tampil sekali sebagai berkasnya sendiri. */
         $bagian = collect(explode('data-rinci="dokumen"', $isi))->slice(1)
             ->map(fn ($p) => Str::before($p, 'sudah terlampir</span>'));
         $this->assertTrue($bagian->isNotEmpty());
@@ -86,7 +74,6 @@ class RincianBuktiTest extends TestCase
         $butir = ItemPermintaan::where('terpenuhi', false)->firstOrFail();
         $isi = $this->halaman($butir->permintaan->rekomendasi);
 
-        /* Sejak 25 Sep daftar centang di kartu Bukti & tanggapan. */
         $this->assertStringContainsString('<li class="belum">', $isi);
         $this->assertStringContainsString('belum dilampirkan', strip_tags($isi));
         $this->assertStringContainsString($butir->nama, $isi);

@@ -6,18 +6,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Memindahkan penugasan dari rekomendasi ke sasaran.
- *
- * Satu-satunya migrasi di rangkaian ini yang memindahkan data lama. Untuk tiap
- * rekomendasi yang sudah ada dibuatkan satu `tindakans` dan satu `sasarans`,
- * lalu kolom lamanya dibuang.
- *
- * Arti `rekomendasis.posisi` ikut berubah di sini. Dulu ia menyimpan sembilan
- * posisi sekaligus — enam yang ditempuh satuan kerja dan tiga yang ditempuh
- * rekomendasinya sendiri. Sekarang enam yang pertama pindah ke
- * `sasarans.posisi`, dan kolom ini hanya menyimpan tiga sisanya. `NULL`
- * berarti tingkat 2 belum berjalan — itu keadaan yang dulu tidak bisa
- * diungkapkan sama sekali.
+ * Memindahkan penugasan dari rekomendasi ke sasaran (satu tindakans + satu sasarans per rekomendasi
+ * lama).
  */
 return new class extends Migration
 {
@@ -26,9 +16,7 @@ return new class extends Migration
         'satker', 'setba_tinjau', 'uki', 'setba_teruskan', 'inspektorat', 'tuntas',
     ];
 
-    /** Posisi lama yang namanya berubah. `menunggu_surat` tidak pernah punya
-        padanan di prototipe; yang paling dekat adalah `tuntas` — berkas satuan
-        kerja ini sudah beres, tinggal menunggu yang lain. */
+    /** Posisi lama yang namanya berubah. */
     private const GANTI_NAMA = ['menunggu_surat' => 'tuntas'];
 
     public function up(): void
@@ -46,8 +34,8 @@ return new class extends Migration
                         'updated_at'     => $waktu,
                     ]);
 
-                    // Rekomendasi tanpa satuan kerja tidak bisa punya sasaran.
-                    // Tindakannya tetap dibuat supaya bentuknya tidak hilang.
+                    // Rekomendasi tanpa satuan kerja: tindakan tetap dibuat supaya bentuknya tidak
+                    // hilang.
                     if (! $r->satker_id) {
                         continue;
                     }
@@ -59,8 +47,7 @@ return new class extends Migration
                         'tindakan_id' => $tindakanId,
                         'satker_id'   => $r->satker_id,
                         'nilai'       => $r->nilai_pulih ?? 0,
-                        // Berkas yang sudah masuk tingkat 2 berarti bagian
-                        // satuan kerjanya memang sudah tuntas.
+                        // Berkas di tingkat 2 berarti bagian satuan kerjanya sudah tuntas.
                         'posisi'      => $tingkat1 ? $posisi : 'tuntas',
                         'hasil'       => null,
                         'catatan'     => null,
@@ -87,8 +74,7 @@ return new class extends Migration
             $table->string('posisi', 20)->nullable()->default(null)->change();
         });
 
-        // Yang masih memegang posisi tingkat 1 dikosongkan: gerak itu sekarang
-        // milik sasarannya, dan rekomendasinya memang belum bergerak.
+        // Posisi tingkat 1 kini milik sasaran; rekomendasinya dikosongkan.
         DB::table('rekomendasis')
             ->whereIn('posisi', array_merge(self::TINGKAT_1, array_keys(self::GANTI_NAMA)))
             ->update(['posisi' => null]);
@@ -103,8 +89,7 @@ return new class extends Migration
                   ->constrained('referensis')->nullOnDelete();
         });
 
-        // Turun tangga hanya bisa mengembalikan sasaran pertama tiap
-        // rekomendasi. Bentuk lamanya memang tidak sanggup menyimpan sisanya.
+        // Turun tangga hanya mengembalikan sasaran pertama tiap rekomendasi.
         DB::table('sasarans')
             ->join('tindakans', 'sasarans.tindakan_id', '=', 'tindakans.id')
             ->select('tindakans.rekomendasi_id', 'tindakans.bentuk_id',

@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Surat verifikasinya sendiri. Satu surat bernomor bisa memuat
-        // keputusan untuk beberapa rekomendasi sekaligus — itu kenyataan
-        // kertasnya, jadi suratnya dipisah dari keputusannya.
+        // Surat verifikasi; satu nomor bisa memuat keputusan beberapa rekomendasi.
         Schema::create('verifikasis', function (Blueprint $table) {
             $table->id();
             $table->string('periode', 40);            // Triwulan I 2026, Semester II 2026

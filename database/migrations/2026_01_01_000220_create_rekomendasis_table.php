@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Inilah unit yang dipantau. SOP mewajibkan Daftar Kompilasi Monitoring
-        // memuat uraian rekomendasi, nilai keuangan dalam rekomendasi, dan
-        // hasil pemantauan status — ketiganya melekat di tingkat ini.
+        // Unit yang dipantau: uraian, nilai keuangan, dan hasil pemantauan melekat di tingkat ini.
         Schema::create('rekomendasis', function (Blueprint $table) {
             $table->id();
             $table->foreignId('temuan_id')->constrained('temuans')->cascadeOnDelete();
@@ -20,9 +18,8 @@ return new class extends Migration
             $table->foreignId('bentuk_id')->nullable()->constrained('referensis')->nullOnDelete();
             $table->unsignedBigInteger('nilai_pulih')->default(0);
 
-            // Penyetoran boleh dicicil — PP 38/2016 memberi ruang sampai 24 bulan.
-            // `kunci_angsur` menahan satuan kerja menyetor melebihi rencananya;
-            // dibiarkan mati berarti boleh lebih atau kurang.
+            // Penyetoran boleh dicicil (PP 38/2016, sampai 24 bulan); `kunci_angsur` menahan
+            // setoran melebihi rencana.
             $table->unsignedSmallInteger('rencana_angsur')->default(0);
             $table->boolean('kunci_angsur')->default(false);
 

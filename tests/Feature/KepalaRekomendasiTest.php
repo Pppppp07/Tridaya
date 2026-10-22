@@ -7,13 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Kepala rincian rekomendasi (27 Sep). Kata Hizkia: "keterangan sisa disini agak
- * membingungkan karena keterangannya lunas tapi di BPK masih ada yang belum
- * diakui", dan satuan kerja yang bagiannya sudah memadai tetap membaca "Belum
- * memadai" — "harusnya statusnya sudah Memadai dan Sesuai khusus untuk Satker
- * yang menangani Tindak Lanjut tersebut".
- */
+/** Kepala rincian rekomendasi: uang dan status tanpa membingungkan. */
 class KepalaRekomendasiTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -81,12 +75,7 @@ class KepalaRekomendasiTest extends TestCase
         $this->assertStringContainsString('SS · Sudah sesuai', $hasil[0]['cap']);
     }
 
-    /**
-     * Kata Hizkia (28 Sep): "jangan terlalu Personal pakai kata saya … hapus
-     * keterangan Draft dan juga Catatan setba dalam mode ringkas dan hapus
-     * Keterangan Draft pada mode detail". Catatan Setba tetap terbaca di
-     * mode rincian.
-     */
+    /** Tanpa kata "saya"; tanpa keterangan Draf dan Catatan Setba di mode ringkas. */
     public function test_kepala_tanpa_draf_tanpa_catatan_ringkas_dan_tanpa_kata_saya(): void
     {
         $draf = \App\Models\DrafTanggapan::with('sasaran.tindakan', 'sasaran.satker.penanggungJawab')->get()

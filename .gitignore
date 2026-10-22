@@ -9,6 +9,7 @@
 
 # Node & Package Managers
 /node_modules
+/.tools
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -94,4 +95,11 @@ Homestead.json
 Homestead.yaml
 
 
+# Dokumen internal & catatan pengembang
 DOKUMEN-PERSIAPAN-MENTOR-SSO-EHRM.md
+BACA-DULU.md
+TRIDAYA.md
+SECURITY-REVIEW.md
+PERFORMANCE-REVIEW.md
+PANDUAN-SERVER.md
+CARA-MENJALANKAN-MANUAL.md

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PeranPengguna;
 use App\Models\LogAktivitas;
 use App\Models\Rekomendasi;
+use App\Models\Satker;
 use App\Notifications\PemberitahuanEmail;
 use App\Support\Pemberitahuan;
 use App\Support\Rangka;
@@ -13,15 +14,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
 /**
- * Profil & pengaturan (28 Sep) — menu akun, lima tab, dan akibatnya ke seluruh
- * aplikasi: pop-up pemberitahuan, email, animasi, halaman pertama. Kata
- * Hizkia: "buat sistem atau page untuk profil User, lengkap dengan pilihan
- * menu menu lainnya yang berkaitan dengan pengaturan profil, dan juga sistem
- * web nya".
+ * Profil & pengaturan: menu akun, lima tab, dan akibatnya (pop-up, email, animasi, halaman
+ * pertama).
  */
 class AkunTest extends TestCase
 {
@@ -35,11 +34,7 @@ class AkunTest extends TestCase
         $this->siapkanDataContoh();
     }
 
-    /**
-     * Sesi yang ditulis permintaan uji sebelumnya dibuang — klien uji tidak
-     * mengirim balik cookie sesinya, jadi tiap permintaan menulis baris sesi
-     * baru untuk akun yang sama. Yang tersisa hanya sesi buatan uji ("sesi-…").
-     */
+    /** Sesi dari permintaan uji sebelumnya dibuang (klien uji tidak mengirim balik cookie sesi). */
     private function sisakanSesiUji(): void
     {
         DB::table('sessions')->where('id', 'not like', 'sesi-%')->delete();
@@ -75,71 +70,42 @@ class AkunTest extends TestCase
             ->assertSee('Sri Wahyuni')->assertSee('19780125 200501 2 005')
             ->assertSee('Analis Pemantauan Tindak Lanjut Hasil Pemeriksaan')
             ->assertSee('Sekretariat Badan Pengembangan Sumber Daya Manusia')
-            ->assertSee('Mencatat laporan baru')->assertSee('Mengatur Data master dan akun petugas pusat')
-            /* Hanya yang bisa dilakukan yang disebut (Hizkia, 28 Sep). */
-            ->assertDontSee('Membuka Log aktivitas')->assertDontSee('Tidak bisa');
+            ->assertSee('Mencatat laporan baru')->assertSee('Meneruskan berkas ke UKI dan Inspektorat')
+            /* Hanya yang bisa dilakukan yang disebut. */
+            ->assertDontSee('Membuka Log aktivitas')->assertDontSee('Mengatur user dan akses')->assertDontSee('Tidak bisa');
 
         Rangka::lupakan();
         $this->masuk('medan')->get(route('akun'))->assertOk()
-            ->assertSee('Penanggung jawab unit')->assertSee('Mengunggah bukti, menulis uraian, dan mengirimnya ke Setba')
+            ->assertSee('Penanggung jawab unit')->assertSee('Melampirkan link bukti, menulis tanggapan, dan mengirimnya ke Setba')
             ->assertDontSee('Melihat berkas unit kerja lain')->assertDontSee('Mencatat laporan baru');
     }
 
-    public function test_password_baru_diperiksa_berurutan_dan_dibatasi(): void
-    {
-        $this->masuk('uki@contoh.test');
-        $asal = route('akun', ['tab' => 'keamanan']);
-        foreach ([
-            [['current_password' => '', 'password' => 'passwordBaru2026', 'password_confirmation' => 'passwordBaru2026'], 'current_password', 'Isi password saat ini.'],
-            [['current_password' => 'salah-sekali', 'password' => 'pendek1', 'password_confirmation' => 'pendek1'], 'current_password', 'Password saat ini salah.'],
-            [['current_password' => 'rahasia123', 'password' => 'pendek1', 'password_confirmation' => 'pendek1'], 'password', 'Password baru minimal 10 karakter.'],
-            [['current_password' => 'rahasia123', 'password' => 'tanpaangkasama', 'password_confirmation' => 'tanpaangkasama'], 'password', 'Password baru harus berisi huruf dan angka.'],
-            [['current_password' => 'rahasia123', 'password' => 'passwordBaru2026', 'password_confirmation' => 'passwordBaru2027'], 'password', 'Konfirmasi password baru tidak sama.'],
-            [['current_password' => 'rahasia123', 'password' => 'rahasia123', 'password_confirmation' => 'rahasia123'], 'password', 'Password baru harus berbeda dari password saat ini.'],
-        ] as [$isi, $medan, $pesan]) {
-            $this->from($asal)->post(route('akun.password'), $isi)->assertRedirect($asal)
-                ->assertSessionHasErrorsIn('password', [$medan => $pesan]);
-        }
-        /* Kiriman ketujuh dalam semenit ditahan — formulir ini tidak bisa
-           dipakai menebak password orang yang meninggalkan komputernya. */
-        $this->from($asal)->post(route('akun.password'), ['current_password' => 'coba'])->assertStatus(429);
-        $this->assertTrue(Hash::check('rahasia123', $this->akun('uki@contoh.test')->password));
-        $this->assertSame(0, LogAktivitas::where('aksi', 'akun.password')->count());
-    }
-
-    public function test_ganti_password_mengeluarkan_perangkat_lain_dan_tercatat(): void
+    /**
+     * Tidak ada ganti password (akun dikelola eHRM PU); tab Keamanan tinggal perangkat dan riwayat
+     * masuk.
+     */
+    public function test_keamanan_tanpa_ganti_password_dan_menyebut_perangkat_aktif(): void
     {
         config(['session.driver' => 'database']);
         $u = $this->akun('uki@contoh.test');
-        $setba = $this->akun('setba@contoh.test');
         DB::table('sessions')->insert([
             ['id' => 'sesi-uki-lain', 'user_id' => $u->id, 'ip_address' => '10.20.7.52', 'user_agent' => self::ANDROID,
                 'payload' => '', 'last_activity' => now()->getTimestamp() - 600],
-            ['id' => 'sesi-setba', 'user_id' => $setba->id, 'ip_address' => '10.20.7.53', 'user_agent' => self::ANDROID,
-                'payload' => '', 'last_activity' => now()->getTimestamp()],
         ]);
 
         $this->actingAs($u)->get(route('akun', ['tab' => 'keamanan']))->assertOk()
+            ->assertSee('Perangkat aktif dan riwayat masuk akun Anda.')
+            ->assertDontSee('Ganti password')->assertDontSee('Password saat ini')
+            ->assertDontSee('data-form-password', false)->assertDontSee('current_password', false)
             ->assertSee('Chrome · Android')->assertSee('Perangkat ini')->assertSee('Terakhir aktif 10 menit lalu · 10.20.7.52')
             ->assertDontSee('sesi-uki-lain');
 
-        $this->sisakanSesiUji();
-        $this->post(route('akun.password'), ['current_password' => 'rahasia123', 'password' => 'passwordBaru2026', 'password_confirmation' => 'passwordBaru2026'])
-            ->assertRedirect(route('akun', ['tab' => 'keamanan']))
-            ->assertSessionHas('pesan_password', 'Password berhasil diganti. Perangkat lain yang sedang aktif telah dikeluarkan.');
-
-        $this->assertTrue(Hash::check('passwordBaru2026', $u->fresh()->password));
-        $this->assertFalse(DB::table('sessions')->where('id', 'sesi-uki-lain')->exists(), 'Perangkat lain dikeluarkan.');
-        $this->assertTrue(DB::table('sessions')->where('id', 'sesi-setba')->exists(), 'Sesi akun lain tidak tersentuh.');
-        $log = LogAktivitas::where('aksi', 'akun.password')->sole();
-        $this->assertSame('akun', $log->kelompok);
-        $this->assertSame(['perangkat_dikeluarkan' => 1], $log->rincian);
-        $this->assertStringNotContainsString('passwordBaru2026', json_encode($log->toArray()));
-
-        /* Masuk dengan password lama gagal, yang baru berhasil. */
-        $this->post(route('keluar'));
-        $this->post('/masuk', ['email' => 'uki@contoh.test', 'password' => 'rahasia123'])->assertSessionHasErrors('email');
-        $this->post('/masuk', ['email' => 'uki@contoh.test', 'password' => 'passwordBaru2026'])->assertRedirect(route('beranda'));
+        /* Alamat lamanya sudah tidak ada, dan password-nya tidak berubah. */
+        $this->assertFalse(Route::has('akun.password'));
+        $this->post('/akun/password', ['current_password' => 'rahasia123', 'password' => 'passwordBaru2026',
+            'password_confirmation' => 'passwordBaru2026'])->assertNotFound();
+        $this->assertTrue(Hash::check('rahasia123', $u->fresh()->password));
+        $this->assertSame(0, LogAktivitas::where('aksi', 'akun.password')->count());
     }
 
     public function test_perangkat_lain_dikeluarkan_lewat_kuncinya_bukan_id_sesi(): void
@@ -193,7 +159,7 @@ class AkunTest extends TestCase
         Notification::fake();
         $r = Rekomendasi::all()->first(fn ($x) => $x->semuaBaris()->pluck('satker_id')->unique()->count() > 1);
         $satker = $r->semuaBaris()->pluck('satker_id')->unique()->first();
-        $pj = \App\Models\Satker::find($satker)->penanggungJawab;
+        $pj = Satker::find($satker)->penanggungJawab;
         $setba = $this->akun('setba@contoh.test');
 
         /* Bawaan: penanggung jawab menerima email, Setba tidak. */
@@ -201,9 +167,9 @@ class AkunTest extends TestCase
         $this->assertFalse($setba->setelan('email'));
 
         /* Penanggung jawab mematikan email-nya; Setba menyalakannya. */
-        $this->actingAs($pj)->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'popup' => '1'])
+        $this->actingAs($pj)->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'popup' => '1', 'pembaruan' => '1'])
             ->assertRedirect(route('akun', ['tab' => 'pemberitahuan']))->assertSessionHas('pesan_akun', 'Pengaturan tersimpan.');
-        $this->actingAs($setba)->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'popup' => '1', 'email' => '1']);
+        $this->actingAs($setba)->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'popup' => '1', 'email' => '1', 'pembaruan' => '1']);
         $this->assertFalse($pj->fresh()->setelan('email'));
         $this->assertTrue($setba->fresh()->setelan('email'));
 
@@ -219,13 +185,14 @@ class AkunTest extends TestCase
         });
 
         /* Tanpa perubahan: tidak ada yang dicatat. */
-        $this->actingAs($setba)->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'popup' => '1', 'email' => '1'])
+        $this->actingAs($setba)->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'popup' => '1', 'email' => '1', 'pembaruan' => '1'])
             ->assertSessionHas('pesan_akun', 'Tidak ada yang berubah.');
         $log = LogAktivitas::where('aksi', 'akun.setelan')->where('user_id', $setba->id)->sole();
-        $this->assertSame(['sebelum' => ['email' => false], 'sesudah' => ['email' => true]], $log->rincian);
+        $this->assertSame(['sebelum' => ['email' => false], 'sesudah' => ['email' => true],
+            'konteks' => ['sumber' => 'web', 'metode' => 'POST', 'alamat' => '/akun/setelan', 'rute' => 'akun.setelan']], $log->rincian);
 
-        /* Pop-up dimatikan: pemberitahuan baru tetap dihitung di lonceng, tapi tidak dimunculkan sebagai pop-up. */
-        $this->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'email' => '1']);
+        /* Pop-up dimatikan: pemberitahuan baru tetap dihitung di lonceng. */
+        $this->post(route('akun.setelan'), ['bagian' => 'pemberitahuan', 'email' => '1', 'pembaruan' => '1']);
         Rangka::lupakan();
         $this->assertNull(Rangka::popupPemberitahuan($setba->fresh(), 3));
     }
@@ -249,7 +216,8 @@ class AkunTest extends TestCase
         $log = LogAktivitas::where('aksi', 'akun.setelan')->sole();
         $this->assertSame('Mengubah pengaturan tampilan', $log->ringkasan);
         $this->assertSame(['sebelum' => ['animasi' => 'ikut', 'beranda' => 'rekomendasi'],
-            'sesudah' => ['animasi' => 'kurang', 'beranda' => 'dashboard']], $log->rincian);
+            'sesudah' => ['animasi' => 'kurang', 'beranda' => 'dashboard'],
+            'konteks' => ['sumber' => 'web', 'metode' => 'POST', 'alamat' => '/akun/setelan', 'rute' => 'akun.setelan']], $log->rincian);
         /* Sebutannya di log dibaca orang, bukan kunci mentahnya. */
         Rangka::lupakan();
         $this->get(route('akun', ['tab' => 'aktivitas']))->assertOk()
@@ -262,8 +230,6 @@ class AkunTest extends TestCase
             ->post(route('akun.setelan'), ['bagian' => 'tampilan', 'animasi' => 'ikut', 'beranda' => 'rekomendasi'])
             ->assertRedirect(route('akun', ['tab' => 'tampilan']));
         $this->assertSame('rekomendasi', $this->akun('dti@contoh.test')->setelan('beranda'));
-        $this->post(route('akun.password'), ['current_password' => 'rahasia123', 'password' => 'passwordBaru2026', 'password_confirmation' => 'passwordBaru2026'])
-            ->assertRedirect(route('akun', ['tab' => 'keamanan']));
 
         /* Kiriman lain tetap ditolak. */
         $this->post(route('master.unit.tambah'), ['nama' => 'Coba'])->assertForbidden();

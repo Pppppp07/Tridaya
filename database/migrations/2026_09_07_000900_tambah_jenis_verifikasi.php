@@ -5,18 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Dua surat berbeda memakai tabel yang sama, jadi harus bisa dibedakan.
- *
- *   LHV — Laporan Hasil Validasi, terbit dari UKI atas berkas satu satuan kerja
- *   CHV — Catatan Hasil Verifikasi, terbit dari Inspektorat, memutus seluruh
- *         rekomendasi sekaligus
- *
- * Perbedaan cakupan itu yang penting: tanda memadai per baris adalah penilaian
- * atas satu satuan kerja, sedangkan surat CHV memutus rekomendasinya utuh.
- * Menyamakan keduanya membuat satu satuan kerja yang belum beres bisa
- * "menuntaskan" rekomendasi yang dipikul lima satuan kerja.
- */
+/** Membedakan LHV (UKI) dan CHV (Inspektorat) di tabel yang sama. */
 return new class extends Migration
 {
     public function up(): void
@@ -26,8 +15,7 @@ return new class extends Migration
             $table->index('jenis');
         });
 
-        // Yang sudah ada semuanya surat Inspektorat — layar UKI belum pernah
-        // menerbitkan surat sebelum ini.
+        // Yang sudah ada semuanya surat Inspektorat.
         DB::table('verifikasis')->update(['jenis' => 'CHV']);
     }
 

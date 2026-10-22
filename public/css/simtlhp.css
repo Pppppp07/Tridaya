@@ -1,13 +1,5 @@
-/* ==================================================================
-   GAYA SIMTLHP — DISALIN DARI PROTOTIPE, JANGAN DISUNTING DI SINI
-
-   Sumber: Prototipe/prototipe-tlhp-v4.jsx (konstanta CSS) dan
-   Prototipe/src/{riwayat,ruang,tiket}-tindak-lanjut.css, dengan awalan
-   ".simt" dibuang dan "button.menu" dilonggarkan jadi ".menu" (menu di sini
-   berupa link). Diperbarui 2026-09-29.
-
-   Aturan khusus Laravel ada di simtlhp-tambahan.css.
-   ================================================================== */
+/* Gaya dasar, disalin dari prototipe lewat Prototipe/alat/salin-gaya.py (menjalankannya lagi
+   menimpa berkas ini). Aturan khusus Laravel di simtlhp-tambahan.css. */
 
 @font-face {
   font-family: 'Inter';
@@ -29,18 +21,10 @@
     U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
     U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
-/* ==================================================================
-   SISTEM DESAIN
-
-   Mengikuti rancangan acuan yang disetujui. Tiga hal yang dipegang:
-
-   1  Latar abu muda, kartu putih beradius besar. Kedalaman datang dari
-      garis tipis dan bayangan sangat halus, bukan dari warna.
-   2  Biru hanya untuk tindakan dan penanda pilihan. Hijau, kuning, dan
-      merah hanya untuk keadaan berkas.
-   3  Tulisan memakai huruf biasa. Huruf monospasi disimpan untuk kode
-      dan nomor dokumen saja, bukan untuk label.
-   ================================================================== */
+/* ---- Sistem desain ----
+   1 Latar abu muda, kartu putih beradius besar; kedalaman dari garis tipis dan bayangan halus. 2
+   Biru hanya untuk tindakan dan pilihan; hijau, kuning, merah hanya untuk keadaan berkas. 3
+   Huruf monospasi hanya untuk kode dan nomor dokumen. */
 
 body{
   /* dasar */
@@ -83,8 +67,6 @@ body{
 button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;padding:0;}
 :focus-visible{outline:2px solid var(--aksen);outline-offset:2px;border-radius:4px;}
 
-/* Label memakai huruf biasa. Huruf kapital-monospasi membuat layar penuh
-   "teriakan" dan itulah yang bikin tampilan lama terasa ramai. */
 .lbl{font-size:var(--t2);color:var(--ink-3);font-weight:500;letter-spacing:0;}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
 .angka{font-variant-numeric:tabular-nums;}
@@ -114,9 +96,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;pad
   min-height:44px;padding:9px var(--s3);border-radius:var(--r1);font-size:var(--t3);
   color:var(--ink-2);text-align:left;transition:background .12s,color .12s;}
 .nav .menu:hover{background:var(--surface-2);color:var(--ink);}
-/* Menyala untuk layarnya sendiri ("page") dan untuk halaman turunannya
-   ("true") — rincian rekomendasi menyalakan Rekomendasi, rincian laporan dan
-   Catat laporan baru menyalakan Daftar laporan. */
+/* Menyala untuk layarnya sendiri ("page") dan halaman turunannya ("true"). */
 .nav .menu[aria-current]{background:var(--aksen-bg);color:var(--aksen-kuat);
   font-weight:600;}
 .nav .menu svg{flex:none;color:currentColor;opacity:.9;}
@@ -147,8 +127,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;pad
 .nav .bantuan .buka-panduan:hover{color:var(--aksen-kuat);}
 .nav .bantuan .ic-kotak:hover{background:var(--aksen-line);}
 
-/* Kontrol lebar dekat identitas: tetap mudah dicapai pada layar pendek.
-   Satu ikon panah di ujung kanan barisnya — di rel, di tengah. */
 .nav .kontrol-nav{display:none;align-items:center;justify-content:flex-end;
   margin-bottom:var(--s2);}
 .nav .ciut{display:grid;place-items:center;flex:none;width:36px;height:36px;
@@ -156,8 +134,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;pad
 .nav .ciut:hover{background:var(--surface-2);color:var(--ink);}
 @media (min-width:768px){
   .nav .kontrol-nav{display:flex;}
-  /* Area kosong menu bisa diklik untuk menciutkan/melebarkan. Yang punya
-     tugasnya sendiri tetap memakai penunjuknya sendiri. */
+  /* Area kosong menu bisa diklik untuk menciutkan/melebarkan. */
   .nav{cursor:pointer;}
   .nav select,.nav label{cursor:default;}
 }
@@ -203,8 +180,7 @@ html.laci-terbuka .popup{visibility:hidden;}
   .nav{position:fixed;left:0;top:0;bottom:0;width:min(288px,calc(100vw - 40px));height:100vh;height:100dvh;z-index:45;
     transform:translateX(-100%);transition:transform .18s ease;box-shadow:var(--bayang-2);
     padding:0 var(--s3) var(--s4);}
-  /* Laci yang tertutup tidak boleh bisa difokus: tanpa ini Tab menyusuri
-     menu yang tidak kelihatan. */
+  /* Laci tertutup tidak boleh bisa difokus (Tab menyusuri menu yang tidak kelihatan). */
   .nav:not(.buka){visibility:hidden;pointer-events:none;}
   .nav .brand .tutup-nav{display:grid;place-items:center;margin-left:auto;flex:none;
     width:44px;height:44px;border:1px solid var(--line);border-radius:var(--r1);color:var(--ink-2);}
@@ -223,8 +199,7 @@ html.laci-terbuka .popup{visibility:hidden;}
   .tirai-nav.tampil{display:block;position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:42;}
 }
 
-/* Cetak: yang dicetak isi halamannya saja — menu, pembuka laci, alat di batang
-   atas, dan pemberitahuan yang muncul tidak ikut. */
+/* Cetak: hanya isi halaman. */
 @media print{
   html.laci-terbuka{overflow:visible !important;}
   .nav,.nav-atas,.tirai-nav,.popup,
@@ -249,9 +224,7 @@ html.laci-terbuka .popup{visibility:hidden;}
 .lembar.panduan dd{margin:2px 0 0 20px;}
 .lembar.panduan .catat{margin-top:8px;font-size:var(--t2);color:var(--ink-3);}
 
-/* Arsip rekomendasi: jendela melayang dari tombol di atas rincian, bukan
-   kartu di kaki halaman (rapat 18 Sep: "Gua tuh menghindari banyak
-   scroll"). Kepalanya serupa panduan. */
+/* Arsip: jendela melayang dari tombol di atas rincian. */
 .lembar.arsip{max-width:700px;}
 .lembar.arsip > .kep .judul{flex:1;min-width:0;display:grid;gap:2px;}
 .lembar.arsip > .kep .judul b{font-size:var(--t5);letter-spacing:-.01em;}
@@ -286,14 +259,7 @@ html.laci-terbuka .popup{visibility:hidden;}
 .top .remah b{color:var(--ink);font-weight:600;}
 .top .alat{display:flex;align-items:center;gap:var(--s3);margin-left:auto;}
 
-/* Kotak pemberitahuan yang muncul (26 Sep, dipindah). Dulu di sudut kanan BAWAH —
-   menutupi bilah tombol formulir dan jauh dari lonceng yang menjadi asalnya.
-   Kata Hizkia: "lokasi atau munculnya pop up notifikasi yang lebih baik dan
-   strategis". Sekarang di kanan atas, tepat di bawah batang atas dan lonceng:
-   matanya menyambungkan kotak ini dengan lonceng, dan tidak ada tombol kerja
-   yang tertutup. Menutup sendiri sesudah 8 detik — garis tipis di kakinya
-   menunjukkan sisa waktunya, dan berhenti selama ditunjuk atau difokus.
-   Tidak tampil selama jendela terbuka; di layar sempit melebar penuh. */
+/* Pop-up pemberitahuan di kanan atas, di bawah lonceng. */
 .popup{position:fixed;right:20px;top:calc(var(--lekat1, 72px) + 10px);z-index:70;
   display:flex;align-items:flex-start;gap:11px;width:min(380px,calc(100vw - 40px));
   padding:13px 12px 15px 13px;border-radius:var(--r2);overflow:hidden;
@@ -304,8 +270,8 @@ html.laci-terbuka .popup{visibility:hidden;}
   to{opacity:1;transform:none;} }
 @media (prefers-reduced-motion:reduce){ .popup{animation:none;} }
 @media (max-width:560px){ .popup{right:12px;left:12px;width:auto;} }
-/* Jendela yang sedang terbuka. Di Laravel jendela Panduan dan Arsip selalu ada
-   di halaman dan baru tampil lewat kelas tampil atau jangkar #-nya. */
+/* Jendela Panduan dan Arsip selalu ada di halaman; tampil lewat kelas `tampil` atau jangkar
+   #-nya. */
 body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:target) .popup{visibility:hidden;}
 
 .popup .teks{flex:1;min-width:0;display:grid;gap:4px;}
@@ -319,17 +285,15 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 .popup:hover .kb-sisa,.popup:focus-within .kb-sisa{animation-play-state:paused;}
 @keyframes kbSisa{from{transform:scaleX(1);}to{transform:scaleX(0);}}
 
-/* Kotak cari di batang atas. Lebarnya menyusut duluan saat tempat menyempit
-   supaya judul dan tombol tidak ikut terdorong turun. */
+/* Kotak cari menyusut duluan saat tempat menyempit. */
 .cari-glob{position:relative;flex:1 1 200px;max-width:360px;min-width:0;}
 .cari-glob .kotak{display:flex;align-items:center;gap:8px;height:38px;
   padding:0 10px;border:1px solid var(--line);border-radius:var(--r1);
   background:var(--surface-2);color:var(--ink-3);}
 .cari-glob .kotak:focus-within{background:var(--surface);
   border-color:var(--aksen-line);box-shadow:0 0 0 3px var(--aksen-bg);}
-/* Bobot pemilihnya sengaja dinaikkan lewat [type=text]: aturan dasar input
-   berbobot sama dan berada lebih dulu di berkas, jadi tanpa ini ia yang
-   menang dan menyisipkan kotak kedua di dalam kotak cari. */
+/* Bobot pemilih dinaikkan lewat [type=text]: tanpa ini aturan dasar input menang dan menyisipkan
+   kotak kedua. */
 .cari-glob input[type=text]{flex:1;width:auto;min-width:0;
   height:100%;min-height:0;margin:0;padding:0;border:0;border-radius:0;
   background:none;box-shadow:none;
@@ -367,8 +331,7 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 .lonceng{position:relative;display:grid;place-items:center;width:38px;height:38px;
   border-radius:50%;color:var(--ink-2);}
 .lonceng:hover{background:var(--surface-2);color:var(--ink);}
-/* Menyala seperti butir menu yang sedang dibuka — sejak 18 Sep lonceng inilah
-   jalan ke layar Pemberitahuan, bukan butir menu samping. */
+/* Menyala seperti butir menu yang dibuka (lonceng = jalan ke layar Pemberitahuan). */
 .lonceng[aria-current="page"]{background:var(--aksen-bg);color:var(--aksen-kuat);}
 .lonceng .n{position:absolute;top:2px;right:2px;min-width:17px;height:17px;
   border-radius:20px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;
@@ -377,20 +340,7 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 /* Panelnya sedang terbuka: lonceng menyala seperti tombol yang ditekan. */
 .lonceng[aria-expanded="true"]{background:var(--aksen-bg);color:var(--aksen-kuat);}
 
-/* ================= PEMBERITAHUAN (26 Sep) =================
-   Kata Hizkia: sistem notifikasi disesuaikan ulang "dari segi visualisasi,
-   peningkatan fungsional yang lebih dinamis, lokasi … pop up … yang lebih
-   baik dan strategis dan juga logika kondisi Notifikasi saat di klik atau
-   belum dilihat … yang sudah dilihat, riwayat notifikasi", tetap profesional
-   dan tidak mengganggu.
-   - Lonceng membuka panel di bawahnya, tidak lagi pindah halaman.
-   - Tiga keadaan: BARU (belum pernah tampil di daftar — angka di lonceng,
-     hilang begitu panel dibuka), BELUM DIBACA (titik biru, latar biru muda,
-     tebal), SUDAH DIBACA (ditekan, atau ditandai).
-   - Menekan pemberitahuan menandainya dibaca lalu mengantar ke bagiannya dan
-     menyorot barisnya. Tiap butir bisa ditandai dibaca/belum dibaca.
-   - Dikelompokkan per hari; lambang dan warnanya menurut isinya (hasil baik,
-     dikembalikan, SIPTL, …); halaman Pemberitahuan = riwayat lengkapnya. */
+/* ---- Pemberitahuan ---- */
 .kb-wadah{position:relative;display:inline-flex;}
 .kb-panel{position:absolute;right:-6px;top:calc(100% + 10px);z-index:60;width:430px;
   max-width:calc(100vw - 24px);max-height:min(74vh,640px);display:flex;flex-direction:column;
@@ -497,22 +447,13 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 .pengguna span{display:block;font-size:var(--t2);color:var(--ink-3);line-height:1.25;}
 .pengguna .panah-pengguna{flex:none;color:var(--ink-3);}
 
-/* ---- Batang atas menurut lebar layar (22 Sep) ----
-   Kata Hizkia: tampilan harus "tampak lebih rapih dan tidak berantakan dalam
-   kondisi layar yang berbeda beda". Dulu batang ini melipat jadi dua-tiga
-   baris mulai 1121 px (131-173 px tingginya), dan di ponsel judulnya tertulis
-   dua kali. Sekarang tetap satu baris. Yang mengalah berurutan dari yang
-   paling jarang dibutuhkan: tanggal dan nama pengguna (di bawah 1280 px),
-   lalu tulisan tombol utama (di bawah 1024 px) — ikonnya tetap, dan namanya
-   tetap dibaca pembaca layar serta muncul saat ditunjuk. Kotak cari yang
-   menyusut duluan. */
+/* ---- Batang atas menurut lebar layar ---- */
 .top .tanggal-hari{display:flex;align-items:center;gap:6px;white-space:nowrap;}
 @media (max-width:1279px){
   .top .tanggal-hari{display:none;}
   .pengguna{padding:0;}
   .pengguna .teks,.pengguna .panah-pengguna{display:none;}
-  /* Dasarnya selebar judulnya: kalau tidak, kotak cari yang melebar duluan
-     dan judul seperti "Rincian rekomendasi" terlipat dua baris. */
+  /* Dasarnya selebar judul supaya judul tidak terlipat dua baris. */
   .top h1{flex:1 1 auto;min-width:0;}
 }
 @media (max-width:1023px){
@@ -524,10 +465,7 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 }
 
 .body{padding:var(--s5);max-width:1440px;width:100%;}
-/* Ponsel: judulnya sudah tertulis di batang laci, jadi di sini hanya untuk
-   pembaca layar. Batang ini ikut tergulir — yang menempel cukup batang laci,
-   supaya layar pendek tidak habis untuk kepala. Panel hasil cari selebar
-   batangnya, bukan selebar kotak cari yang sempit. */
+/* Ponsel: judul hanya untuk pembaca layar (sudah di batang laci); batang ini ikut tergulir. */
 @media not all and (min-width:768px){
   .top{position:relative;top:auto;padding:var(--s2) var(--s4);min-height:0;
     gap:var(--s2);flex-wrap:nowrap;}
@@ -538,22 +476,16 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
   .body{padding:var(--s4);}
 }
 
-/* Lajur isian formulir. Dibatasi lebarnya, bukan dibiarkan selebar layar:
-   isian yang membentang 1600 piksel membuat mata kehilangan awal barisnya tiap
-   kali berpindah baris. */
+/* Lajur isian dibatasi lebarnya. */
 .lajurisi{max-width:1080px;}
 
-/* Nilai temuan yang dihitung, bukan diketik. Berdiri di kaki daftar
-   rekomendasinya — di situlah angkanya lahir. */
-/* Daftar pilihan yang muncul sesudah dicari atau dibuka. Tingginya dibatasi:
-   enam belas keping yang muncul sekaligus mengembalikan persis keadaan yang
-   ingin dihindari, cuma pindah tempat. */
+/* Nilai temuan yang dihitung, di kaki daftar rekomendasinya. */
+/* Tinggi daftar pilihan dibatasi. */
 .daftarpilih{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;
   padding:10px;border:1px solid var(--line-2);border-radius:var(--r1);
   background:var(--surface-2);max-height:168px;overflow-y:auto;}
 
-/* Jarak pencatatan yang kelewat lama, dan link yang belum ada. Keduanya
-   tanda, bukan kesalahan — jadi warnanya jingga, bukan merah. */
+/* Tanda, bukan kesalahan: jingga, bukan merah. */
 .jedacatat{margin-top:3px;font-size:var(--t1);font-weight:600;
   color:var(--jingga);letter-spacing:0;white-space:nowrap;}
 /* Yang mustahil bukan sekadar perlu diperhatikan — ia salah. */
@@ -565,9 +497,7 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 .totalnilai > b{margin-left:auto;font-size:17px;font-weight:700;
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
 
-/* Angka yang dihitung, di tempat isian. Tingginya disamakan dengan kotak isian
-   di sebelahnya supaya barisnya tidak jadi bergerigi, tapi dasarnya rata dan
-   tanpa garis tepi — supaya tidak ada yang mencoba mengetik ke dalamnya. */
+/* Angka yang dihitung di tempat isian: setinggi kotak isian, tanpa garis tepi. */
 .nilaihitung{min-height:42px;display:flex;align-items:center;
   padding:10px 13px;border:1px solid var(--line-2);border-radius:var(--r1);
   background:var(--surface-2);
@@ -576,18 +506,13 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 
 /* Tata dua kolom: pekerjaan di kiri, ringkasan di rel kanan. */
 .dua{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:var(--s5);align-items:start;}
-/* Anak grid bawaannya min-width:auto: ia menolak menyusut di bawah lebar
-   isinya, sehingga satu baris panjang cukup untuk melebarkan seluruh halaman
-   dan memunculkan geseran mendatar. */
+/* Anak grid bawaannya min-width:auto — satu baris panjang bisa melebarkan seluruh halaman. */
 .dua > *{min-width:0;}
 .rel{display:grid;gap:var(--s4);position:sticky;top:96px;}
 @media (max-width:1240px){
   .dua{grid-template-columns:1fr;}
   .rel{position:static;}
 }
-
-/* CATATAN: seluruh CSS ini hidup di dalam template literal, jadi JANGAN pakai
-   backtick di komentarnya — ia menutup string dan sisanya dibaca sebagai kode. */
 
 /* ================= TOMBOL ================= */
 
@@ -596,7 +521,7 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
   background:var(--surface);font-size:var(--t3);font-weight:600;color:var(--ink-2);
   white-space:nowrap;transition:background .12s,border-color .12s,color .12s,box-shadow .12s,transform .1s;}
 .btn:hover{background:var(--surface-2);border-color:var(--calm-line);color:var(--ink);}
-/* Tekanan terasa: tombolnya turun satu piksel selama ditekan (26 Sep). */
+/* Tombol turun satu piksel selama ditekan. */
 .btn:active:not(:disabled){transform:translateY(1px);}
 .btn-p{background:var(--aksen);border-color:var(--aksen);color:#fff;
   box-shadow:0 1px 2px rgba(37,99,235,.24);}
@@ -615,15 +540,10 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 
 .btn-bad{background:var(--bad);border-color:var(--bad);color:#fff;}
 .btn-bad:hover{background:#B91C1C;border-color:#B91C1C;color:#fff;}
-/* Baris tabel yang bisa dibuka. Panahnya berputar, bukan berganti ikon —
-   pergerakan yang sama menandai keadaan yang sama. */
-/* Kepala tabel: dua baris filter. Baris pertama menentukan lingkup dan
-   keadaan — pertanyaan besarnya; baris kedua mempersempit. */
+/* Panah baris yang bisa dibuka berputar, bukan berganti ikon. */
+/* Kepala tabel: baris pertama lingkup dan keadaan, baris kedua mempersempit. */
 .kepalatabel{display:grid;gap:var(--s3);margin-bottom:var(--s4);}
-/* Tiap pilihan tombol berbingkai sendiri (26 Sep), serupa tombol Bukti ·
-   Kerjakan · Riwayat. Dulu satu lajur abu dengan pilihan yang cuma tulisan
-   abu — kata Hizkia tentang deret serupa: "sulit disadari itu tombol atau
-   sekedar tulisan". Yang menyala berbingkai dan berlatar biru. */
+/* Tiap pilihan tombol berbingkai sendiri. */
 .pilihgrup{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .pilihgrup > button{min-height:38px;padding:7px 14px;border:1px solid #B8C0CC;
   border-radius:10px;cursor:pointer;background:var(--surface);color:#1F2937;font:inherit;
@@ -643,14 +563,10 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
   transition:background-color .15s ease,color .15s ease;}
 .pilihgrup > button[aria-pressed="true"] .n{background:var(--surface);
   color:var(--aksen-kuat);}
-/* Garis pemisah di dalam deretan keranjang. Yang di kanannya bukan keranjang
-   sejajar melainkan potongan dari salah satu yang di kiri, jadi deretan
-   angkanya tidak boleh terbaca sebagai satu jumlah. */
+/* Garis pemisah: yang di kanannya potongan dari salah satu keranjang di kiri. */
 .pilihgrup > .pemisah{width:1px;align-self:stretch;margin:5px 2px;
   background:#B8C0CC;flex:none;}
-/* Nama satuan kerja ditumpuk sebagai keping, tidak disambung koma. Namanya
-   panjang-panjang; disambung koma ia jadi satu paragraf yang harus dibaca kata
-   demi kata untuk tahu ada berapa. */
+/* Nama satuan kerja ditumpuk sebagai keping, tidak disambung koma. */
 .kepingsatker{display:inline-flex;flex-wrap:wrap;gap:4px 5px;
   vertical-align:middle;}
 .kepingsatker > .keping{display:inline-flex;align-items:baseline;gap:5px;
@@ -661,9 +577,7 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
   color:var(--ink-3);}
 .kepingsatker > .keping.lain{background:none;border-style:dashed;
   color:var(--ink-3);}
-/* Kolom Kemajuan di tabel rekomendasi: berapa tindak lanjut yang selesai,
-   batang, dan rangkumannya. Keping meja per satuan kerja yang sempat berdiri di
-   sebelahnya dibuang 15 Sep - kolomnya jadi terlalu padat. */
+/* Kolom Kemajuan: jumlah selesai, batang, dan rangkumannya. */
 .kemajuan{display:flex;flex-direction:column;align-items:flex-start;gap:4px;
   min-width:120px;}
 .kemajuan > b{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;}
@@ -671,15 +585,11 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
   border-radius:3px;background:var(--line);overflow:hidden;}
 .kemajuan > .batang > i{display:block;height:100%;background:var(--ok);}
 .kemajuan > .lbl{white-space:nowrap;}
-/* Tanda lepas pada tombol yang sedang menyala. Redup supaya tidak bersaing
-   dengan namanya, tapi tetap terlihat — ia yang memberi tahu bahwa filternya
-   bisa dilepas. */
+/* Tanda lepas pada tombol yang menyala: redup tapi terlihat. */
 .pilihgrup > button .lepas{opacity:.45;margin-left:-3px;flex:none;}
 .pilihgrup > button:hover .lepas{opacity:1;}
 .barisfilter{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center;}
-/* Ponsel (22 Sep): deretan keping tetap satu baris dan bisa digeser — dulu
-   melipat jadi tiga baris dengan garis pemisah yang tergantung sendirian.
-   Kedua pemilih berbagi satu baris selama muat. */
+/* Ponsel: deretan keping tetap satu baris dan bisa digeser. */
 @media not all and (min-width:768px){
   .pilihgrup{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
     -webkit-overflow-scrolling:touch;gap:6px;padding:3px;margin:-3px;}
@@ -693,16 +603,9 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 .barisfilter .cari input{width:100%;padding-left:38px;}
 .barisfilter .cari svg{position:absolute;left:13px;top:14px;color:var(--ink-3);}
 
-/* Satu bentuk tindak lanjut, satu blok: judulnya di luar tabel, lalu tabel
-   satuan kerja yang menindaklanjutinya.
-
-   Dulu judulnya jadi baris DI DALAM tabel, dan kolom pertamanya harus
-   menampung dua hal sekaligus — "Satuan kerja / tindak lanjut". Itu yang
-   memaksa kepala tabelnya jadi dua baris dan menumpuk. */
+/* Satu bentuk tindak lanjut, satu blok: judul di luar tabel, lalu tabel satuan kerjanya. */
 .tlblok + .tlblok{border-top:1px solid var(--line-2);}
-/* Tertutup: berlatar abu, terbaca sebagai bilah yang menyimpan isi.
-   Terbuka: berlatar putih seperti tabel di bawahnya, plus garis aksen di
-   tepi kiri — judul dan tabelnya jadi terbaca sebagai satu benda. */
+/* Tertutup berlatar abu; terbuka berlatar putih dengan garis aksen kiri. */
 .tlblok > .kep{width:100%;text-align:left;display:flex;align-items:center;
   gap:var(--s3);flex-wrap:wrap;padding:12px var(--s4);background:var(--surface-3);
   cursor:pointer;}
@@ -712,15 +615,11 @@ body:has(.tirai:not(.tirai-panduan):not(.tirai-arsip), .tirai.tampil, .tirai:tar
 .tlblok > .kep .no{width:24px;height:24px;border-radius:50%;flex:none;
   display:grid;place-items:center;background:var(--aksen-bg);color:var(--aksen-kuat);
   font-size:var(--t2);font-weight:700;}
-/* Dua baris: nama bentuknya di atas, keterangannya di bawah. Satu baris
-   berdesakan terbaca seperti kepala tabel, bukan seperti sesuatu yang bisa
-   dibuka. */
+/* Dua baris: nama bentuk di atas, keterangan di bawah. */
 .tlblok > .kep .inti{flex:1;min-width:170px;display:grid;gap:2px;}
 .tlblok > .kep .nama{font-size:var(--t4);font-weight:600;letter-spacing:-.01em;
   color:var(--ink);}
 .tlblok > .kep .meta{font-size:var(--t2);color:var(--ink-3);}
-/* Ajakannya ditulis, tidak cuma dilambangkan. Panah saja menuntut orang
-   menebak apakah bilah ini bisa ditekan. */
 .tlblok > .kep .ajak{font-size:var(--t2);font-weight:600;flex:none;
   color:var(--aksen-kuat);}
 .tlblok > .kep .panahbaris{width:16px;}
@@ -735,25 +634,12 @@ tr.bukaan.buka > td{background:var(--surface-2);
   flex:none;}
 tr.bukaan.buka .panahbaris{transform:rotate(90deg);color:var(--ink);}
 
-/* Tabel tindak lanjut. Lebar kolomnya ditetapkan, bukan dihitung dari isinya:
-   dengan lebar otomatis "Posisi berkas" menyerap hampir separuh tabel sementara
-   nama satuan kerja terpenggal, dan lebarnya berubah-ubah dari satu rekomendasi
-   ke rekomendasi berikutnya. Kolom sempit diberi lebar tetap sebesar muatan
-   terlebarnya; tiga kolom teks — satuan kerja, posisi berkas, dan catatan
-   terakhir — tidak diberi lebar sama sekali, jadi ketiganya selalu membagi
-   sisa ruang rata. Lebar terkecilnya naik dari 820 ke 960 piksel sejak kolom
-   catatan ikut (21 Sep), supaya tiap kolom teks tetap sekitar 150 piksel. */
+/* Lebar kolom ditetapkan, bukan dihitung dari isi. */
 .tabtl{table-layout:fixed;min-width:960px;}
-/* Satu ukuran huruf untuk seluruh tabel. Yang membedakan baris kepala kelompok
-   dari baris satuan kerja adalah tebal dan latarnya, bukan besar hurufnya. */
 .tabtl > tbody > tr > td{font-size:var(--t3);vertical-align:middle;}
-/* Kolom nomor cuma memuat angka: selokannya dirapatkan supaya lebarnya habis
-   untuk angkanya, bukan untuk ruang kosong di kedua sisi. */
 .tabtl .kolno{padding-left:var(--s3);padding-right:var(--s3);
   font-size:var(--t2);color:var(--ink-3);}
-/* Panah pembuka berdiri di selokan tetap di depan nama, jadi seluruh nama
-   satuan kerja mulai pada satu garis tegak dan menjorok di bawah kepala
-   kelompoknya. */
+/* Panah pembuka di selokan tetap, jadi nama satuan kerja mulai pada satu garis. */
 .tabtl .panahbaris{width:18px;}
 /* Baris yang melebar memuat panel, bukan sebaris teks -- ia tetap rata atas. */
 .tabtl > tbody > tr.lebar > td{vertical-align:top;}
@@ -762,12 +648,7 @@ tr.lebar > td{padding:0;background:var(--surface-2);
   border-bottom:1px solid var(--rule-2);}
 .isilebar{padding:var(--s4) var(--s4) var(--s5);display:grid;gap:var(--s4);
   max-width:100%;}
-/* Isi baris yang melebar tidak boleh ikut menentukan lebar tabelnya. Nama
-   berkas dan lencana di dalamnya tidak bisa dipenggal, jadi tanpa ini satu
-   judul panjang memaksa seluruh tabel melar beberapa piksel -- cukup untuk
-   memunculkan batang geser mendatar yang sebenarnya tidak menggeser apa pun.
-   width:0 membuat lebar terkecilnya nol, min-width:100% mengembalikannya
-   memenuhi sel. */
+/* Isi baris yang melebar tidak boleh menentukan lebar tabel. */
 tr.lebar > td > .isilebar{width:0;min-width:100%;}
 .isilebar .kepala{display:flex;gap:var(--s3);flex-wrap:wrap;
   align-items:baseline;}
@@ -812,13 +693,10 @@ tr.lebar > td > .isilebar{width:0;min-width:100%;}
 .judulkartu > h3{margin:0;font-size:var(--t5);font-weight:600;letter-spacing:-.01em;flex:1;}
 .judulkartu > .n{font-size:var(--t2);color:var(--ink-3);font-weight:500;}
 
-/* Kepala kelompok satuan kerja di daftar temuan. Sengaja lebih ringan dari
-   .judulkartu: ia pembatas di dalam satu daftar, bukan judul bagian baru. */
+/* Kepala kelompok satuan kerja di daftar temuan, lebih ringan dari .judulkartu. */
 .grupsatker{display:block;margin-bottom:6px;}
 .grupsatker:first-of-type .kepsatker{margin-top:0;}
-/* Kepala babak pada rincian rekomendasi. Menandai tiga tahap membaca —
-   duduk perkaranya, perkembangannya, lalu tindakannya — supaya susunannya
-   terbaca sebagai urutan, bukan tumpukan kartu tanpa maksud. */
+/* Kepala babak rincian rekomendasi: duduk perkara, perkembangan, tindakan. */
 /* Ikon keterangan: sekecil mungkin saat diam, jelas terbaca saat ditekan. */
 .info{position:relative;display:inline-flex;vertical-align:middle;}
 .info > button{width:16px;height:16px;flex:none;padding:0;border-radius:999px;
@@ -842,13 +720,11 @@ tr.lebar > td > .isilebar{width:0;min-width:100%;}
 .info > .isi.kiri{left:auto;right:-4px;}
 @media (max-width:520px){ .info > .isi{left:auto;right:-4px;} }
 
-/* Beberapa bagian dalam satu kotak: dipisah garis, bukan celah. Celah membuat
-   ketiganya terbaca seperti tiga hal yang berdiri sendiri. */
+/* Beberapa bagian dalam satu kotak dipisah garis, bukan celah. */
 .card.lipatsatu > .ruas{margin-top:var(--s4);padding-top:var(--s4);
   border-top:1px solid var(--rule-2);}
 
-/* Baris tindak lanjut yang masih draf: bergaris putus-putus supaya terbaca
-   sebagai belum final, tanpa perlu kalimat penjelas tambahan. */
+/* Baris tindak lanjut yang masih draf bergaris putus-putus. */
 .barisbalik{display:flex;gap:12px;padding:11px 12px;border-radius:var(--r1);
   background:var(--verm-bg);border:1px solid var(--verm-line,var(--bad-line));}
 .barisbalik > .mono{font-size:11px;color:var(--bad);flex:none;width:74px;padding-top:1px;}
@@ -919,8 +795,7 @@ tr.lebar > td > .isilebar{width:0;min-width:100%;}
   letter-spacing:.03em;text-transform:uppercase;border-radius:6px;padding:4px 9px;
   white-space:nowrap;background:var(--calm-bg);color:var(--calm);}
 .pil.bad{background:var(--bad-bg);color:var(--bad);}
-/* Isi keping yang kodenya resmi — Ref LHP — tidak ikut dibesarkan. Huruf
-   rekomendasinya memang huruf kecil (1.1.a); "1.1.A" bukan kode siapa pun. */
+/* Ref LHP tidak dibesarkan (1.1.a, bukan 1.1.A). */
 .pil .asli{text-transform:none;letter-spacing:0;}
 .pil.warn{background:var(--warn-bg);color:var(--warn);}
 .pil.ok{background:var(--ok-bg);color:var(--ok);}
@@ -966,8 +841,7 @@ input:focus,select:focus,textarea:focus{
 input:disabled,select:disabled{background:var(--surface-2);color:var(--ink-3);}
 input[type=checkbox]{width:auto;min-height:0;accent-color:var(--aksen);}
 
-/* Isian berangka kecil dengan panah naik-turun di dalam bingkainya sendiri,
-   bukan di sampingnya — supaya lebarnya tetap sama dengan isian lain sebaris. */
+/* Panah naik-turun di dalam bingkai isian sendiri. */
 .cacah{position:relative;}
 .cacah input{padding-right:40px;}
 .cacah .tombol{position:absolute;right:5px;top:5px;bottom:5px;
@@ -979,10 +853,7 @@ input[type=checkbox]{width:auto;min-height:0;accent-color:var(--aksen);}
   border-color:var(--aksen-line);color:var(--aksen);}
 .cacah .tombol button:disabled{opacity:.35;cursor:default;}
 
-/* Anak-bagian di dalam satu kelompok isian. Satu kelompok bisa memuat belasan
-   isian; tanpa tingkatan di tengah, semuanya terbaca sederajat dan pengisi
-   kehilangan tempatnya. Judulnya garis berlabel — satu tingkat di bawah judul
-   kelompok, satu tingkat di atas label isian. */
+/* Anak-bagian dalam satu kelompok isian: judulnya garis berlabel. */
 .subbag{margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--line-2);}
 .subbag.awal{margin-top:0;padding-top:0;border-top:0;}
 .subjudul{display:flex;align-items:center;gap:9px;margin-bottom:var(--s4);}
@@ -990,21 +861,14 @@ input[type=checkbox]{width:auto;min-height:0;accent-color:var(--aksen);}
 .subjudul > .ket{font-size:var(--t2);color:var(--ink-3);white-space:nowrap;}
 .subjudul > .garis{flex:1;height:1px;background:var(--line-2);min-width:12px;}
 
-/* Isian berisi keping pilihan butuh lebar penuh. Dijejalkan ke satu kolom
-   sempit, kepingnya membungkus jadi empat baris dan merusak kesejajaran
-   isian di sebelahnya. */
+/* Isian berisi keping pilihan butuh lebar penuh. */
 .duo > .fld-lebar,.trio > .fld-lebar{grid-column:1/-1;}
 
-/* Tindakan tiap satuan kerja di dalam satu rekomendasi. Bentuknya tabel
-   ringkas, bukan tumpukan isian berlabel: yang dibaca pengisi adalah
-   perbandingan antar barisnya — siapa menyetor berapa, siapa cukup
-   menerbitkan surat. Label berulang di tiap baris justru menutupi itu. */
+/* Tindakan tiap satuan kerja sebagai tabel ringkas. */
 .rincitindak{margin-top:var(--s4);padding:var(--s4);border-radius:var(--r1);
   border:1px solid var(--line-2);background:var(--surface-2);}
 
-/* Satu tindak lanjut: bentuknya di kepala, satuan kerja yang mengerjakannya di
-   bawahnya. Diberi kotak sendiri supaya batas antar tindakan terlihat — tanpa
-   itu, dua daftar keping satuan kerja yang berurutan terbaca seperti satu. */
+/* Satu tindak lanjut dalam kotak sendiri. */
 .blokTindak{border:1px solid var(--line-2);border-radius:var(--r1);
   padding:var(--s4);margin-bottom:var(--s4);background:var(--surface-2);}
 .kepalaTindak{display:flex;align-items:center;gap:9px;margin-bottom:var(--s4);}
@@ -1018,9 +882,7 @@ input[type=checkbox]{width:auto;min-height:0;accent-color:var(--aksen);}
 .dokTindak{margin-top:var(--s4);padding-top:var(--s3);
   border-top:1px dashed var(--line-2);}
 
-/* Rencana aksi menutup bagian tindak lanjut. Diberi garis penuh, bukan putus
-   seperti pemisah di dalam satu tindakan — ia berlaku untuk semuanya, bukan
-   bagian dari tindakan terakhir. */
+/* Rencana aksi menutup bagian tindak lanjut dengan garis penuh. */
 .renaksi{margin-top:var(--s5);padding-top:var(--s4);
   border-top:1px solid var(--line-2);}
 
@@ -1045,14 +907,9 @@ input[type=checkbox]{width:auto;min-height:0;accent-color:var(--aksen);}
 /* Kolom pertama lebih lapang untuk pilihan yang namanya panjang. */
 .trio.lebar1{grid-template-columns:1.5fr 1fr 1fr;}
 
-/* Kepala kolom yang sekaligus tombol urut. Tanda panahnya redup selama kolom
-   itu belum dipakai — kalau semuanya menyala, tidak ada yang menonjol dan
-   orang tidak tahu tabelnya sedang diurutkan menurut apa. */
+/* Panah tombol urut redup selama kolomnya belum dipakai. */
 th.urutkan{padding:0;}
-/* JANGAN pakai tanda petik miring di komentar CSS ini: seluruh blok gaya
-   berada di dalam untai template, dan satu tanda itu memutusnya.
-   Bantalannya disamakan persis dengan th biasa, supaya "No" — yang bukan
-   tombol — duduk di garis yang sama dengan kepala kolom lainnya. */
+/* Bantalan disamakan dengan th biasa. */
 th.urutkan > button{display:flex;align-items:center;gap:6px;width:100%;
   padding:11px var(--s4);font:inherit;color:inherit;text-align:left;
   background:none;border:0;cursor:pointer;}
@@ -1062,24 +919,15 @@ th.urutkan .panahurut{font-size:11px;color:var(--line);
 th.urutkan > button:hover .panahurut{color:var(--ink-3);}
 th.urutkan.aktif > button{color:var(--aksen-kuat);}
 th.urutkan.aktif .panahurut{color:var(--aksen);}
-/* Kepala kolom yang punya keterangan: ikon Info duduk di kanan tombol urutnya,
-   bukan di dalamnya - tombol di dalam tombol tidak sah. */
+/* Ikon Info di kanan tombol urut (tombol di dalam tombol tidak sah). */
 th.urutkan.berinfo{position:relative;}
 th.urutkan.berinfo > button{padding-right:36px;}
 th.urutkan.berinfo > .info{position:absolute;right:12px;top:0;bottom:0;
   align-items:center;}
-/* Kolom berisi angka rata kanan, jadi kepalanya ikut rata kanan — kalau tidak,
-   judulnya berdiri jauh dari angka yang dijudulinya.
-
-   Kelas num melarang pemenggalan supaya angkanya utuh; judulnya tidak ikut
-   dilarang. Satu judul "Jumlah rekomendasi" yang dipaksa satu baris memakan
-   167px, dan tiga kolom angka menghabiskan lebar yang seharusnya jadi milik
-   kolom satuan kerja. */
+/* Kepala kolom angka rata kanan; num melarang pemenggalan angka, bukan judulnya. */
 th.urutkan.num{white-space:normal;}
 th.urutkan.num > button{justify-content:flex-end;text-align:right;}
-/* Panahnya tetap di samping judul walau judulnya turun ke baris kedua — kalau
-   ikut membelit, ia jatuh ke baris ketiga dan kepala kolomnya jadi tiga
-   tingkat sendirian. */
+/* Panah tetap di samping judul walau judul turun ke baris kedua. */
 th.urutkan > button > .panahurut{flex:none;}
 @media (max-width:760px){
   .trio,.trio.lebar1{grid-template-columns:1fr;}
@@ -1088,8 +936,7 @@ th.urutkan > button > .panahurut{flex:none;}
 @media (max-width:640px){ .duo,.trio{grid-template-columns:1fr;} }
 
 /* Kelompok isian: kotak sendiri dengan lencana ikon, seperti pada acuan. */
-/* Kelompok isian yang bisa dilipat. Judulnya batang berlatar supaya terbaca
-   satu tingkat di atas label isian, bukan sederajat. */
+/* Kelompok isian yang bisa dilipat. */
 .grup{border:1px solid var(--line);border-radius:var(--r2);
   margin-bottom:var(--s3);background:var(--surface);overflow:hidden;}
 .grup > .judul{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
@@ -1107,29 +954,15 @@ th.urutkan > button > .panahurut{flex:none;}
 .grup > .judul svg{flex:none;color:var(--ink-3);}
 .grup > .isi{padding:var(--s4) var(--s4) 4px;}
 
-/* ================= FORMULIR CATAT LAPORAN BARU =================
-   Satu halaman seperti mengisi dokumen (Hizkia, 24 Sep): surat laporan di
-   atas, lalu temuan berurutan ke bawah. Tiap temuan dan rekomendasi bisa
-   dibuka-tutup, satu terbuka pada satu waktu, dan yang tertutup tinggal satu
-   baris ringkas - supaya halaman tidak memanjang walau temuannya banyak.
-   Isian berlabel di kiri seperti lembar isian surat; keterangan di balik ikon
-   Info, bukan kalimat tetap di bawah isian. Lajur isian ketiga tingkat
-   (temuan, rekomendasi, tindak lanjut) lurus satu garis: lebar labelnya
-   dikurangi sebanyak jorokan tingkatnya. Kelasnya berawalan fb- supaya tidak
-   bertabrakan dengan aturan umum seperti .grup atau .kepala. */
+/* ---- Formulir Catat laporan baru ---- */
 .fb{container:fb / inline-size;--fb-lbl-dasar:192px;--fb-lbl:var(--fb-lbl-dasar);
-  /* Batas yang terlihat (Hizkia, 24 Sep: "percuma juga kalau sulit dilihat,
-     karena mayoritas pengguna … tidak … dengan penglihatan yang baik").
-     Diukur: garis isian lama #E5E7EB cuma 1,24 : 1 terhadap putih, garis kartu
-     1,17 : 1, pemisah 1,11 : 1. Garis isian kini 3,03 : 1 - ambang WCAG 1.4.11
-     untuk batas komponen - dan garis kartu 1,8 : 1 di atas latar halaman. */
+  /* Garis isian ≥ 3 : 1 terhadap putih (#8B95A5) supaya terbaca. */
   --fb-garis:#8B95A5;--fb-garis-kartu:#B8C0CC;--fb-pemisah:#D5DBE3;
   --fb-pita:#EEF2F6;--fb-pita-2:#F5F7FA;--fb-judul:#0F172A;--fb-label:#1F2937;}
 .fb-bag{background:var(--surface);border:1px solid var(--fb-garis-kartu);border-radius:var(--r2);
   box-shadow:0 1px 3px rgba(16,24,40,.08);margin-bottom:var(--s3);}
 .fb-bag.buka{border-color:#9AA3B1;}
-/* Kepala tiap bagian berpita abu - lebih gelap dari isinya - seperti kepala
-   tabel yang diterima 24 Sep ("headernya agak di kontraskan"). */
+/* Kepala tiap bagian berpita abu. */
 .fb-kep{display:flex;align-items:center;gap:4px;padding-right:var(--s2);}
 .fb-bag > .fb-kep{background:var(--fb-pita);border-radius:11px;}
 .fb-bag.buka > .fb-kep{border-radius:11px 11px 0 0;border-bottom:1px solid var(--fb-garis-kartu);}
@@ -1150,8 +983,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .fb-judul > b.fb-kosong{font-weight:600;color:#4B5563;}
 .fb-ringkas{font-size:12.5px;color:#374151;line-height:1.35;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* Keadaan sebagai lencana berbingkai: warna, ikon, dan tulisan sekaligus -
-   tidak bergantung pada warna saja. */
+/* Keadaan sebagai lencana berbingkai: warna, ikon, dan tulisan sekaligus. */
 .fb-status{flex:none;display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 8px;
   border:1px solid #F5C451;border-radius:999px;background:#FFFBEB;
   font-size:12.5px;font-weight:600;color:#B45309;white-space:nowrap;}
@@ -1168,8 +1000,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 /* satu baris isian: label di kiri, isian di kanan */
 .fb-brs{display:grid;grid-template-columns:var(--fb-lbl) minmax(0,1fr);gap:6px var(--s4);
   align-items:start;padding:6px 0;}
-/* Label mengalir seperti kalimat: bintang wajib dan ikon Info menempel di
-   belakang kata terakhirnya, tidak jatuh ke baris sendiri di lajur sempit. */
+/* Bintang wajib dan ikon Info menempel di belakang kata terakhir label. */
 .fb-lbl{display:block;padding-top:10px;font-size:13.5px;font-weight:500;line-height:1.45;
   color:var(--fb-label);}
 .fb-lbl > label{cursor:pointer;}
@@ -1194,8 +1025,6 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .fb-sublbl{font-size:13.5px;font-weight:500;color:var(--fb-label);cursor:pointer;}
 .fb-pasang{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
 .fb-dua{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;}
-/* Komponen umum di dalam formulir ikut dipertegas: ikon Info, tombol biasa,
-   stepper, dan tombol naik-turun angsuran. */
 .fb .info > button{border-color:var(--fb-garis);background:var(--surface);color:#374151;}
 .fb .btn:not(.btn-p):not(.btn-ok):not(.btn-bad){border-color:var(--fb-garis);color:#374151;}
 .fb .langkah{border-color:var(--fb-garis-kartu);}
@@ -1208,8 +1037,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 
 /* daftar di dalam bagian: rekomendasi dalam temuan, tindak lanjut dalam rekomendasi */
 .fb-sub{margin-top:var(--s3);padding-top:var(--s4);border-top:1px solid var(--fb-pemisah);}
-/* Judul anak-bagian diberi palang biru di kiri - jangkar mata yang jelas,
-   tanpa pita berwarna yang dulu ditolak (17 Sep). */
+/* Judul anak-bagian dengan palang biru di kiri. */
 .fb-subkep{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;margin:0 0 12px;}
 .fb-subkep > b{padding-left:9px;border-left:3px solid var(--aksen);font-size:14px;
   font-weight:700;line-height:1.25;color:var(--fb-judul);}
@@ -1226,9 +1054,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .fb-rek > .fb-isi{--fb-lbl:calc(var(--fb-lbl-dasar) - 17px);padding:6px var(--s4) var(--s4);}
 .fb-sub-tl{margin-top:var(--s2);padding-top:var(--s3);}
 
-/* tindak lanjut: satu panel bertepi tipis di bawah deret tabnya. Lebar
-   labelnya dikurangi tepi dan bantalan panel, supaya lajur isiannya tetap
-   segaris dengan isian rekomendasi dan temuan. */
+/* Panel tindak lanjut: lebar label dikurangi tepi dan bantalan panel supaya lajur isian segaris. */
 .fb-tl{padding:6px 14px 8px;border:1px solid var(--fb-pemisah);border-radius:var(--r1);
   background:#F8FAFC;--fb-lbl:calc(var(--fb-lbl-dasar) - 17px - 15px);}
 .fb-bentuk{flex-wrap:nowrap;}
@@ -1261,16 +1087,12 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .fb-tambah.lebar{display:flex;width:100%;justify-content:center;padding:12px;}
 .fb-tambah.kecil{padding:6px 11px;font-size:13px;}
 
-/* Deret tab (24 Sep): temuan, rekomendasi, dan tindak lanjut berjajar ke
-   samping, dengan tombol Tambah di ujung deretnya - selalu dekat, tidak di
-   kaki daftar yang makin jauh. Hanya isi tab terpilih yang tampil. Tab yang
-   belum lengkap bertanda kuning, jadi yang tersembunyi tetap terbaca. */
+/* Deret tab temuan, rekomendasi, tindak lanjut; tombol Tambah di ujung deret. Hanya isi tab
+   terpilih yang tampil. */
 .fb-tab-baris{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;}
 .fb-tabs{display:flex;flex-wrap:wrap;gap:6px;min-width:0;}
-/* position:relative - tulisan tersembunyi untuk pembaca layar di dalam tab
-   berposisi absolut; tanpa ini wadahnya lajur formulir (container query ikut
-   menjadikannya wadah), dan di ponsel tulisan itu lolos dari potongan deret
-   tab yang bisa digeser lalu ikut melebarkan halaman. */
+/* position:relative: tulisan pembaca layar di dalam tab berposisi absolut; tanpa ini di ponsel
+   tulisannya lolos keluar. */
 .fb-tab{position:relative;display:inline-flex;align-items:center;gap:8px;max-width:280px;min-height:40px;
   padding:6px 11px 6px 7px;border:1px solid var(--fb-garis-kartu);border-radius:10px;
   background:var(--surface);font:inherit;font-size:13.5px;font-weight:500;color:var(--fb-label);
@@ -1304,8 +1126,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
   color:var(--aksen-kuat);cursor:pointer;}
 .fb-tunjuk:hover{border-color:var(--aksen);}
 
-/* Keping pemilih satuan kerja - padanan .kepingpilih di Laravel. Yang belum
-   terpilih berbingkai 3 : 1, yang terpilih biru dengan kotak centang terisi. */
+/* Keping pemilih satuan kerja: belum terpilih berbingkai 3 : 1, terpilih biru. */
 .kepingpilih{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;
   border:1px solid #8B95A5;border-radius:999px;background:var(--surface);cursor:pointer;
   font:inherit;font-size:13px;font-weight:500;color:#374151;text-align:left;}
@@ -1342,13 +1163,8 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
     clip:rect(0 0 0 0);white-space:nowrap;}
 }
 
-/* ================= PANEL KERJA (25 Sep) =================
-   Tab Kerjakan di baris satuan kerja, untuk semua peran — dan tab Bukti &
-   tanggapan yang cuma dibaca. Bentuknya sama dengan formulir Catat laporan
-   baru: kartu berkepala pita abu, baris fb- berlabel di kiri, bintang pada
-   yang wajib, keterangan di balik ikon Info, garis isian 3 : 1, dan bilah
-   tombol yang sejajar lajur isian. Kartunya juga ber-kelas fb, jadi variabel
-   warna dan aturan isiannya ikut. */
+/* ---- Panel kerja ----
+   Tab Kerjakan untuk semua peran, dan tab Bukti & tanggapan yang hanya dibaca. */
 .kerja{--fb-lbl-dasar:184px;background:var(--surface);border:1px solid var(--fb-garis-kartu);
   border-radius:var(--r2);box-shadow:0 1px 3px rgba(16,24,40,.08);}
 .kerja-kep{display:flex;align-items:center;gap:var(--s3);padding:12px var(--s4);
@@ -1360,8 +1176,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .kerja-judul > span b{font-weight:600;color:var(--fb-judul);}
 .kerja-isi{padding:10px var(--s4) 8px;}
 .kerja-isi > .fb-legenda{margin:0 0 2px;}
-/* Bilah tombol mulai segaris dengan lajur isian — tombolnya duduk di bawah
-   isian yang dikirimnya, bukan di bawah labelnya. */
+/* Bilah tombol segaris dengan lajur isian. */
 .kerja-aksi{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
   padding:12px var(--s4) 14px calc(var(--s4) + var(--fb-lbl) + var(--s4));
   border-top:1px solid var(--fb-pemisah);}
@@ -1394,8 +1209,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .kerja-pilih > button.bad[aria-pressed="true"]{border-color:#B91C1C;background:#FEF2F2;}
 .kerja-pilih > button.bad[aria-pressed="true"] > svg,
 .kerja-pilih > button.bad[aria-pressed="true"] > b{color:#B91C1C;}
-/* Peringatan di lajur isian: kuning untuk yang perlu diperhatikan, merah
-   untuk yang tidak bisa ditarik lagi, abu untuk pemberitahuan biasa. */
+/* Peringatan di lajur isian: kuning perhatian, merah tidak bisa ditarik, abu biasa. */
 .kerja-awas{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border:1px solid #F5C451;
   border-radius:var(--r1);background:#FFFBEB;font-size:12.5px;line-height:1.5;color:#92400E;}
 .kerja-awas > svg{flex:none;margin-top:1px;}
@@ -1406,9 +1220,8 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .kerja .hitunghuruf{margin-top:3px;}
 .kerja .fb-isian > .fb-catatan{display:flex;margin-top:6px;}
 .kerja .fb-link:disabled{color:#8A94A6;cursor:not-allowed;text-decoration:none;}
-/* Dokumen yang diminta satuan kerja: satu butir, satu link. Pemilihnya
-   ber-.ceklis supaya mengalahkan aturan daftar centang umum yang datang
-   belakangan (flex, tombol menempel di ujung nama). */
+/* Dokumen yang diminta: satu butir, satu link. Pemilih .ceklis supaya mengalahkan aturan centang
+   umum. */
 .kerja-dok{margin:0;}
 .ceklis.kerja-dok > li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;
   gap:10px;padding:9px 0;border-bottom:1px solid var(--fb-pemisah);}
@@ -1440,9 +1253,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .kerja-tanda-brs > .nama{font-size:13.5px;font-weight:600;color:var(--fb-judul);}
 .kerja-tanda-brs > .pilih{display:flex;gap:5px;}
 .kerja-tanda-brs > input{grid-column:1 / -1;}
-/* Tab Bukti & tanggapan: kartu yang sama, cuma dibaca (25 Sep). Tanpa kotak
-   isian, barisnya dipisah garis tipis, dan labelnya sejajar baris pertama
-   isinya. Dokumennya daftar centang yang sama dengan isian satuan kerja. */
+/* Tab Bukti & tanggapan: kartu yang sama, hanya dibaca; baris dipisah garis tipis. */
 .kerja-baca .kerja-isi{padding-top:6px;padding-bottom:6px;}
 .kerja-baca .kerja-isi > .fb-brs{padding:11px 0;}
 .kerja-baca .kerja-isi > .fb-brs + .fb-brs{border-top:1px solid var(--fb-pemisah);}
@@ -1477,8 +1288,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
   .kerja-pilih{grid-template-columns:minmax(0,1fr);}
   .ceklis.kerja-dok > li{grid-template-columns:auto minmax(0,1fr);}
   .kerja-dok > li > .btn,.kerja-dok > li > .fb-x{grid-column:2;justify-self:start;}
-  /* Tab Bukti: "Lihat" cukup pendek untuk tetap di ujung barisnya; tulisan
-     "belum dilampirkan" turun ke bawah namanya. */
+  /* "Lihat" di ujung baris; "belum dilampirkan" turun ke bawah nama. */
   .kerja-baca .ceklis.kerja-dok > li{grid-template-columns:auto minmax(0,1fr) auto;}
   .kerja-baca .kerja-dok > li > .kerja-meta{grid-column:2;white-space:normal;}
 }
@@ -1506,13 +1316,11 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .langkah > div.aktif .bul{background:var(--aksen);color:#fff;border-color:var(--aksen);}
 .langkah > div.aktif .nm{color:var(--aksen-kuat);}
 
-/* Menunggu diteruskan: tahapnya jadi giliran berikutnya, tapi pekerjaannya
-   belum dimulai — lingkarannya berongga, bukan terisi. */
+/* Menunggu diteruskan: lingkaran berongga. */
 .langkah > div.antre .bul{background:var(--surface);color:var(--aksen);
   border-color:var(--aksen);border-style:dashed;}
 .langkah > div.antre .nm{color:var(--aksen-kuat);}
-/* Ponsel: keterangan tiap langkah mengalah, dan namanya turun ke bawah
-   lingkarannya supaya ketiga langkah muat berjajar tanpa digeser (22 Sep). */
+/* Ponsel: keterangan tiap langkah mengalah, nama turun ke bawah lingkaran. */
 @media not all and (min-width:768px){
   .langkah{overflow:visible;padding:4px;}
   .langkah > div{min-width:0;flex-direction:column;align-items:center;text-align:center;
@@ -1521,17 +1329,11 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
   .langkah > div .ket{display:none;}
 }
 
-/* Rel yang sama, tapi seukuran isi baris penugasan: lingkarannya lebih kecil,
-   keterangannya dilepas, dan namanya turun ke bawah lingkaran supaya lima tahap
-   muat berjajar tanpa memaksa barisnya melebar.
-
-   Keterangan tahapnya tidak diulang di sini — kolom "Posisi berkas" pada baris
-   yang sama sudah menyebutkannya dengan kalimat penuh. */
+/* Rel seukuran baris penugasan: lingkaran lebih kecil, nama di bawahnya. */
 .relbaris{display:flex;padding:2px 0;overflow-x:auto;}
 .relbaris > div{flex:1;min-width:88px;display:flex;flex-direction:column;
   align-items:center;gap:6px;position:relative;text-align:center;}
-/* Garis penghubung digambar di belakang lingkarannya, dari tengah tahap
-   sebelumnya ke tengah tahap ini. */
+/* Garis penghubung di belakang lingkaran. */
 .relbaris > div::before{content:"";position:absolute;top:9px;left:-50%;
   width:100%;height:2px;background:var(--line);}
 .relbaris > div:first-child::before{display:none;}
@@ -1549,9 +1351,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .relbaris > div.antre .bul{background:var(--surface);color:var(--aksen);
   border-color:var(--aksen);border-style:dashed;}
 .relbaris > div.antre .nm{color:var(--aksen-kuat);font-weight:600;}
-/* Ponsel (22 Sep): kelima tahap tetap berjajar tanpa digeser. Yang tertulis
-   cuma nama tahap yang sedang berjalan; nama yang lain tetap dibaca pembaca
-   layar, dan lingkarannya — centang atau nomor — tetap menunjukkan urutannya. */
+/* Ponsel: hanya nama tahap yang berjalan yang tertulis; yang lain tetap dibaca pembaca layar. */
 @media not all and (min-width:768px){
   .relbaris{overflow:visible;}
   .relbaris > div{min-width:0;}
@@ -1561,13 +1361,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 
 /* ================= KENDALI SIPTL ================= */
 
-/* Formnya di kiri, keadaan yang berlaku sekarang di kanan.
-
-   Sebelumnya semuanya bertumpuk ke bawah: daftar keterangan, lalu panel status,
-   lalu panel pengembalian — tiga blok beruntun untuk satu urusan. Kata Hizkia,
-   "terlihat terlalu padat". Dengan dua lajur, yang dibaca dan yang diisi berdiri
-   berdampingan: orang tidak perlu menggulung ke atas untuk mengingat status yang
-   sedang berlaku sementara ia mengetik status yang baru. */
+/* Form di kiri, keadaan yang berlaku di kanan. */
 .siptlgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr);
   gap:var(--s5);align-items:start;}
 @media (max-width:900px){ .siptlgrid{grid-template-columns:1fr;} }
@@ -1577,18 +1371,14 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
   place-items:center;background:var(--aksen);color:#fff;font-size:var(--t2);
   font-weight:700;}
 
-/* Pembagian uang menurut BPK, di kaki tabel satuan kerja. Berjajar menyamping
-   supaya ketiganya terbaca sebagai satu perhitungan, bukan tiga keterangan
-   lepas. */
+/* Pembagian uang menurut BPK, berjajar di kaki tabel satuan kerja. */
 .kakinilai{display:flex;flex-wrap:wrap;gap:var(--s3) var(--s5);
   align-items:baseline;margin-top:var(--s3);padding-top:var(--s3);
   border-top:1px solid var(--line-2);}
 .kakinilai > span{display:flex;align-items:baseline;gap:7px;}
 .kakinilai b{font-size:var(--t3);}
 
-/* Keterangan akibat: apa yang akan terjadi kalau status ini disimpan. Berdiri
-   di badan form, bukan di balik ikon — akibat yang tidak terduga adalah alasan
-   orang ragu menekan tombol. */
+/* Keterangan akibat berdiri di badan form, bukan di balik ikon. */
 .akibat{display:flex;gap:9px;align-items:flex-start;font-size:var(--t2);
   line-height:1.45;border-radius:var(--r1);padding:9px 11px;margin-top:var(--s3);
   background:var(--aksen-bg);color:var(--aksen-kuat);}
@@ -1598,13 +1388,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .akibat ol{margin:4px 0 0;padding-left:17px;}
 .akibat li{margin-bottom:2px;}
 
-/* Daftar satuan kerja di dalam panel SIPTL, beserta kotak suntingnya yang
-   terbuka tepat di bawah baris yang sedang dikerjakan.
-
-   Bentuknya mengikuti acuan rancangan kedua dari Hizkia: satu baris satu satuan
-   kerja, dan yang dikerjakan dikerjakan satu per satu — bukan lewat deretan
-   kotak centang yang berbagi satu catatan. Catatan itu dibaca satuan kerjanya
-   sendiri, jadi memang harus ditulis untuk masing-masing. */
+/* Daftar satuan kerja di panel SIPTL beserta kotak suntingnya. */
 .tabsatker{width:100%;border-collapse:collapse;font-size:var(--t3);}
 .tabsatker th{font-size:var(--t1);font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;color:var(--ink-3);text-align:left;padding:8px 10px;
@@ -1616,8 +1400,7 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .tabsatker tr.kembali td{background:var(--bad-bg);}
 .tabsatker tr.sunting td{background:var(--bad-bg);}
 
-/* Kotak sunting satu satuan kerja. Warnanya mengikuti perbuatannya: merah
-   untuk yang memulangkan berkas, biru untuk yang meneruskannya. */
+/* Kotak sunting: merah memulangkan berkas, biru meneruskan. */
 .suntingsatker{border:1px solid var(--bad-line);border-radius:var(--r2);
   background:var(--bad-bg);padding:var(--s4);margin-top:var(--s3);}
 .suntingsatker > .kep{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
@@ -1626,19 +1409,11 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .suntingsatker > .kep .nilai{margin-left:auto;text-align:right;}
 .suntingsatker .fld > input,.suntingsatker .fld > textarea{
   background:var(--surface);}
-/* Mencatat unggahan dan mencatat status BPK bukan perbuatan yang memulangkan
-   berkas, jadi merahnya tidak berlaku. */
+/* Mencatat unggahan dan status BPK tidak memulangkan berkas — tanpa merah. */
 .suntingsatker.biru{border-color:var(--aksen-line);background:var(--aksen-bg);}
 .suntingsatker.biru > .kep b{color:var(--aksen-kuat);}
 
-/* Menu aksi satu baris. Satu tombol, isinya baru muncul saat ditekan.
-
-   Dulu tombolnya berjajar di dalam sel. Pada baris yang punya tiga kemungkinan
-   sekaligus, ketiganya menumpuk dan barisnya jadi jauh lebih tinggi daripada
-   tetangganya — tabel yang barisnya tidak sama tinggi sulit dibaca menyamping.
-
-   Daftarnya dipasang position:fixed, bukan absolute: tabelnya duduk di dalam wadah
-   bergulir, dan wadah bergulir memotong apa pun yang keluar dari kotaknya. */
+/* Menu aksi satu baris: satu tombol, isinya muncul saat ditekan. */
 .menuaksi{position:relative;display:inline-block;}
 .daftaraksi{position:fixed;z-index:60;min-width:215px;background:var(--surface);
   border:1px solid var(--line);border-radius:var(--r2);padding:4px;
@@ -1652,30 +1427,20 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .daftaraksi > button.bad > svg{color:var(--bad);}
 .daftaraksi > .pemisah{height:1px;background:var(--line-2);margin:4px 2px;}
 
-/* Catatan BPK bisa sepanjang satu paragraf penuh. Dipotong dua baris supaya
-   tinggi barisnya tetap sama dengan tetangganya; selengkapnya dibuka dengan
-   menekannya. */
+/* Catatan BPK dipotong dua baris; selengkapnya dengan menekannya. */
 .catatanpotong{font-size:var(--t2);color:var(--ink-2);line-height:1.4;
   text-align:left;border:0;background:none;padding:0;cursor:pointer;width:100%;}
 .catatanpotong.potong{overflow:hidden;display:-webkit-box;
   -webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .catatanpotong:hover{color:var(--ink);}
 
-/* Riwayat status tindak lanjut: satu tabel untuk seluruh peristiwa, urut dari
-   yang terbaru. Menggantikan lima tempat yang dulu menceritakan hal yang sama
-   sendiri-sendiri.
-
-   Barisnya lebih rapat dari tabel biasa. Riwayat memang dibaca menurun dan
-   sering panjang, jadi jarak baris yang lega justru membuatnya perlu digulung
-   berkali-kali. */
+/* Progres: satu tabel seluruh peristiwa, terbaru di atas. */
 .tabriwayat th{padding:9px 12px;}
 .tabriwayat td{padding:10px 12px;}
-/* Peristiwa terbaru diberi tepi kiri, supaya keadaan sekarang langsung ketemu
-   tanpa membandingkan tanggalnya dulu. */
+/* Peristiwa terbaru diberi tepi kiri. */
 .tabriwayat tr.terkini td{background:var(--aksen-bg);}
 .tabriwayat tr.terkini td:first-child{box-shadow:inset 3px 0 0 var(--aksen);}
-/* Sumbernya dilencanai, bukan ditulis biasa: tiga otoritas yang menilai hal
-   berbeda, dan yang membaca perlu memilahnya sekali lihat. */
+/* Sumber dilencanai: tiga otoritas yang menilai hal berbeda. */
 .tabriwayat .asal{display:inline-flex;align-items:center;
   font-size:12px;font-weight:700;letter-spacing:.02em;
   border-radius:5px;padding:3px 7px;white-space:nowrap;}
@@ -1686,11 +1451,8 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 /* Pergerakan berkas, bukan penilaian: lencananya sengaja lebih tenang. */
 .tabriwayat .asal.satker{background:var(--surface-3);color:var(--ink-2);}
 .tabriwayat .asal.setba{background:var(--surface-3);color:var(--aksen-kuat);}
-/* Dulu di sini pembatas periode di dalam tabel riwayat (tr.periode). Sejak
-   26 Sep tiap periode tampil sendiri lewat pemilih periode (.rw-periode). */
 
-/* Perjalanan berkas di periode yang sedang berjalan: dari mana ke mana saja,
-   dan di mana sekarang. Tempat terakhir diberi warna tindakan. */
+/* Perjalanan berkas periode berjalan; tempat terakhir diberi warna tindakan. */
 .jalurriwayat{display:flex;flex-wrap:wrap;align-items:center;gap:6px;
   font-size:var(--t2);color:var(--ink-2);margin:0 0 var(--s3);}
 .jalurriwayat .jjudul{font-size:var(--t1);font-weight:700;letter-spacing:.05em;
@@ -1704,31 +1466,19 @@ button.fb-alih:hover .fb-judul > b{color:var(--aksen-kuat);text-decoration:under
 .jalurriwayat .panah{color:var(--ink-3);flex:none;}
 .jalurriwayat .sekarang{flex-basis:100%;color:var(--ink-3);font-size:var(--t2);}
 
-/* Penghitung huruf. Kecil dan di kanan bawah kotaknya, supaya tidak menuntut
-   perhatian selama masih jauh dari batas. */
+/* Penghitung huruf di kanan bawah kotaknya. */
 .hitunghuruf{font-size:var(--t1);color:var(--ink-3);text-align:right;
   margin-top:3px;}
 
-/* Tiga kolom hasil verifikasi. Dulu ketiganya butuh kepala bersama di baris
-   kedua — "Hasil verifikasi" di atas, nama otoritasnya di bawah — dan kepala
-   dua baris itulah yang terbaca menumpuk. Sejak judul tindak lanjut keluar
-   dari tabel, kolomnya cukup bernama UKI, Itjen, dan SIPTL apa adanya. */
+/* Tiga kolom hasil verifikasi. */
 table th.selhasil,
 table td.selhasil{text-align:center;}
 
 /* ================= TABEL ================= */
 
-/* ---- Tabel menurut lebar layar (22 Sep) ----
-   Kata Hizkia: "susunan konten yang optimal seperti bentuk, informasi yang
-   ditampilkan itu berbeda tergantung kondisi layar". Dulu tabel daftar
-   selebar 1.000-an piksel digeser ke samping mulai 1280 px. Sekarang kolom
-   yang paling jarang dibaca mengalah lebih dulu, lalu di layar sempit tiap
-   baris jadi kartu. Isi yang di tabel dibaca lewat kepala kolom diberi
-   namanya sendiri lewat data-label. */
+/* ---- Tabel menurut lebar layar ---- */
 
-/* Daftar Rekomendasi. Laptop: uraian dan keping satker dirampingkan. Tablet:
-   nomor urut mengalah. Ponsel: kartu — uraian, satuan kerja, lalu tenggat dan
-   kemajuan berdampingan; kepala kolomnya jadi deretan tombol urut. */
+/* Daftar Rekomendasi: laptop dirampingkan, tablet nomor urut mengalah, ponsel jadi kartu. */
 /* Hanya tampil saat kolomnya sendiri mengalah. */
 .hanya-sempit{display:none;}
 
@@ -1780,9 +1530,7 @@ table td.selhasil{text-align:center;}
   .daftar-rek tr.awas > td,.daftar-rek tr.bukaan:hover > td{background:none;box-shadow:none;}
 }
 
-/* Daftar laporan. Laptop: nomor urut dan kolom Diterima mengalah — tanggal
-   terimanya menumpang di bawah nomor laporan. Di bawah 1024 px tiap laporan
-   jadi kartu — dua kartu sebaris di tablet. */
+/* Daftar laporan: laptop nomor dan Diterima mengalah; di bawah 1024 px jadi kartu. */
 .daftar-lap td.k-nomor{max-width:260px;}
 .daftar-lap td.k-satker{min-width:260px;}
 @media (max-width:1365px){
@@ -1871,18 +1619,14 @@ tr.awas td:first-child{box-shadow:inset 3px 0 0 var(--bad);}
 .stat.hijau .l{color:var(--ok);}
 .stat.merah .l{color:var(--bad);}
 
-/* Kartu angka yang bisa ditekan: ada panah kecil dan tepinya menyala saat
-   disorot, supaya jelas bedanya dari kartu yang cuma memberi angka. */
+/* Kartu angka yang bisa ditekan: panah kecil dan tepi menyala saat disorot. */
 .stat.bisa{cursor:pointer;position:relative;transition:border-color .12s,box-shadow .12s;}
 .stat.bisa:hover{border-color:var(--aksen-line);box-shadow:0 2px 8px rgba(16,24,40,.08);}
 .stat .tunjuk{position:absolute;right:10px;bottom:10px;color:var(--ink-3);opacity:0;
   transition:opacity .12s;}
 .stat.bisa:hover .tunjuk{opacity:1;}
 
-/* Penanda sesudah kartu angka ditekan. Bingkainya lapisan tersendiri di
-   belakang isi, jadi tidak menggeser apa pun, dan menyala-meredup dua kali
-   sebelum lenyap sendiri. Warnanya mengikuti kartu yang ditekan supaya mata
-   bisa menyambungkan "yang tadi saya tekan" dengan "yang ini". */
+/* Penanda sesudah kartu ditekan: lapisan di belakang isi, menyala-meredup dua kali. */
 .sorot{ position:relative; z-index:0;
   --s-garis:var(--aksen); --s-latar:var(--aksen-bg); }
 .sorot.merah  { --s-garis:var(--bad);    --s-latar:var(--bad-bg); }
@@ -1901,16 +1645,13 @@ section.sorot::after{ inset:-14px -16px; border-radius:16px; }
 .tugas.sorot::after{ inset:-7px; border-radius:16px; }
 .lapkartu.sorot::after{ inset:-8px; border-radius:18px; }
 
-/* Sepasang hitungan terhubung. Bilangannya bertinta penuh supaya bisa disapu
-   mata; satuannya tetap abu karena itu yang sudah bisa ditebak. */
+/* Bilangan bertinta penuh, satuannya abu. */
 .hitungtr{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
   font-size:var(--t2);color:var(--ink-3);letter-spacing:0;text-transform:none;font-weight:500;}
 .hitungtr > b{font-size:var(--t4);font-weight:700;color:var(--ink);
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
 .hitungtr > svg{flex:none;opacity:.55;margin:0 1px;}
-/* Didorong ke tepi kanan seperti hitungan lain di kepala kartu: angka yang
-   sejajar satu kolom bisa dibandingkan sekali lihat, sedangkan angka yang
-   menempel di ujung nama ikut bergeser mengikuti panjang namanya. */
+/* Didorong ke tepi kanan supaya angka sejajar satu kolom. */
 .kepsatker > .hitungtr,.judulkartu > .hitungtr{margin-left:auto;}
 
 /* keterangan tujuan pada baris pemberitahuan */
@@ -1936,21 +1677,12 @@ section.sorot::after{ inset:-14px -16px; border-radius:16px; }
   .sorot::after{ animation:none; opacity:.85; }
 }
 
-/* Sasaran pintasan (26 Sep). Kata Hizkia: tombol pintasan harus "langsung
-   diarahkan ke pilihan tersebut dan di highlight … sesuai dengan lokasi objek
-   tersebut". Yang disorot unsur PERSISNYA — baris rekomendasi satuan kerja
-   itu, blok temuannya, baris satuan kerjanya di tabel tindak lanjut — bukan
-   seluruh bagian. Tandanya atribut data-sorot yang dipasang skrip
-   (sorotUnsur), bukan kelas: React tidak menyentuh atribut yang tidak ia
-   gambar, jadi tandanya tidak hilang saat komponennya menggambar ulang.
-   Menyala dua kali, bertahan sebentar, lalu memudar (±3 detik); dengan gerak
-   dikurangi latarnya diam lalu hilang. */
+/* Sasaran pintasan: yang disorot unsur persisnya. */
 [data-sorot]{position:relative;z-index:0;}
 [data-sorot]::after{content:"";position:absolute;inset:-5px;border-radius:14px;
   pointer-events:none;z-index:-1;border:2px solid var(--aksen);background:#DBEAFE;
   box-shadow:0 0 0 5px rgba(37,99,235,.14);animation:simtSorot 3s ease-in-out both;}
-/* Baris tabel: sel-selnya yang menyala, dengan palang biru di ujung kirinya —
-   bingkai pada baris tabel tidak tergambar rapi. */
+/* Baris tabel: sel-selnya menyala dengan palang biru di kiri. */
 tr[data-sorot]{position:static;outline:2px solid transparent;outline-offset:-2px;
   animation:simtSorotGaris 3s ease-in-out both;}
 tr[data-sorot]::after{content:none;}
@@ -1992,16 +1724,13 @@ tr[data-sorot] > td:first-child{animation-name:simtSorotSelAwal;}
   border-radius:6px;color:var(--ink-3);}
 .ikonbtn:hover{background:var(--surface-2);color:var(--ink);}
 
-/* Kotak pilihan dibuat serapat mungkin: ini alat, bukan isian yang harus
-   dibaca tiap kali panelnya dilihat. */
 .setelan{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;
   padding-bottom:12px;border-bottom:1px solid var(--rule-2);}
 .setelan label{display:flex;flex-direction:column;gap:3px;flex:1 1 132px;min-width:0;}
 .setelan select{height:30px;padding:0 24px 0 8px;font-size:var(--t2);
   border-radius:6px;background-position:right 6px center;}
 
-/* Celah dua piksel antarpotongan supaya batasnya tetap terbaca walau dua
-   warna bersebelahan hampir sama gelapnya. */
+/* Celah dua piksel antarpotongan supaya batas tetap terbaca. */
 .jalur.tumpuk > i{border-radius:0;position:relative;
   box-shadow:2px 0 0 0 var(--surface);display:grid;place-items:center;}
 .jalur.tumpuk > i:last-child{box-shadow:none;border-radius:0 4px 4px 0;}
@@ -2071,8 +1800,6 @@ tr[data-sorot] > td:first-child{animation-name:simtSorotSelAwal;}
 .sebaran > span > b{color:var(--ink);font-variant-numeric:tabular-nums;}
 
 /* ================= KEPALA KELOMPOK DALAM DAFTAR ================= */
-/* Satu tingkat di bawah judul blok: menandai sekumpulan kartu tanpa ikut
-   bersaing dengan judulnya. */
 
 .subgrup{display:flex;align-items:center;gap:10px;padding:9px 10px;
   border-radius:var(--r1);cursor:pointer;user-select:none;transition:background .12s;}
@@ -2088,35 +1815,22 @@ tr[data-sorot] > td:first-child{animation-name:simtSorotSelAwal;}
 
 /* ================= BLOK YANG BISA DITUTUP ================= */
 
-/* Kepala lipatan yang menempel di bawah bilah atas. Dua tingkat: yang terluar
-   tepat di bawah bilah, yang bersarang menyusul di bawahnya supaya keduanya
-   bisa terlihat bersamaan dan pembaca tetap tahu ia sedang di dalam apa. */
-/* Nilai awal saja; yang sebenarnya diukur saat berjalan oleh useLekat(),
-   karena tinggi bilah atas berubah menurut lebar layar dan apakah isinya
-   melipat. Menebaknya membuat kepala daftar tersembunyi di balik bilah pada
-   ukuran layar tertentu. */
+/* Kepala lipatan menempel di bawah bilah atas; yang bersarang menyusul di bawahnya. */
+/* Nilai awal; yang sebenarnya diukur saat berjalan (tinggi bilah atas berubah menurut lebar
+   layar). */
 body{--lekat1:72px;--lekat2:116px;}
 
 .lekat{position:sticky;top:var(--lekat1);z-index:6;background:var(--bg);}
 .lekat2{position:sticky;top:var(--lekat2);z-index:5;background:var(--bg);}
-/* Latarnya dijulurkan sedikit ke bawah. Tanpa ini isi daftar terbaca
-   membayang lewat celah antara kedua kepala dan lewat margin bawahnya —
-   kotak elemen berhenti lebih dulu daripada jarak tempel berikutnya. */
+/* Latar dijulurkan sedikit ke bawah supaya isi tidak membayang lewat celah antar-kepala. */
 .lekat,.lekat2{box-shadow:0 10px 0 -1px var(--bg);}
 
-/* Saat benar-benar menempel: diangkat dari isinya dengan bayangan dan garis
-   tepi, lalu diberi tombol "Tutup" yang tampak. Tanpa itu kepala yang
-   melayang terlihat sama saja dengan baris biasa, dan pengguna baru tidak
-   tahu ada yang bisa ditekan di sana. */
+/* Saat menempel: bayangan, garis tepi, dan tombol "Tutup" yang tampak. */
 .lekat.nempel,.lekat2.nempel{
   box-shadow:0 10px 0 -1px var(--bg), 0 6px 14px -6px rgba(15,23,42,.22);
   border-bottom-color:var(--aksen-line);}
-/* Di tengah kepala, bukan di pojok: ruang tengah selalu kosong sedangkan
-   pojok kanan sudah dipakai jumlah dan lencana tenggat. Tanpa tulisan —
-   panah ke atas sudah menjelaskan arah kembalinya, dan bulatan biru pekat
-   membuatnya terbaca sebagai tombol, bukan hiasan. */
-/* Baris rekomendasi lain pada satu temuan: cukup untuk dibaca sekilas dan
-   ditekan untuk pindah, tanpa menyaingi rekomendasi yang sedang dibuka. */
+/* Tombol kembali di tengah kepala (pojok kanan dipakai jumlah dan lencana). */
+/* Rekomendasi lain pada satu temuan: cukup dibaca sekilas, tidak menyaingi yang sedang dibuka. */
 .rekmini > .cap{flex:none;white-space:normal;}
 .rekmini{display:flex;gap:10px;align-items:flex-start;width:100%;min-width:0;text-align:left;
   padding:9px 10px;margin-bottom:6px;border:1px solid transparent;border-radius:var(--r1);
@@ -2131,8 +1845,7 @@ body{--lekat1:72px;--lekat2:116px;}
   display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
   border-radius:999px;background:var(--aksen);color:#fff;
   box-shadow:0 2px 7px rgba(37,99,235,.4);pointer-events:none;}
-/* Menempel butuh latar yang tidak tembus pandang, kalau tidak isinya
-   terbaca menumpuk di belakang kepala. */
+/* Menempel butuh latar tidak tembus pandang. */
 .kepsatker.lekat{background:var(--surface-2);}
 
 .blokjudul{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
@@ -2167,47 +1880,26 @@ body{--lekat1:72px;--lekat2:116px;}
   background:var(--surface-3);border-radius:20px;padding:1px 7px;}
 .tab button[aria-selected="true"] .n{background:var(--aksen-bg);color:var(--aksen-kuat);}
 
-/* Keterangan kepala, bersusun ke bawah: nama di kolom kiri berlebar tetap, isi
-   di kanan pada satu garis tegak. Sebagai petak tiga kolom, mata harus melompat
-   kanan-kiri untuk mencocokkan nama dengan isinya, dan panjang isi yang
-   berbeda-beda membuat barisnya tidak pernah rata. Namanya dibuat huruf besar
-   berjarak supaya terbaca sebagai penanda kolom, bukan sebagai isi. */
+/* Keterangan kepala bersusun ke bawah: nama di kolom kiri berlebar tetap, isi di kanan. */
 .fakta{display:grid;gap:0;margin:0;}
 .fakta > div{display:grid;grid-template-columns:190px minmax(0,1fr);
   gap:var(--s4);align-items:baseline;padding:5px 0;}
-/* Nama yang kepanjangan boleh turun ke baris kedua; ikon Info tetap menempel
-   di baris pertama, bukan melayang di tengah dua baris. */
+/* Nama panjang boleh dua baris; ikon Info tetap di baris pertama. */
 .fakta dt{margin:0;display:flex;align-items:flex-start;gap:6px;line-height:1.5;
   text-transform:uppercase;letter-spacing:.055em;font-size:var(--t1);
   color:var(--ink-3);font-weight:600;}
 .fakta dd{margin:0;font-size:var(--t3);color:var(--ink);line-height:1.55;
   word-break:break-word;}
 .fakta dd > .ket{color:var(--ink-3);}
-/* Angka di dalam daftar keterangan. Sedikit lebih besar dan tebal daripada
-   tulisan di sebelahnya — tanpa itu "2" dan "Rp 450.000.000" tenggelam jadi
-   teks biasa, padahal justru angkanya yang dibaca duluan. Tidak dibuat sebesar
-   kotak angka yang lama: di dalam daftar, tinggi baris yang seragam itu yang
-   membuat namanya tetap sejajar. */
+/* Angka di daftar keterangan sedikit lebih besar dan tebal. */
 .angkafakta{font-size:15px;font-weight:700;letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;}
-/* Rekomendasi lain berdiri di dalam kolom isi, yang lebih sempit daripada
-   kartu penuh. Lencana statusnya lebar — "BT · Belum ditindaklanjuti" saja
-   sudah memakan separuhnya — jadi ia dibiarkan turun ke barisnya sendiri
-   sebelum kalimat rekomendasinya terpenggal jadi satu kata per baris. */
-/* Nilai kategori ditulis sebagai teks biasa, bukan lencana berbingkai —
-   lencana membuat tepi kiri bergerigi. Sejak 29 Sep tanpa titik warna juga:
-   titik biru Kategori temuan tertinggal sesudah Kategori internal kehilangan
-   warnanya (27 Sep), dan margin negatif penampung titiknya menggeser
-   Kategori internal 16 px ke kiri — tidak sejajar dengan Sebab dan Akibat.
-   Kata Hizkia: "tampilan pada Informasi Daftar Temuan terlihat tidak
-   simetris dan juga ada titik Biru pada label Kategori Temuan". */
+/* Lencana status lebar boleh turun ke baris berikutnya. */
+/* Nilai kategori sebagai teks biasa, tanpa lencana dan titik warna. */
 .nilaikat{display:inline-flex;align-items:center;gap:8px;}
 .nilaikat > .lbl{margin:0;}
 
-/* Rekomendasi lain: baris teks yang bisa ditekan, bukan kartu berbingkai.
-   Kalimatnya rata di tepi kolom seperti Sebab dan Akibat; latarnya baru
-   muncul saat disentuh, dan menjorok sedikit ke kiri supaya tulisannya tetap
-   rata sementara sorotannya melingkupi barisnya. */
+/* Rekomendasi lain: baris teks yang bisa ditekan; latar baru muncul saat disentuh. */
 .linkrek{display:flex;gap:10px;align-items:flex-start;width:100%;
   min-width:0;text-align:left;background:none;border:0;color:inherit;
   font:inherit;cursor:pointer;border-radius:var(--r1);
@@ -2223,10 +1915,7 @@ body{--lekat1:72px;--lekat2:116px;}
   .fakta > div{grid-template-columns:1fr;gap:2px;padding:7px 0;}
 }
 
-/* Bentuk yang sama dipakai di dalam baris tabel, hanya kolom namanya lebih
-   sempit — isinya sudah berdiri menjorok di dalam barisnya. Garis tipis antar
-   baris dipasang di sini saja: di dalam tabel ia membuat rinciannya terbaca
-   sebagai lanjutan tabelnya, bukan sebagai kotak lain yang kebetulan menempel. */
+/* Bentuk yang sama di dalam baris tabel, kolom nama lebih sempit. */
 .fakta.dalam > div{grid-template-columns:136px minmax(0,1fr);padding:8px 0;}
 .fakta.dalam > div + div{border-top:1px solid var(--rule-2);}
 .fakta.dalam > div:first-child{padding-top:0;}
@@ -2235,9 +1924,7 @@ body{--lekat1:72px;--lekat2:116px;}
   .fakta.dalam > div{grid-template-columns:1fr;gap:4px;}
 }
 
-/* Daftar dokumen yang diminta: satu butir satu baris, bertanda centang atau
-   lingkaran kosong. Sebelumnya berjajar mendatar — dua nama dokumen panjang
-   sudah cukup membuatnya menyambung jadi satu kalimat yang tidak terbaca. */
+/* Dokumen yang diminta: satu butir satu baris, bertanda centang atau lingkaran kosong. */
 .ceklisrapat{list-style:none;margin:0;padding:0;display:grid;gap:6px;}
 .ceklisrapat > li{display:flex;gap:8px;align-items:flex-start;
   color:var(--ink-3);line-height:1.5;}
@@ -2245,8 +1932,7 @@ body{--lekat1:72px;--lekat2:116px;}
 .ceklisrapat > li.ada{color:var(--ink);}
 .ceklisrapat > li.ada > svg{color:var(--ok);}
 
-/* Setoran dan laporan satuan kerja: tanggalnya kolom sendiri di kiri, sejajar
-   ke bawah, supaya urutan waktunya terbaca sekali lihat. */
+/* Setoran dan laporan satuan kerja: tanggal di kolom kiri, sejajar ke bawah. */
 .barisrinci{list-style:none;margin:0;padding:0;display:grid;gap:7px;}
 .barisrinci > li{display:grid;grid-template-columns:76px minmax(0,1fr);
   gap:10px;align-items:baseline;line-height:1.5;}
@@ -2256,11 +1942,7 @@ body{--lekat1:72px;--lekat2:116px;}
   .barisrinci > li{grid-template-columns:1fr;gap:2px;}
 }
 
-/* Kepala rekomendasi, menyatu dengan tabel tindak lanjut di bawahnya. Dulu ia
-   kartu tersendiri di puncak halaman, terpisah beberapa gulungan dari daftar
-   satuan kerja yang justru menjawab pertanyaannya. Karena sekarang berdiri di
-   dalam wadah yang sama, bingkainya dilepas: yang membedakannya dari tabel
-   cukup latar putih dan satu garis di bawah. */
+/* Kepala rekomendasi menyatu dengan tabel tindak lanjut di bawahnya. */
 .kepalarek{padding:var(--s5) var(--s4) var(--s4);background:var(--surface);
   border-bottom:1px solid var(--line);}
 .kepalarek .tanda{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
@@ -2268,32 +1950,24 @@ body{--lekat1:72px;--lekat2:116px;}
 .kepalarek .tanda.kecil{gap:8px;margin-bottom:var(--s4);}
 .kepalarek h2{margin:0 0 var(--s2);font-size:19px;font-weight:700;
   letter-spacing:-.022em;line-height:1.35;color:var(--ink);}
-/* Ketentuannya menempel pada judulnya, dipisah garis saja -- bukan kartu lain
-   beberapa gulungan jauhnya. Yang dibaca berurutan memang "apa yang diminta,
-   dari siapa, kapan, berapa". */
+/* Ketentuannya menempel pada judul, dipisah garis. */
 .kepalarek .fakta{padding-top:var(--s3);border-top:1px solid var(--rule-2);}
 .kepalarek .catat{margin-top:var(--s3);padding-top:var(--s3);
   border-top:1px solid var(--rule-2);}
 .kepalarek.sorot::after{inset:-6px;border-radius:14px;}
-/* Wadah yang memuat kepala dan tabelnya sekaligus. Diberi nama supaya
-   pemberitahuan yang menunjuk "Laporan satuan kerja" punya sasaran lagi —
-   sejak kartu lamanya dilebur, alamat itu menunjuk ke tempat yang tidak ada. */
+/* Wadah kepala dan tabel; bernama supaya pemberitahuan "Laporan satuan kerja" punya sasaran. */
 .wadahtl.sorot::after{inset:-8px;border-radius:16px;}
 @media (max-width:640px){
   .kepalarek{padding:var(--s4) var(--s3);}
   .kepalarek h2{font-size:17px;}
 }
 
-/* Kolom aksi tidak ikut melar; tombolnya rata kanan supaya sejajar ke bawah.
-   Jaraknya dirapatkan: kolom keenam pada layar 800-an piksel cuma lebih lebar
-   belasan piksel dari muatnya, dan belasan piksel itu yang memunculkan batang
-   geser mendatar di bawah tabel. */
+/* Kolom aksi tidak melar; tombol rata kanan. */
 td.kolaksi,th.kolaksi{text-align:right;white-space:nowrap;
   padding-left:var(--s2);padding-right:var(--s4);}
 td.kolaksi .btn{padding-left:9px;padding-right:9px;}
 
-/* Penanda sasaran tombol baris: formnya ada di bawah, dan tanpa kedipan ini
-   orang tidak tahu halaman baru saja bergulir ke mana. */
+/* Penanda sasaran tombol baris: kedipan menunjukkan ke mana halaman bergulir. */
 .tuju.sorot::after{ inset:-8px; border-radius:16px; }
 
 /* bilah tindakan yang menempel di kaki layar panjang */
@@ -2375,9 +2049,7 @@ td.kolaksi .btn{padding-left:9px;padding-right:9px;}
 /* ================= LAIN-LAIN ================= */
 
 .unsur{border-left:2px solid var(--line);padding-left:var(--s4);margin-bottom:var(--s4);}
-/* Stempel surat. Tinggal satu pemakainya — tanggal unggah SIPTL. Varian
-   warnanya (.ss .bs .bt .td) dan ruas putusan (.putus) ikut dibuang bersama
-   stempel surat verifikasi, yang isinya mengulang tabel Riwayat verifikasi. */
+/* Stempel surat — kini hanya untuk tanggal unggah SIPTL. */
 .stempel{border:1px solid var(--line);border-radius:var(--r2);padding:12px var(--s4);
   display:inline-block;background:var(--surface-2);color:var(--ink-2);}
 .stempel b{font-family:var(--mono);font-size:var(--t3);color:inherit;display:block;}
@@ -2419,8 +2091,7 @@ td.kolaksi .btn{padding-left:9px;padding-right:9px;}
 .linkkode{font-family:var(--mono);font-size:11.5px;color:var(--aksen-kuat);
   text-decoration:underline;text-underline-offset:3px;}
 .linkkode:hover{color:var(--aksen);}
-/* Seluruh uraian ikut bisa ditekan: sasaran sebesar itu lebih mudah dikenai
-   daripada kode selebar sepuluh huruf. */
+/* Seluruh uraian bisa ditekan (sasaran lebih besar). */
 .linkbaris{display:flex;align-items:flex-start;gap:10px;width:100%;
   text-align:left;font-size:var(--t3);color:var(--ink);line-height:1.5;
   padding:5px 7px;margin:-5px -7px;border-radius:var(--r1);}
@@ -2449,11 +2120,8 @@ td.kolaksi .btn{padding-left:9px;padding-right:9px;}
 .berkas .nm{font-size:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   min-width:0;}
 .berkas .ic{flex:none;color:var(--bad);}
-/* Dokumen yang diminta tapi belum dilampirkan. Barisnya tetap ada supaya
-   daftarnya menyebut seluruh yang diminta, tapi tanpa link dan diredupkan. */
-/* Kolomnya tidak boleh melebar mengikuti nama berkas terpanjang: di layar
-   sempit namanya yang dipotong dengan elipsis, bukan barisnya yang keluar
-   layar (22 Sep). */
+/* Dokumen yang diminta tapi belum dilampirkan: tetap berbaris, tanpa link, diredupkan. */
+/* Nama berkas dipotong elipsis di layar sempit, bukan barisnya keluar layar. */
 .daftarbukti{display:grid;gap:6px;grid-template-columns:minmax(0,1fr);}
 .berkas.belum{border-style:dashed;background:none;cursor:default;}
 .berkas.belum:hover{border-color:var(--line);background:none;}
@@ -2546,8 +2214,7 @@ td.kolaksi .btn{padding-left:9px;padding-right:9px;}
   font-size:var(--t2);font-weight:700;}
 .temblok > .isi{padding:0 var(--s5) var(--s5);border-top:1px solid var(--line-2);}
 
-/* Isi blok temuan: jarak antar bagian diatur satu tempat, bukan lewat margin
-   yang ditempel satu per satu — supaya iramanya sama di semua temuan. */
+/* Jarak antarbagian blok temuan diatur di satu tempat. */
 .isi.isitem{display:grid;gap:var(--s4);padding-top:var(--s4);}
 
 .tagkat{display:inline-flex;align-items:center;font-size:var(--t1);font-weight:600;
@@ -2579,19 +2246,9 @@ td.kolaksi .btn{padding-left:9px;padding-right:9px;}
 .riw li:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
 .riw .w{font-size:var(--t2);color:var(--ink-3);flex:none;width:84px;padding-top:2px;}
 
-/* ================= GERAK (26 Sep) =================
-   Kata Hizkia: "disertakan animasi fungsional dan nonfungsional tapi tetap
-   sesuai dengan standar professional". Aturannya:
-   - Fungsional: yang muncul karena ditekan masuk dengan pudar dan geser 6 px
-     dalam 0,2 detik — rincian baris, isi tab, isi periode, dan isian yang baru
-     terbuka sesudah putusan dipilih. Pilihan yang ditekan membal kecil, batang
-     kemajuan terisi dari nol, dan baris riwayat menyala saat ditunjuk.
-   - Nonfungsional, hanya saat rincian baris dibuka: garis alur tahap terisi
-     berurutan, rute perjalanan muncul satu per satu, lalu tahap dan tempat
-     sekarang berdenyut dua kali.
-   - Sekali jalan, tanpa putaran tanpa akhir; paling lama 0,45 detik per unsur
-     (denyutnya 1,1 detik, dua kali); mati semua untuk yang memilih gerak
-     dikurangi di perangkatnya. */
+/* ---- Gerak ----
+   Fungsional: yang muncul karena ditekan. Tidak berulang, dan mati dengan
+   prefers-reduced-motion. */
 body{--gerak:.2s;--kurva:cubic-bezier(.2,.8,.2,1);}
 @keyframes simtMuncul{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 @keyframes simtPudar{from{opacity:0;}to{opacity:1;}}
@@ -2615,36 +2272,14 @@ body{--gerak:.2s;--kurva:cubic-bezier(.2,.8,.2,1);}
 .relbaris > div.aktif .bul,.rw-tempat.kini{animation:simtDenyut 1.1s ease-out .5s 2;}
 .rw-ruas{animation:simtMuncul .25s var(--kurva) both;animation-delay:calc(var(--i, 0) * 45ms);}
 
-/* ================= GERAK SELURUH SISTEM (26 Sep, lanjutan) =================
-   Kata Hizkia: animasinya "merujuk ke keseluruhan sistem yang ada saat ini,
-   bukan hanya untuk tampilan riwayat saja". Aturan yang sama dengan blok di
-   atas, diterapkan ke semua layar dan semua peran:
-   - Tiba di layar: bagian-bagian halamannya naik bergiliran — 40 ms selang,
-     paling lambat mulai 200 ms. Hanya saat TIBA: kerangkanya bertanda
-     [data-masuk] selama 0,7 detik sesudah pindah layar, jadi mengganti
-     filter atau mengirim isian tidak memutarnya ulang. Laravel memasang
-     tanda yang sama di <body> kecuali halaman yang sama dimuat lagi.
-   - Yang muncul karena ditekan masuk dengan pudar dan naik 6 px: jendela
-     (sedikit membesar), menu dan hasil pencarian (turun 4 px), isi bagian
-     berlipat, tiket tindak lanjut, blok temuan, dan isi tab formulir.
-   - Batang kemajuan di daftar terisi dari nol saat tiba. Grafik Dashboard
-     diatur di src/dasbor-uji.css.
-   - Tombol turun 1 px selama ditekan; baris dan kartu yang bisa ditekan
-     menyala halus saat ditunjuk.
-   Semua sekali jalan dan mati untuk yang memilih gerak dikurangi. */
+/* ---- Gerak seluruh sistem ---- */
 @keyframes simtLembar{from{opacity:0;transform:translateY(10px) scale(.985);}to{opacity:1;transform:none;}}
 @keyframes simtMenu{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
 @keyframes simtBuka{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
 @keyframes simtNaik{from{clip-path:inset(100% 0 0 0);}to{clip-path:inset(0 0 0 0);}}
 @keyframes simtGambar{from{clip-path:inset(-6px 100% -6px -6px);}to{clip-path:inset(-6px -6px -6px -6px);}}
-@keyframes simtTitik{from{opacity:0;transform:translate(-50%,-50%) scale(.3);}
-  to{opacity:1;transform:translate(-50%,-50%) scale(1);}}
 
-/* Tiba di layar. Di Laravel formulir Catat laporan baru membungkus seluruh
-   isi .body — anak-anaknya yang naik (tanpa jeda: di depannya ada isian
-   tersembunyi yang ikut terhitung urutannya), bukan formulirnya. Ditulis
-   terurai, bukan singkatan "animation": selektor :not() lebih khusus daripada
-   aturan jedanya, dan singkatan akan mengembalikan jedanya ke nol. */
+/* Tiba di layar: di Catat laporan baru yang naik anak-anak .body, bukan formulirnya. */
 body[data-masuk] .body > :not(form:only-child),
 body[data-masuk] .body > form:only-child > :not(input,[aria-hidden="true"]){animation-name:simtMuncul;
   animation-duration:.3s;animation-timing-function:var(--kurva);animation-fill-mode:backwards;}
@@ -2664,9 +2299,7 @@ body[data-masuk] .kemajuan > .batang > i{animation:simtBuka .6s var(--kurva) .2s
 .fb-tem[role="tabpanel"],.fb-rek[role="tabpanel"],
 .fb-tl[role="tabpanel"]{animation:simtPudar var(--gerak) var(--kurva);}
 
-/* Menyala saat ditunjuk: perubahan latarnya halus, tidak berkedip. Kartu
-   berlipat dulu diam saja walau seluruh kepalanya bisa ditekan — sekarang
-   bingkainya membiru selama kepalanya ditunjuk. */
+/* Menyala halus saat ditunjuk; bingkai kartu berlipat membiru. */
 tr.bukaan > td,.tlblok.tl-tiket > .kep,
 .temblok > .kep{transition:background-color .15s ease;}
 .card.lipat{transition:border-color .15s ease,box-shadow .15s ease;}
@@ -2676,13 +2309,7 @@ tr.bukaan > td,.tlblok.tl-tiket > .kep,
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;}}
 
 /* ================= BAGIAN BERLIPAT PADA RINCIAN REKOMENDASI ================= */
-/* Kata Hizkia (17 Sep): tampilan informasinya "dibuat semacam triger button …
-   defaultnya dia bakal tertutup menyisahkan beberapa informasi atau bisa
-   judulnya saja … agar tidak terlalu banyak scroll kebawah."
-
-   Tiap kartu di rincian rekomendasi tertutup sejak awal. Kepalanya tetap
-   menyebut isinya secara ringkas — menutup tidak boleh berarti buta — dan
-   seluruh kepalanya bisa ditekan, bukan cuma tulisan di ujungnya. */
+/* Kartu berlipat: tertutup sejak awal, menyisakan judul dan ringkasan. */
 .lipat > .lipat-kep{display:flex;align-items:center;gap:10px;cursor:pointer;
   border-radius:var(--r1);outline:none;}
 .lipat > .lipat-kep:focus-visible{box-shadow:0 0 0 2px var(--aksen);}
@@ -2693,16 +2320,12 @@ tr.bukaan > td,.tlblok.tl-tiket > .kep,
   font-size:var(--t2);color:var(--ink-2);line-height:1.5;min-width:0;}
 .lipat-ringkas > span{display:inline-flex;align-items:center;gap:6px;min-width:0;}
 .lipat-ringkas .mono{font-size:11.5px;}
-/* Titik kategori di daftar keterangan menjorok ke selokan kolom namanya. Di
-   ringkasan tidak ada selokan, jadi titiknya kembali berdiri di barisnya. */
-/* Kalimat panjang — nama berkas, isi kejadian — dipotong satu baris. Isi
-   lengkapnya satu ketukan lagi, dan ringkasan yang melipat dua baris sudah
-   bukan ringkasan. */
+/* Titik kategori menjorok ke selokan kolom nama; di ringkasan kembali ke barisnya. */
+/* Kalimat panjang dipotong satu baris; isi lengkap satu ketukan lagi. */
 .lipat-ringkas > .potong{display:block;flex:1 1 220px;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .lipat-kep > .n{font-size:var(--t2);color:var(--ink-3);font-weight:500;white-space:nowrap;}
-/* Ajakannya berbunyi seperti link "baca selengkapnya", dan panahnya berputar
-   sesuai keadaan — sama dengan tombol "Lihat satuan kerja" pada tiket. */
+/* Ajakan seperti link "baca selengkapnya"; panahnya berputar sesuai keadaan. */
 .lipat-ajak{display:inline-flex;align-items:center;gap:5px;flex:none;
   font-size:var(--t2);font-weight:600;color:var(--aksen);white-space:nowrap;
   background:none;border:0;padding:0;cursor:pointer;font-family:inherit;}
@@ -2720,10 +2343,8 @@ tr.bukaan > td,.tlblok.tl-tiket > .kep,
   .lipat-kep > .lipat-ajak{margin-left:42px;}
 }
 
-/* ================= DATA MASTER =================
-   Empat daftar sebagai kartu berlipat. Tabelnya berbingkai tipis seperti
-   daftar kategori yang sudah ada; baris yang dinonaktifkan diredupkan, bukan
-   disembunyikan — keadaannya sendiri juga keterangan. */
+/* ---- Data master ----
+   Baris yang dinonaktifkan diredupkan, bukan disembunyikan. */
 .tabelmaster{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r1);}
 .tabelmaster tr:last-child td{border-bottom:0;}
 .tabelmaster tr.mati td,.tabelmaster tr.mati td b{color:var(--ink-3);}
@@ -2747,9 +2368,7 @@ label.centang{display:inline-flex;align-items:center;gap:7px;font-size:var(--t3)
   color:var(--ink-2);cursor:pointer;}
 label.centang input{width:auto;margin:0;}
 .lipat-ringkas > span.awas{color:var(--warn);font-weight:600;}
-/* Baris yang baru diubah disorot sekejap sesudah halaman dimuat ulang (Laravel
-   kembali ke kartunya dengan ?sorot=&kartu=). Latarnya saja: tabel tidak
-   memberi tempat bagi bingkai sorotan yang menjorok keluar. */
+/* Baris yang baru diubah disorot sekejap (latarnya saja). */
 .tabelmaster td,.master td{transition:background .6s;}
 tr.sorot::after{content:none;}
 tr.sorot > td{background:var(--aksen-bg);}
@@ -2807,8 +2426,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .nav .peran .pjperan b{color:var(--ink-2);font-weight:600;}
 
 
-/* Kepala rekomendasi: judulnya tetap terbaca, keterangannya yang berlipat.
-   Tertutup, empat keterangan yang paling sering ditanya berjajar menyamping. */
+/* Kepala rekomendasi: tertutup, empat keterangan yang paling sering ditanya berjajar menyamping. */
 .kepalarek .faktaringkas{display:flex;flex-wrap:wrap;gap:10px 26px;
   padding-top:var(--s3);border-top:1px solid var(--rule-2);}
 .faktaringkas > span{display:grid;gap:2px;min-width:0;}
@@ -2819,40 +2437,11 @@ tr.sorot > td{background:var(--aksen-bg);}
 
 
 /* ================= SIPTL DI DALAM TABEL TINDAK LANJUT ================= */
-/* Kata Hizkia (17 Sep): "kombinasikan table SIPTL dengan Table Tindak Lanjut
-   jadi 1 table … jangan hanya pindahkan secara mentah". Satu baris tabel
-   memang satu unggahan SIPTL — satuan kerja × bentuk tindak lanjut — jadi
-   yang dulu berdiri sebagai tabel kedua sekarang duduk di baris yang sama:
-   statusnya di kolom SIPTL, tanggalnya di keterangan posisi, putusan dan
-   catatan BPK di rincian barisnya, dan pekerjaannya di tab Kerjakan. */
-/* Kepala rincian tindak lanjut.
-
-   Kata Hizkia (17 Sep): "coba di kontraskan tampilan container nya … judul ini
-   itu maksudnya judul untuk bagian mana ya?" Dulu judulnya label abu 12 px di
-   bilah yang nyaris putih, dua hitungannya berdiri di ujung kanan tanpa nama,
-   dan kalimat SIPTL-nya satu baris lepas di bawahnya.
-
-   Percobaan pertama (pita biru, kotak hitungan berbingkai, catatan bergaris
-   merah) ditolak: "tidak terlalu banyak distraksi atau terlalu banyak tingkat
-   kontras yang berbeda … mengikuti tema atau kontras yang serasi dengan section
-   utamanya." Percobaan kedua (putih, hitungan di kanan) dinilai cukup baik,
-   dengan catatan: "coba dibuat lebih seamless … walau tetap ada pembatas
-   sectionnya … bukan maksud saya dihilangkan informasinya tapi lebih ke
-   disamarkan tapi secara halus … dan juga informasi atau teks teksnya pada
-   rincian tindak lanjut dibuat berderet kebawah saja."
-
-   Jadi:
-   - identitasnya dibawa bentuk kepalanya — lencana ikon, judul, kalimat
-     penjelas — bukan warna;
-   - keterangannya satu daftar menurun, nama di kiri dan isi di kanan, sejajar
-     tulisan judul;
-   - seluruh bagian satu permukaan putih. Pembatasnya garis sangat tipis yang
-     menjorok dari tepi, bukan garis selebar kartu atau latar yang berbeda;
-   - yang sekunder disamarkan lewat warna tulisan, bukan dibuang. */
+/* Satu baris tabel = satu unggahan SIPTL (satuan kerja × bentuk tindak lanjut). */
+/* Kepala rincian tindak lanjut. */
 .wadahtl{border:1px solid var(--line);border-radius:10px;overflow:hidden;
   background:var(--surface);box-shadow:var(--bayang);}
-/* Pembatas kepala rekomendasi dan rinciannya pindah ke kepala rincian, sebagai
-   garis tipis yang menjorok. */
+/* Pembatas kepala dan rincian: garis tipis yang menjorok. */
 .wadahtl > .kepalarek{border-bottom:0;}
 .kepalatl{display:grid;gap:12px;margin:0 16px;padding:16px 0 6px;
   border-top:1px solid var(--line-2);}
@@ -2862,9 +2451,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .kepalatl-judul > b{display:flex;align-items:center;gap:8px;font-size:var(--t5);
   font-weight:600;letter-spacing:-.01em;color:var(--ink);}
 .kepalatl-judul > span:last-child{font-size:var(--t2);line-height:1.5;color:var(--ink-3);}
-/* Keterangannya berderet ke bawah, sejajar tulisan judul. Namanya redup dan
-   isinya bertulisan biasa; lencananya dikecilkan tanpa bingkai — warnanya
-   sendiri sudah cukup membawa arti. */
+/* Keterangan berderet ke bawah; lencana dikecilkan tanpa bingkai. */
 .kepalatl-daftar{display:grid;grid-template-columns:150px minmax(0,1fr);
   gap:4px 16px;margin:0;padding-left:44px;font-size:var(--t2);line-height:1.6;}
 .kepalatl-daftar dt{margin:0;color:var(--ink-3);font-weight:400;}
@@ -2877,21 +2464,17 @@ tr.sorot > td{background:var(--aksen-bg);}
   .kepalatl-daftar{grid-template-columns:minmax(0,1fr);padding-left:0;gap:0;}
   .kepalatl-daftar dd{margin-bottom:6px;}
 }
-/* Nama tiket diberi keterangan jenisnya — redup, berhuruf biasa. "Lainnya
-   sesuai LHP" saja tidak menyebut bahwa itu nama bentuk tindak lanjut. */
+/* Nama tiket diberi keterangan jenisnya (redup). */
 .tl-tiket .judultl{display:grid;gap:1px;min-width:0;}
 .tl-tiket .jenistl{font-size:var(--t1);font-weight:500;color:var(--ink-3);}
 
-/* Putusan BPK atas satu baris — kartu PanelKerja sejak 27 Sep (SiptlBaris).
-   Kakinya menyebut kenapa tidak ada lagi yang bisa dicatat: segaris dengan
-   baris-baris di atasnya, dipisah garis tipis yang sama. */
+/* Putusan BPK satu baris; kakinya menyebut kenapa tidak ada lagi yang bisa dicatat. */
 .tl-siptl-kunci{display:flex;align-items:flex-start;gap:8px;margin:0;padding:11px 0 5px;
   border-top:1px solid var(--fb-pemisah);font-size:12.5px;line-height:1.5;color:#374151;}
 .tl-siptl-kunci > svg{flex:none;margin-top:2px;color:#4B5563;}
 .tl-siptl .kerja-teks > .cap + .kerja-meta{display:inline;margin:0 0 0 4px;}
 
-/* Kaki tabel: jumlah nilai, dan pembagiannya menurut BPK kalau sudah ada yang
-   naik. Dulu pembagian itu kaki tabel SIPTL; sekarang satu kaki untuk satu tabel. */
+/* Kaki tabel: jumlah nilai dan pembagiannya menurut BPK. */
 .tl-kaki{display:flex;gap:8px 22px;align-items:baseline;flex-wrap:wrap;
   margin:4px 16px 0;padding:10px 0 12px;border-top:1px solid var(--line-2);}
 .tl-kaki > .kanan{display:flex;gap:8px 22px;align-items:baseline;flex-wrap:wrap;
@@ -2901,16 +2484,11 @@ tr.sorot > td{background:var(--aksen-bg);}
 
 /* ===== src/riwayat-tindak-lanjut.css ===== */
 .rw-riwayat{min-width:0}
-/* Sejak 26 Sep tab Riwayat satu kartu seperti tab Bukti dan Kerjakan: kepala
-   berpita abu (periode, jumlah peristiwa, tanggal terakhir), lalu dua bagian
-   bersubjudul. Tulisannya sebesar isian formulir, garisnya ikut ukuran kontras
-   formulir — terbaca oleh mata yang kurang awas. */
+/* Tab Progres: kartu yang sama dengan Bukti dan Kerjakan. */
 .rw-riwayat .kerja-subkep{margin-bottom:10px}
 .rw-riwayat .kerja-isi{padding-bottom:14px}
 .rw-subkep>.fb-ket{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:#4B5563}
-/* Pemilih periode (26 Sep): satu tombol per periode, urut dari yang pertama —
-   hanya ada kalau periodenya lebih dari satu. Yang sedang berjalan bertitik
-   biru; yang terpilih berbingkai biru seperti tab di atasnya. */
+/* Pemilih periode: yang berjalan bertitik biru, yang terpilih berbingkai biru. */
 .rw-periode{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0}
 .rw-periode>button{display:grid;gap:2px;min-width:140px;padding:8px 14px;border:1px solid #B8C0CC;border-radius:10px;background:var(--surface);font:inherit;text-align:left;color:#1F2937;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.06);transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease,transform .1s ease}
 .rw-periode>button b{font-size:13.5px;font-weight:600}
@@ -2921,8 +2499,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .rw-periode>button[aria-selected=true]{border-color:var(--aksen);background:var(--aksen-bg);box-shadow:inset 0 0 0 1px var(--aksen)}
 .rw-periode>button[aria-selected=true] b{color:var(--aksen-kuat);font-weight:700}
 .rw-periode>button:focus-visible{outline:3px solid var(--aksen);outline-offset:2px}
-/* Rute yang panjang (satu periode bisa sembilan tempat) terlipat ke baris
-   berikutnya, bukan digeser ke samping (26 Sep). */
+/* Rute panjang terlipat ke baris berikutnya, tidak digeser. */
 .rw-rute{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:2px 2px 10px}
 .rw-ruas{display:flex;align-items:center;gap:8px;flex:none}
 .rw-panah{color:#4B5563;flex:none}
@@ -2964,12 +2541,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .rw-nomor-surat{display:flex;gap:6px;align-items:flex-start;margin-bottom:5px;color:#374151}
 .rw-nomor-surat svg{flex:none;margin-top:3px;color:#4B5563}
 .rw-nomor-surat span{font-size:12.5px;line-height:1.6;overflow-wrap:anywhere}
-/* Panel yang sempit (22 Sep) — tablet, laptop kecil, ponsel. Tabelnya selebar
-   880 px dan dulu digeser ke samping. Di sini tiap peristiwa jadi blok:
-   tanggal dan sumbernya di atas, lalu peristiwa, catatan, dan surat terkait.
-   Diukur dari lebar kartunya sendiri (container), bukan layar, karena kartu
-   ini duduk di dalam baris tabel — 880 px tabel ditambah 32 px bantalan kartu
-   (26 Sep). Rute posisi berkas boleh terlipat. */
+/* Panel sempit: tiap peristiwa jadi blok (tanggal dan sumber di atas). */
 @container (max-width:911px){
   .rw-perubahan{flex-wrap:wrap}
   .rw-tabel-wrap{overflow:visible}
@@ -3005,9 +2577,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .tl-status::before{content:"";width:4px;height:4px;border-radius:50%;background:currentColor}
 .tl-status.baik{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
 .tl-status.kurang{color:var(--bad);border-color:var(--bad-line);background:var(--bad-bg)}
-/* Rincian satu tindak lanjut: kartu-kartu bertumpuk — Alur verifikasi,
-   Penilaian BPK, deret tab, isi tabnya — dengan satu jarak yang sama, lalu
-   kaki penutupnya (27 Sep). */
+/* Rincian satu tindak lanjut: kartu-kartu bertumpuk dengan satu jarak yang sama. */
 .tl-detail{min-width:0;container-type:inline-size;display:grid;gap:14px}
 .tl-alur .relbaris{padding:6px 0 8px}
 .tl-alur .tl-arah{position:absolute;top:4px;left:0;transform:translateX(-50%);z-index:1;color:var(--ink-3);background:var(--surface)}
@@ -3016,11 +2586,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .tl-alur .tl-alur-ket{font-size:11.5px;line-height:1.3;font-weight:500;color:var(--aksen-kuat)}
 .tl-alur-kembali{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:12.5px;color:#374151}
 .tl-alur-kembali b{color:var(--aksen);font-weight:600}
-/* Tab Bukti & tanggapan · Kerjakan · Riwayat (26 Sep). Kata Hizkia: "tombol nya
-   sulit disadari itu tombol atau sekedar tulisan". Dulu tulisan bergaris bawah;
-   sekarang tombol berbingkai seperti deret tab formulir Catat laporan baru —
-   yang terpilih biru muda berbingkai biru, yang lain putih berbingkai abu dan
-   menyala biru saat disentuh. */
+/* Tab Bukti & tanggapan · Kerjakan · Progres: tombol berbingkai. */
 .tl-panel-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .tl-tabs{display:flex;gap:8px;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none;padding:3px}
 .tl-tabs::-webkit-scrollbar{display:none}
@@ -3036,16 +2602,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 /* Ujung rincian: nama pemiliknya dan tombol tutupnya, di dalam bingkai. */
 .tl-detail-kaki{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;padding-top:12px;border-top:1px solid var(--aksen-line);font-size:12.5px;line-height:1.45;color:#374151}
 .tl-detail-kaki b{font-weight:600;color:var(--ink)}
-/* Baris yang dibuka dan rinciannya: satu blok berbingkai biru (27 Sep). Kata
-   Hizkia: "agar lebih fokus pada tampilan yang dipilih … agar user tidak
-   bingung informasi yang dilihat saat itu milik satuan kerja yang mana".
-   Dulu baris terbuka dan rinciannya abu muda — sama dengan baris yang cuma
-   ditunjuk tetikus — jadi batas rinciannya samar di antara baris satuan kerja
-   lain. Sekarang barisnya biru muda, rinciannya biru sangat muda, dan garis
-   biru 2 px melingkupi keduanya sampai kaki rinciannya. Baris lain tetap
-   putih dan terbaca penuh: meredupkannya menurunkan kontras tulisan di bawah
-   batas baca. Pemilihnya berbobot karena berkas ini dimuat sebelum CSS utama
-   di prototipe. */
+/* Baris yang dibuka dan rinciannya: satu blok berbingkai biru. */
 .tl-tabel-wrap .tabtl>tbody>tr.bukaan.buka>td{background:var(--aksen-bg);box-shadow:inset 0 2px 0 var(--aksen)}
 .tl-tabel-wrap .tabtl>tbody>tr.bukaan.buka>td:first-child{box-shadow:inset 0 2px 0 var(--aksen),inset 2px 0 0 var(--aksen)}
 .tl-tabel-wrap .tabtl>tbody>tr.bukaan.buka>td:last-child{box-shadow:inset 0 2px 0 var(--aksen),inset -2px 0 0 var(--aksen)}
@@ -3058,15 +2615,7 @@ tr.sorot > td{background:var(--aksen-bg);}
   .tl-tabs{gap:6px}
   .tl-tabs button{padding:7px 11px;font-size:13px;gap:6px}
 }
-/* ---- Menurut lebar layar (22 Sep) ----
-   Kata Hizkia: tampilan harus rapi "dalam kondisi layar yang berbeda beda".
-   Dulu tabel ini selebar 960 px dan digeser ke samping mulai 1280 px.
-   Sekarang: di bawah 1366 px lebar terkecilnya turun; di bawah 1280 px kolom
-   nomor dilipat dan kolom tetapnya dirampingkan; di bawah 1024 px tiap satuan
-   kerja jadi blok bertumpuk — nama dan tombolnya di atas, lalu posisi berkas,
-   nilai, catatan terakhir, dan ketiga status dengan namanya sendiri.
-   Pemilihnya sengaja lebih berbobot: di prototipe berkas ini dimuat sebelum
-   CSS utama, jadi pemilih yang sama beratnya kalah oleh aturan lama. */
+/* ---- Menurut lebar layar ---- */
 .tl-tabel-wrap .tabtl col.c-no{width:48px}
 .tl-tabel-wrap .tabtl col.c-nilai{width:140px}
 .tl-tabel-wrap .tabtl col.c-hasil{width:65px}
@@ -3108,9 +2657,8 @@ tr.sorot > td{background:var(--aksen-bg);}
   .tl-tabel-wrap .tabtl td.k-hasil2{grid-area:h2}
   .tl-tabel-wrap .tabtl>tbody>tr.bukaan>td.selhasil{display:flex;align-items:center;gap:6px;text-align:left}
   .tl-tabel-wrap .tabtl td.selhasil::before{content:attr(data-label);font-size:11px;color:var(--ink-3)}
-  /* Tombolnya menempel di pojok kanan atas, lepas dari kisi: kalau ikut
-     berkolom, lebarnya dijumlah dengan ketiga status dan mendorong blok
-     melebihi layar ponsel. */
+  /* Tombol menempel di pojok kanan atas, lepas dari kisi, supaya blok tidak melebihi layar
+     ponsel. */
   .tl-tabel-wrap .tabtl td.kolaksi{position:absolute;top:10px;right:16px}
   .tl-tabel-wrap .tabtl>tbody>tr.lebar{display:block}
   .tl-tabel-wrap .tabtl>tbody>tr.lebar>td{display:block}
@@ -3123,14 +2671,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 
 
 /* ===== src/tiket-tindak-lanjut.css ===== */
-/* Container tiap bentuk tindak lanjut. Isi tiket tetap tabel satker.
-
-   Diredam 17 Sep — kata Hizkia, pembatas dan kontrasnya dibuat "seamless … yang
-   penting mata tidak terlalu terganggu pada … kontras kontras detail yang
-   berlebihan", tanpa membuang informasinya. Tepi kiri biru muda (biru penuh
-   hanya saat terbuka), sisi tiket tanpa latar biru dan tanpa lekukan, nomor abu,
-   keterangan redup. Tidak ada keterangan yang dibuang: yang berubah cuma
-   seberapa keras ia bicara. */
+/* Wadah tiap bentuk tindak lanjut; pembatas dan kontrasnya diredam. */
 .tlblok.tl-tiket{margin:10px 16px;border:1px solid var(--line);border-left:3px solid var(--aksen-line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .tlblok.tl-tiket+.tlblok.tl-tiket{border-top:1px solid var(--line)}
 .tlblok.tl-tiket.tiket-terbuka{border-color:var(--aksen-line);border-left-color:var(--aksen)}
@@ -3145,13 +2686,10 @@ tr.sorot > td{background:var(--aksen-bg);}
 .tlblok.tl-tiket>.kep .meta{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;line-height:1.5;color:var(--ink-3)}
 .tl-tiket .tiket-info{display:inline-flex;align-items:center;gap:5px}
 .tl-tiket .tiket-info svg{flex:none;opacity:.6}
-/* Tanpa garis pemisah. Garis putus-putus di sini terbaca seperti garis
-   potong tiket — kata Hizkia (20 Sep): "hilangkan garis potong seperti
-   tiket yang berada dipojok kanannya". */
+/* Tanpa garis pemisah putus-putus. */
 .tl-tiket .tiket-sisi{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px 12px}
 .tlblok.tl-tiket>.kep .ajak{display:inline-flex;align-items:center;gap:6px;font-size:11.5px}
-/* Tanda pekerjaan tetap biru — itu sinyal, bukan hiasan — tapi tanpa latar dan
-   tanpa huruf kapital. */
+/* Tanda pekerjaan tetap biru, tanpa latar dan huruf kapital. */
 .tl-tiket .tiket-sisi .pil{font-size:var(--t1);font-weight:600;letter-spacing:0;text-transform:none;background:none;padding:0;white-space:normal;text-align:center;line-height:1.45}
 .tlblok.tl-tiket>.tl-tabel-wrap{border:0;border-radius:0}
 @media(max-width:650px){
@@ -3164,37 +2702,20 @@ tr.sorot > td{background:var(--aksen-bg);}
 
 
 /* ===== src/dasbor-uji.css ===== */
-/* Dasbor Ringkasan (uji coba 23 Sep, dipakai sejak 25 Sep 2026). Seluruh
-   kelasnya berawalan dsb- supaya tidak bertabrakan dengan aturan layar lain.
-   Lebarnya dibaca dari wadahnya sendiri (container query), bukan dari layar:
-   menu samping yang dilebarkan atau diciutkan ikut mengubah ruang yang
-   tersedia.
+/* ---- Dashboard ----
+   Kelas berawalan dsb-; lebarnya dibaca dari wadahnya (container query). */
 
-   Warna grafik sudah diuji pengukur buta warna (dataviz validate_palette):
-     Memadai #16A34A dan Belum memadai #B91C1C   ΔE 11,0 (lolos, ≥ 8)
-     Masuk #2563EB dan Selesai #16A34A           ΔE 30,3
-     Urutan SS–BS–BT–TD, tiap pasangan bersebelahan ≥ 12,9
-   Merah aplikasi #DC2626 gagal di samping hijau (ΔE 5,0), jadi di grafik
-   dipakai merah yang setingkat lebih gelap. Kuning BT dan hijau SS cuma
-   berjarak 6,2 — keduanya tidak pernah bersebelahan, dan tiap potongan
-   status membawa kodenya sendiri di deret angkanya. */
-
-/* Kolomnya dipatok selebar wadah (minmax 0): tanpa ini satu anak yang isinya
-   panjang — deretan keping filter aktif — ikut melebarkan seluruh dasbor. */
-/* Padat (23 Sep): selebar layar — dasbor tidak dibatasi 1440 px seperti layar
-   lain — dan jaraknya dirapatkan, supaya sebagian besar terlihat sekaligus.
-   Kata Hizkia: "diperkecil tampilan keseluruhan dashboard terutama diagram
-   atau grafik grafik agar terlihat secara keseluruhan". */
+/* Kolom dipatok selebar wadah (minmax 0) supaya isi panjang tidak melebarkan dasbor. */
+/* Padat: selebar layar (tidak dibatasi 1440 px) dan jarak dirapatkan. */
 .body.dsb{max-width:none;}
 .dsb{container:dsb / inline-size;display:grid;grid-template-columns:minmax(0,1fr);
   gap:12px;align-content:start;
   --d-ok:#16A34A; --d-belum:#B91C1C; --d-bt:#D97706; --d-td:#6B7280;
   --d-masuk:#2563EB; --d-tunggu:#D97706; --d-proses:#64748B;}
 
-/* --- filter ---
-   Tiga baris, satu pertanyaan tiap baris: jenis, tahun, satuan kerja. Label
-   berikon di kolom yang sama supaya mata turun lurus, dan tiap baris dibuka
-   keping "Semua" — keadaannya terbaca tanpa keterangan tambahan (23 Sep). */
+/* --- Filter ---
+   Satu pertanyaan tiap baris; label berikon di kolom yang sama; tiap baris dibuka keping
+   "Semua". */
 .dsb-filter{background:var(--surface);border:1px solid var(--line);
   border-radius:var(--r2);padding:10px 14px;display:grid;
   grid-template-columns:128px minmax(0,1fr);gap:8px 12px;align-items:start;}
@@ -3203,9 +2724,7 @@ tr.sorot > td{background:var(--aksen-bg);}
 .dsb-lbl > svg{color:var(--ink-3);flex:none;}
 
 .dsb-keping{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;}
-/* Bingkainya setegas tombol lain (26 Sep): dulu segaris dengan garis kartu
-   (#E5E7EB), dan saat ditunjuk tidak berubah apa-apa. Sekarang berbingkai
-   #B8C0CC, membiru saat ditunjuk, dan turun sepiksel saat ditekan. */
+/* Bingkai #B8C0CC, membiru saat ditunjuk, turun sepiksel saat ditekan. */
 .dsb-keping > button{display:inline-flex;align-items:center;gap:6px;height:28px;
   padding:0 11px;border-radius:999px;border:1px solid #B8C0CC;background:var(--surface);
   font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;white-space:nowrap;
@@ -3215,12 +2734,10 @@ tr.sorot > td{background:var(--aksen-bg);}
 .dsb-keping > button:focus-visible{outline:2px solid var(--aksen);outline-offset:1px;}
 .dsb-keping > button[aria-pressed="true"]{background:var(--aksen-bg);
   border-color:var(--aksen);color:var(--aksen-kuat);font-weight:600;}
-/* "Semua" yang menyala bernada netral: biru disimpan untuk filter yang
-   benar-benar berlaku, jadi sekali lihat ketahuan baris mana yang memfilter. */
+/* "Semua" yang menyala bernada netral; biru untuk filter yang berlaku. */
 .dsb-keping > button.semua[aria-pressed="true"]{background:var(--surface-3);
   border-color:#8B95A5;color:var(--ink);font-weight:600;}
-/* Kosong pada filter lain yang sedang aktif: tetap bisa dipilih, cuma
-   dipudarkan. Dulu bergaris putus-putus, dan itu terbaca seperti tombol mati. */
+/* Kosong pada filter lain yang aktif: tetap bisa dipilih, dipudarkan. */
 .dsb-keping > button.nol:not([aria-pressed="true"]){color:var(--ink-3);
   background:var(--surface-2);border-color:var(--line);}
 .dsb-keping > button.nol:not([aria-pressed="true"]):hover{border-color:var(--aksen);
@@ -3233,9 +2750,8 @@ tr.sorot > td{background:var(--aksen-bg);}
 .dsb-keping > button.buang-baris:hover{background:var(--surface-2);color:var(--ink);
   border-color:var(--line);}
 
-/* --- baris filter yang menyesuaikan diri ---
-   Salinan tak terlihat untuk mengukur lebar tiap keping; baris aslinya
-   memuat sebanyak yang muat, sisanya di menu "+N lainnya". */
+/* --- Baris filter yang menyesuaikan diri ---
+   Salinan tak terlihat mengukur lebar keping; sisanya di menu "+N lainnya". */
 .dsb-pemilah{position:relative;min-width:0;}
 .dsb-keping.dsb-ukur{position:absolute;left:0;top:0;width:max-content;height:0;
   overflow:hidden;visibility:hidden;pointer-events:none;flex-wrap:nowrap;}
@@ -3249,8 +2765,7 @@ tr.sorot > td{background:var(--aksen-bg);}
   height:18px;padding:0 5px;border-radius:999px;background:var(--aksen);color:#fff;
   font-size:11px;font-weight:700;}
 
-/* Menu filter: melayang (fixed), jadi tidak terpotong wadah mana pun dan
-   tidak mendorong isi di bawahnya. Kepalanya tetap, isinya yang digulir. */
+/* Menu filter melayang (fixed): tidak terpotong wadah; kepala tetap, isi digulir. */
 .dsb-menu{position:fixed;z-index:60;display:flex;flex-direction:column;
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
   box-shadow:var(--bayang-2);overflow:hidden;}
@@ -3313,10 +2828,8 @@ tr.sorot > td{background:var(--aksen-bg);}
 .dsb-baris-jenis > .dsb-pemilah{flex:1;}
 .dsb-baris-jenis > .dsb-tambah{flex:none;}
 
-/* --- bar hasil ---
-   Menempel di bawah bilah atas (--lekat1, diukur useLekat) saat digulir:
-   grafik yang diklik jauh di bawah tetap memperlihatkan filter apa yang
-   sedang berlaku dan berapa rekomendasi yang tersisa. */
+/* --- Bar hasil ---
+   Menempel di bawah bilah atas (--lekat1) saat digulir. */
 .dsb-hasil{position:sticky;top:var(--lekat1);z-index:7;display:flex;
   align-items:center;gap:8px 10px;flex-wrap:nowrap;min-height:40px;padding:5px 8px 5px 12px;
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
@@ -3356,30 +2869,25 @@ tr.sorot > td{background:var(--aksen-bg);}
 .dsb-kaki button:hover{text-decoration:underline;}
 
 /* --- kartu angka --- */
-.dsb-kpi{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
+.dsb-kpi{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;}
 .dsb-ubin{display:grid;grid-template-rows:auto auto 18px auto;align-content:start;
   gap:4px;min-width:0;padding:10px 14px;background:var(--surface);
   border:1px solid var(--line);border-radius:var(--r2);text-align:left;font:inherit;
   color:inherit;}
 button.dsb-ubin{cursor:pointer;
   transition:border-color .15s ease,box-shadow .15s ease,transform .15s var(--kurva);}
-/* Label panjang punya versi pendek ("Menunggu satker"). Kartu yang sempit —
-   layar ±1280 ke bawah — memakai yang pendek, supaya label tetap satu baris
-   dan angka kelima kartu sejajar. */
+/* Label panjang punya versi pendek untuk kartu sempit. */
 .dsb-ubin{container:ubin / inline-size;}
 .dsb-ubin .dsb-pdk{display:none;}
 @container ubin (max-width: 179px){
   .dsb-ubin .dsb-pjg{display:none;}
   .dsb-ubin .dsb-pdk{display:inline;}
 }
-/* Ditunjuk: bingkainya membiru dan kartunya terangkat sepiksel — dulu
-   bingkainya berganti ke warna yang sama persis, jadi tidak ada yang
-   berubah (26 Sep). */
+/* Ditunjuk: bingkai membiru dan kartu terangkat sepiksel. */
 button.dsb-ubin:hover{border-color:var(--aksen-line);transform:translateY(-1px);
   box-shadow:0 4px 12px rgba(16,24,40,.08);}
 button.dsb-ubin:active{transform:none;}
-/* Kartu yang rinciannya sedang terbuka; panah kecil di kanan labelnya
-   berputar menunjuk rincian di bawah. */
+/* Kartu yang rinciannya terbuka; panah kecil menunjuk ke bawah. */
 button.dsb-ubin[aria-expanded="true"]{border-color:var(--aksen);
   box-shadow:0 0 0 3px var(--aksen-bg);}
 .dsb-ubin .l > .buka{margin-left:auto;flex:none;color:var(--ink-3);
@@ -3397,6 +2905,10 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-ubin .k{font-size:var(--t2);color:var(--ink-3);line-height:1.4;}
 /* Rupiah dan satuannya tidak dipatahkan di tengah ("Rp 1.2 / M"). */
 .dsb-ubin .k .dsb-utuh{white-space:nowrap;}
+/* Kalimat kartu yang sekaligus legenda pita: butirnya turun baris utuh, tanpa pemisah. */
+.dsb-ubin .k.legenda{display:flex;flex-wrap:wrap;gap:0 10px;}
+.dsb-ubin .k .dsb-tanda{display:inline-block;width:8px;height:8px;border-radius:2px;
+  margin:0 5px 1px 0;vertical-align:middle;}
 
 .dsb-meter{display:block;width:100%;height:6px;border-radius:999px;overflow:hidden;
   background:var(--surface-3);}
@@ -3408,20 +2920,8 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-pitamini > i:first-child{border-radius:999px 0 0 999px;}
 .dsb-pitamini > i:last-child{border-radius:0 999px 999px 0;}
 .dsb-pitamini > i:only-child{border-radius:999px;}
-.dsb-sirip{position:relative;display:block;width:calc(100% - 6px);height:18px;}
-.dsb-sirip svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
-.dsb-sirip polyline{fill:none;stroke:var(--ink-3);stroke-width:1.5;
-  stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;}
-.dsb-sirip > i{position:absolute;width:8px;height:8px;border-radius:50%;
-  background:var(--d-belum);transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--surface);}
-.dsb-delta{display:inline-flex;align-items:center;gap:4px;font-weight:600;}
-.dsb-delta.baik{color:var(--ok);}
-.dsb-delta.buruk{color:var(--bad);}
 
-/* --- rincian kartu yang diklik ---
-   Bagian-bagian angkanya (angka + sebutan, tanpa tanda hitung), satu kalimat
-   keseluruhan dan sumber datanya, lalu panel rinciannya. Garis atas biru
-   menyambung ke kartu yang menyala di atasnya. */
+/* --- Rincian kartu yang diklik --- */
 .dsb-rincian{display:grid;gap:12px;padding:12px 14px 14px;background:var(--surface-2);
   border:1px solid var(--line);border-top:3px solid var(--aksen);border-radius:var(--r2);}
 .dsb-rincian-kepala{display:flex;align-items:center;gap:8px;}
@@ -3442,8 +2942,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 /* Ajakan saat belum ada kartu yang dibuka. */
 .dsb-ajak{margin:0;font-size:var(--t2);color:var(--ink-3);}
 
-/* Daftar pintasan dari angka tabel keseluruhan: kode, inti uraian, lalu
-   satuan kerja atau bentuknya dan rupiahnya. Tiap butir membuka rinciannya. */
+/* Daftar pintasan dari angka tabel keseluruhan. */
 .dsb-menu .dsb-pintas-letak{font-size:var(--t2);color:var(--ink-2);}
 .dsb-menu .dsb-pintas{margin:0;padding:4px;list-style:none;}
 .dsb-pintas > li + li{border-top:1px solid var(--line-2);}
@@ -3468,9 +2967,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 
 /* --- panel --- */
 .dsb-petak{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:12px;}
-/* Tiga panel sejajar per bagian. Panel yang memuat dua versi sekaligus
-   (status, per tahun) selebar dua kolom — tepinya tetap segaris dengan
-   panel di bagian lain karena memakai kisi yang sama. */
+/* Tiga panel sejajar per bagian; panel dua versi selebar dua kolom. */
 .dsb-petak.tiga{grid-template-columns:repeat(3,minmax(0,1fr));}
 .dsb-petak.tiga > .dsb-lebar2{grid-column:span 2;}
 /* Selebar penuh: tabel "Sisa nilai terbesar" di rincian kartu. */
@@ -3498,8 +2995,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 /* --- kolom (per tahun, posisi berkas) --- */
 .dsb-kolom .plot,.dsb-pipa .plot{position:relative;display:grid;
   grid-template-columns:repeat(var(--n),minmax(0,1fr));align-items:stretch;}
-/* Grafik mengisi sisa tinggi panelnya, supaya dua panel sebaris sama-sama
-   penuh dan tidak ada yang menyisakan ruang kosong di bawah. */
+/* Grafik mengisi sisa tinggi panel. */
 .dsb-kolom,.dsb-pipa,.dsb-garis{flex:1;display:flex;flex-direction:column;
   min-height:0;}
 .dsb-kolom .plot{flex:1;min-height:120px;max-height:170px;margin:12px 0 0 30px;}
@@ -3515,8 +3011,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-kolom .sumbux > span{text-align:center;font-size:11px;color:var(--ink-3);
   padding-top:6px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 
-/* Satu tombol = satu pita penuh setinggi grafik. Sasaran tekannya pitanya,
-   bukan batangnya — batang 3 piksel pun tetap mudah ditekan. */
+/* Sasaran tekan = pita setinggi grafik, bukan batangnya. */
 .dsb-pita{position:relative;height:100%;min-width:0;display:flex;align-items:flex-end;
   justify-content:center;border:0;background:none;padding:0;cursor:pointer;
   border-radius:6px 6px 0 0;font:inherit;color:inherit;}
@@ -3529,15 +3024,14 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-pita .tumpuk > i{display:block;flex-basis:0;min-height:2px;
   transition:opacity .12s,flex-grow .35s var(--kurva);}
 .dsb-pita .batang{display:block;width:min(28px,46%);height:var(--h);min-height:2px;
-  border-radius:4px 4px 0 0;background:var(--d-tunggu);
+  border-radius:4px 4px 0 0;background:var(--w,var(--d-tunggu));
   transition:opacity .12s,height .35s var(--kurva);}
-.dsb-pita.selesai .batang{background:var(--d-ok);}
 .dsb-pita .dsb-cap{position:absolute;left:0;right:0;bottom:calc(var(--h) + 4px);
   text-align:center;font-size:11px;font-weight:600;color:var(--ink-2);line-height:1;
   font-variant-numeric:tabular-nums;pointer-events:none;
   transition:bottom .35s var(--kurva),opacity .12s;}
 .dsb-pita .tag{position:absolute;left:0;right:0;bottom:calc(var(--h) + 19px);
-  text-align:center;font-size:10px;font-weight:600;color:var(--d-tunggu);line-height:1;
+  text-align:center;font-size:10px;font-weight:600;color:var(--ink-2);line-height:1;
   pointer-events:none;white-space:nowrap;transition:bottom .35s var(--kurva);}
 .dsb-pita.redup .tumpuk,.dsb-pita.redup .batang,
 .dsb-pita.redup .dsb-cap{opacity:.3;}
@@ -3549,9 +3043,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-pipa .sumbux > span + span::before{content:"›";position:absolute;left:-3px;
   top:5px;font-size:14px;color:var(--ink-3);}
 
-/* Dua grafik bersebelahan dalam satu panel (per tahun: BPSDM | SIPTL).
-   Tiap grafik wadah ukurnya sendiri, jadi label tahunnya dijarangkan menurut
-   lebar grafiknya — bukan lebar panelnya. */
+/* Dua grafik dalam satu panel; tiap grafik wadah ukurnya sendiri. */
 .dsb-duagrafik{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   gap:12px 28px;min-height:0;}
 .dsb-subgrafik{container:grafik / inline-size;display:flex;flex-direction:column;min-width:0;}
@@ -3574,8 +3066,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   text-overflow:ellipsis;white-space:nowrap;}
 .dsb-hbaris[aria-pressed="true"] .nm{color:var(--ink);font-weight:600;}
 .dsb-hbaris .jalur{display:flex;height:12px;min-width:0;}
-/* Baris tahun: labelnya empat angka, kolom namanya tidak perlu selebar nama
-   satuan kerja. */
+/* Baris tahun: kolom nama tidak perlu selebar nama satuan kerja. */
 .dsb-hbaris.tahun{grid-template-columns:40px minmax(0,1fr) 70px;}
 .dsb-hbaris .isi{display:flex;gap:2px;height:100%;border-radius:0 4px 4px 0;
   overflow:hidden;transition:width .35s var(--kurva);}
@@ -3596,10 +3087,8 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   font-size:var(--t2);font-weight:600;color:var(--aksen);cursor:pointer;border-radius:6px;}
 .dsb-lagi:hover{background:var(--aksen-bg);}
 
-/* --- status BPSDM dan SIPTL: versi di baris, ukuran di kolom ---
-   Membaca ke bawah membandingkan kedua versi (batangnya sejajar); membaca ke
-   samping memperlihatkan jumlah dan nilai satu versi. Di panel sempit
-   matriksnya jadi satu lajur dan sebutan ukurannya pindah ke tiap sel. */
+/* --- Status BPSDM dan SIPTL ---
+   Versi di baris, ukuran di kolom. */
 .dsb-matriks{display:grid;grid-template-columns:max-content minmax(0,1fr) minmax(0,1fr);
   gap:12px 20px;align-items:start;margin-bottom:10px;}
 .dsb-matriks .mk-kolom{font-size:11.5px;font-weight:600;color:var(--ink-3);margin-bottom:-6px;}
@@ -3635,8 +3124,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 /* --- kategori internal: warna dari data master; penuh = belum, pudar = sudah --- */
 .dsb-hbaris.kat .nm{display:flex;align-items:center;gap:7px;min-width:0;white-space:normal;}
 .dsb-hbaris.kat .nm > .titik{width:8px;height:8px;border-radius:50%;flex:none;}
-/* Nama kategori adalah identitasnya, jadi kolomnya lebih lebar dan boleh dua
-   baris — tidak dipotong seperti "Pertanggungjawaban belanj…". */
+/* Nama kategori boleh dua baris, tidak dipotong. */
 .dsb-hbaris.kat{grid-template-columns:minmax(0,56%) minmax(0,1fr) 64px;}
 .dsb-hbaris.kat .nm{font-size:11.5px;}
 .dsb-hbaris.kat .nm > .t{min-width:0;overflow:hidden;display:-webkit-box;
@@ -3668,10 +3156,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   font-size:10.5px;color:var(--ink-3);white-space:nowrap;}
 .dsb-garis .sumbux > span.aktif{color:var(--ink);font-weight:600;}
 
-/* --- tabel sisa nilai terbesar ---
-   Gaya dasar dari tabel kecil panel (.dsb-tabel). Uraian paling banyak dua
-   baris; satuan kerja boleh dua baris; "Menunggu" dan nilai tidak dipotong.
-   Seluruh baris bisa diklik, uraiannya tombol untuk papan ketik. */
+/* --- Tabel sisa nilai terbesar --- */
 .dsb-sisa td{vertical-align:top;line-height:1.35;}
 .dsb-sisa .dsb-sisa-kode{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);white-space:nowrap;}
 .dsb-sisa .dsb-sisa-ur{width:52%;}
@@ -3688,8 +3173,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-sisa tbody tr{cursor:pointer;}
 .dsb-sisa tbody tr:hover td{background:#EEF3FD;}
 .dsb-sisa tbody tr:hover .dsb-sisa-ur > button{color:var(--aksen-kuat);}
-/* Panel sempit (ponsel): kode disembunyikan — ada di rinciannya — dan
-   "Menunggu" pindah ke bawah nama satuan kerja, supaya tabelnya tidak digeser. */
+/* Panel sempit: kode disembunyikan, "Menunggu" pindah ke bawah nama satuan kerja. */
 @container panel (max-width:560px){
   .dsb-sisa .dsb-sisa-kode,
   .dsb-sisa .dsb-sisa-tg{display:none;}
@@ -3704,39 +3188,17 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-pindah:hover{border-color:var(--aksen);color:var(--aksen-kuat);}
 .dsb-pindah:active{transform:translateY(1px);}
 .dsb-pindah:focus-visible{outline:2px solid var(--aksen);outline-offset:1px;}
-/* Judul halaman tabel memuat dua tombol; di layar sempit tombol kanannya
-   turun ke baris berikutnya, bukan mendorong halaman ke samping. */
+/* Di layar sempit tombol kanan turun ke baris berikutnya. */
 .dsb > .subjudul.dsb-judul-tabel{flex-wrap:wrap;row-gap:6px;}
 
-/* --- tabel keseluruhan ---
-   Satu tabel bertingkat: Tahun (baris ringkas, bisa ditutup) → Satuan kerja
-   → angka. Kepala dua tingkat mengelompokkan kolom: Status BPSDM, Status
-   SIPTL, Nilai. Di layar sempit tabelnya digeser di dalam wadahnya sendiri,
-   dengan kolom Tahun dan Satuan kerja tetap di tempat.
-
-   Keterbacaan (24 Sep, Hizkia: "tingkatkan visibilitas atau kontras ... tapi
-   jangan terlalu berlebihan"). Tiga tingkat garis saja, masing-masing satu
-   tugas:
-     garis tipis  #E5E7EB  antarbaris satuan kerja — cukup untuk mengikuti
-                           satu baris ke kanan;
-     garis tegas  #CBD5E1  batas bagian: kelompok kolom, awal tiap tahun,
-                           kolom yang menempel, bawah kepala (2 px);
-     tanpa garis           di dalam sel.
-   Kepala: pita abu #E2E8F0 — jelas lebih gelap dari baris tahun (#F1F5F9)
-   dan isi (putih) — teks #334155 (8,4 : 1), judul kelompok #111827, garis
-   bawah 2 px #94A3B8. Dulu #8A94A6 di atas #F9FAFB (2,9 : 1), lalu #4B5563
-   di atas #F8FAFC: terbaca, tapi pitanya nyaris putih sehingga kepala tidak
-   terasa sebagai bagian tersendiri.
-   Angka #111827; nol ditulis "–" abu #626B7A (5,4 : 1) supaya angka yang ada
-   isinya menonjol. Belum memadai yang tidak nol merah #B91C1C (6,5 : 1) —
-   kolom prioritas; sisa Inspektorat yang tidak nol tebal. */
+/* --- Tabel keseluruhan ---
+   Tahun → Satuan kerja → angka; kepala dua tingkat. */
 .dsb-tk-wadah{--tk-garis:#E5E7EB;--tk-garis-kuat:#CBD5E1;--tk-kepala:#E2E8F0;
   --tk-kepala-garis:#C3CDD9;--tk-kepala-bawah:#94A3B8;--tk-kepala-teks:#334155;
   --tk-tahun:#F1F5F9;--tk-sorot:#EEF3FD;--tk-urut:#F6F9FE;--tk-nol:#626B7A;--tk-belum:#B91C1C;
   container:tabel / inline-size;overflow-x:auto;background:var(--surface);
-  /* position:relative: tulisan pembaca layar "0" di sel kosong berposisi
-     absolut. Tanpa pegangan ini ia lolos dari potongan wadah yang bisa digeser
-     dan melebarkan halaman ponsel (390 -> 851 px). */
+  /* position:relative: tulisan pembaca layar "0" berposisi absolut; tanpa ini halaman ponsel
+     melebar. */
   position:relative;
   border:1px solid var(--tk-garis-kuat);border-radius:var(--r2);}
 .dsb-tk{--lebar-tahun:66px;--tk-pandu:15px;width:100%;border-collapse:separate;border-spacing:0;
@@ -3751,8 +3213,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 /* Judul kelompok kolom: paling gelap di kepala. */
 .dsb-tk thead th.dsb-tk-grup{text-align:center;vertical-align:middle;color:var(--ink);
   font-size:12.5px;font-weight:700;}
-/* Pemisah kelompok di dalam pita kepala sedikit lebih gelap dari di isi,
-   supaya tetap kelihatan di atas abu. */
+/* Pemisah kelompok di pita kepala sedikit lebih gelap. */
 .dsb-tk thead .awal-grup{border-left-color:var(--tk-kepala-garis);}
 .dsb-tk thead th.nama{box-shadow:inset -1px 0 0 var(--tk-kepala-garis);}
 .dsb-tk .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -3762,32 +3223,26 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-tk td.nol{color:var(--tk-nol);}
 .dsb-tk td.belum{color:var(--tk-belum);font-weight:600;}
 .dsb-tk td.tebal{font-weight:600;}
-/* Angka tabel = pintasan ke rekomendasinya. Tampil seperti angka biasa; saat
-   ditunjuk berlatar biru muda dan bergaris bawah, dengan penunjuk tangan. */
+/* Angka tabel = pintasan; saat ditunjuk berlatar biru muda. */
 .dsb-tk .dsb-tk-pintas{display:inline-block;margin:-3px -5px;padding:3px 5px;border:0;
   border-radius:5px;background:none;font:inherit;color:inherit;cursor:pointer;text-align:inherit;}
 .dsb-tk .dsb-tk-pintas:hover{background:var(--aksen-bg);color:var(--aksen-kuat);
   text-decoration:underline;text-underline-offset:2px;}
 .dsb-tk .dsb-tk-pintas:focus-visible{outline:2px solid var(--aksen);outline-offset:1px;}
 .dsb-tk tbody th.nama{font-weight:500;color:var(--ink);text-align:left;white-space:nowrap;}
-/* Kolom Tahun dan Satuan kerja tetap di tempat saat tabel digeser ke
-   samping. Lebar kolom Tahun dipatok supaya kolom Satuan kerja tahu harus
-   menempel di mana. */
+/* Kolom Tahun dan Satuan kerja tetap di tempat saat tabel digeser. */
 .dsb-tk .kol-tahun{position:sticky;left:0;z-index:1;box-sizing:border-box;
   width:var(--lebar-tahun);min-width:var(--lebar-tahun);max-width:var(--lebar-tahun);
   background-color:var(--surface);}
 .dsb-tk .nama{position:sticky;left:var(--lebar-tahun);z-index:1;background-color:var(--surface);
   box-shadow:inset -1px 0 0 var(--tk-garis-kuat);}
 .dsb-tk thead th.kol-tahun,.dsb-tk thead th.nama{z-index:2;background-color:var(--tk-kepala);}
-/* Garis pandu di kolom Tahun: menyambung dari panah tahunnya ke baris satuan
-   kerja di bawahnya, jadi kelihatan baris mana milik tahun mana. Garis
-   antarbaris tidak menyeberangi kolom ini, supaya pandunya utuh. */
+/* Garis pandu kolom Tahun menyambung ke baris satuan kerjanya. */
 .dsb-tk tbody tr:not(.tahun) td.kol-tahun{border-bottom-color:transparent;
   background-image:linear-gradient(to right, transparent calc(var(--tk-pandu) - 1px),
     var(--tk-garis-kuat) calc(var(--tk-pandu) - 1px), var(--tk-garis-kuat) calc(var(--tk-pandu) + 1px),
     transparent calc(var(--tk-pandu) + 1px));}
-/* Baris tahun: ringkasan tahun itu dan awal kelompoknya — garis tegas di
-   atasnya, latar abu kebiruan, teks tebal. */
+/* Baris tahun: garis tegas di atas, latar abu kebiruan, teks tebal. */
 .dsb-tk tbody tr.tahun > *{background-color:var(--tk-tahun);font-weight:700;color:var(--ink);
   border-top:1px solid var(--tk-garis-kuat);border-bottom-color:var(--tk-garis-kuat);}
 .dsb-tk tbody:first-of-type tr.tahun > *{border-top:0;}
@@ -3808,8 +3263,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
    terakhir. */
 .dsb-tk tbody tr:not(.tahun):hover > *{background-color:var(--tk-sorot);}
 .dsb-tk td.pct{min-width:92px;}
-/* Judul kolom = tombol pengurut. Panah hanya di kolom yang sedang dipakai
-   mengurutkan, dan kolom itu diberi warna dasar tipis. */
+/* Panah hanya di kolom yang sedang mengurutkan. */
 .dsb-tk th > .urut{display:flex;align-items:flex-end;gap:3px;width:100%;padding:0;border:0;
   background:none;font:inherit;line-height:1.3;color:inherit;text-align:left;cursor:pointer;}
 .dsb-tk th.num > .urut{justify-content:flex-end;text-align:right;}
@@ -3830,9 +3284,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   .dsb-tk{font-size:12.5px;--tk-pandu:13px;}
   .dsb-tk th,.dsb-tk td{padding:7px 6px;}
 }
-/* Wadah sempit (layar 1024 ke bawah): nama boleh dua baris dan sel lebih
-   rapat, supaya tabel sebisa mungkin tidak perlu digeser. Kalau tetap tidak
-   muat, tabelnya digeser di dalam wadahnya dengan kolom nama tetap di tempat. */
+/* Wadah sempit: nama boleh dua baris; bila tetap tidak muat, tabel digeser di wadahnya. */
 @container tabel (max-width:940px){
   .dsb-tk{--lebar-tahun:60px;--tk-pandu:12px;font-size:12px;}
   .dsb-tk th,.dsb-tk td{padding:6px 5px;}
@@ -3845,8 +3297,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 /* --- tabel pengganti grafik --- */
 .dsb-tw{position:relative;overflow-x:auto;margin-top:2px;}
 .dsb-tabel{width:100%;border-collapse:collapse;font-size:var(--t2);}
-/* Kepala kolom boleh dua baris ("Belum / memadai"): di panel sepertiga lebar
-   kepala yang dipaksa sebaris membuat tabelnya harus digeser ke samping. */
+/* Kepala kolom boleh dua baris. */
 .dsb-tabel th{text-align:left;font-weight:600;color:var(--ink-2);font-size:11.5px;
   padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:bottom;line-height:1.3;}
 .dsb-tabel th.num{white-space:normal;}
@@ -3862,24 +3313,17 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 .dsb-petunjuk .br > strong{font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
 .dsb-petunjuk .br > span{color:#cbd5e1;}
 
-/* --- lebar wadah ---
-   Yang diukur lebar ISI .dsb, sesudah padding .body — pada layar 1440 dengan
-   menu lebar isinya ±1140 px, pada 1280 ±980 px, pada 1024 (menu ciut) ±870 px. */
-/* Lima kartu sejajar selama tiap kartu masih ±160 px (layar 1024 dengan menu
-   ciut: isi ±873 px, kartu ±166 px); di bawah itu 3 + 2. */
-@container dsb (max-width:839px){
-  .dsb-kpi{grid-template-columns:repeat(6,minmax(0,1fr));}
-  .dsb-kpi > *{grid-column:span 2;}
-  .dsb-kpi > :nth-child(n+4){grid-column:span 3;}
-}
+/* --- Lebar wadah ---
+   Yang diukur lebar isi .dsb (1440 px dengan menu lebar ±1140, 1280 ±980, 1024 menu ciut ±870). */
 /* Dua panel sebaris selama panel kanan masih ±300 px. */
 @container dsb (max-width:759px){
   .dsb-petak{grid-template-columns:minmax(0,1fr);}
 }
 @container dsb (max-width:639px){
-  .dsb-kpi{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .dsb-kpi > *,.dsb-kpi > :nth-child(n+4){grid-column:auto;}
-  .dsb-kpi > :first-child{grid-column:1 / -1;}
+  /* Kartu sejajar selama tiap kartu ±160 px; di bawah itu dua kolom, kartu pertama selebar
+     wadah bila jumlahnya ganjil. */
+  .dsb-kpi{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .dsb-kpi > :first-child:nth-last-child(odd){grid-column:1 / -1;}
   .dsb-ubin{padding:12px 13px;}
   .dsb-ubin .n{font-size:24px;}
   /* Label naik ke atas kepingnya; satu kolom selebar wadah. */
@@ -3891,30 +3335,23 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   .dsb-panel{padding:14px;}
   .dsb-garis .sumbux > span:nth-child(even){display:none;}
 }
-/* Ponsel. Baris keping tidak perlu digeser: yang tidak muat sudah ditampung
-   menu "+N lainnya". Kartu angka tetap dua kolom — satu kolom membuat lima
-   kartunya saja setinggi ±700 px. Nama satuan kerja boleh dua baris. */
+/* Ponsel: kartu angka tetap dua kolom; keping yang tidak muat di menu "+N lainnya". */
 @container dsb (max-width:479px){
-  /* Tombol "Tambah filter" turun ke barisnya sendiri: kalau berbagi baris,
-     pilihan Jenis terdesak ke "+2 lainnya". */
+  /* Ponsel: "Tambah filter" turun ke barisnya sendiri. */
   .dsb-baris-jenis{flex-wrap:wrap;gap:8px;}
   .dsb-baris-jenis > .dsb-pemilah{flex:1 1 100%;}
-  /* Ponsel: jumlah dan tombol hapus di baris pertama, keping filter aktif
-     (atau sarannya) di baris kedua yang bisa digeser. */
+  /* Ponsel: jumlah dan tombol hapus di baris pertama, keping filter di baris kedua. */
   .dsb-hasil{flex-wrap:wrap;}
   .dsb-aktif,.dsb-hasil .saran{flex-basis:100%;order:3;}
   .dsb-hasil .saran{white-space:normal;}
   .dsb-hbaris .nm{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
     -webkit-box-orient:vertical;line-height:1.3;}
 }
-/* Grafik sempit: label tahun yang berjejal dijarangkan sekali lagi. Yang
-   diukur grafiknya sendiri, bukan panelnya — panel per tahun memuat dua
-   grafik. Delapan tahun masih muat berjajar sampai lebar grafik ±280 px. */
+/* Grafik sempit: label tahun dijarangkan lagi (diukur dari grafiknya sendiri). */
 @container grafik (max-width:280px){
   .dsb-kolom .sumbux > span.jarang{visibility:hidden;}
 }
-/* Bagian bertiga: dua kolom di wadah sedang (panel ketiga selebar baris),
-   satu kolom di ponsel. */
+/* Bagian bertiga: dua kolom di wadah sedang, satu kolom di ponsel. */
 @container dsb (max-width:839px){
   .dsb-petak.tiga{grid-template-columns:repeat(2,minmax(0,1fr));}
   .dsb-petak.tiga > :nth-child(3){grid-column:1 / -1;}
@@ -3929,10 +3366,7 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   .dsb-petak.tiga > .dsb-lebar2 ~ *,
   .dsb-petak.tiga > .dsb-lebar3{grid-column:auto;}
 }
-/* Panel status dan per tahun yang sempit (ponsel): satu lajur. Di atas itu
-   matriksnya tetap berkolom — deret angkanya boleh turun baris — karena
-   satu lajur membuat panelnya dua kali lebih tinggi (di layar 1024 panel ini
-   cuma ±580 px). */
+/* Panel status dan per tahun yang sempit: satu lajur. */
 @container panel (max-width:460px){
   .dsb-matriks{grid-template-columns:minmax(0,1fr);gap:6px;}
   .dsb-matriks .mk-sudut,.dsb-matriks .mk-kolom{display:none;}
@@ -3953,21 +3387,8 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
   .dsb-pipa .sumbux .pdk{display:inline;}
 }
 
-/* --- gerak (26 Sep) ---
-   Aturan umumnya di blok "GERAK SELURUH SISTEM" prototipe-tlhp-v4.jsx (di
-   sana juga keyframes-nya). Grafik tumbuh hanya saat PERTAMA muncul: deret
-   kartu angka saat halaman dasbor tampil, rincian saat sebuah kartu dibuka.
-   Selama 1,4 detik wadahnya bertanda [data-tumbuh] (DasborUji.jsx
-   `tandaiTumbuh`; di Laravel dari server, dilepas simtlhp.js) — kartu masuk
-   bergiliran, batang terisi dari nol, batang tegak tumbuh dari dasarnya, dan
-   garis tergambar dari kiri. Sesudah itu, mengganti filter cuma
-   menghaluskan ukurannya ke yang baru (transisi di aturan masing-masing di
-   atas); baris yang baru masuk filter langsung tampil.
-
-   Laravel mengganti isi dasbor di tempat, jadi unsurnya selalu baru. Unsur
-   yang sebelumnya sudah tampil dikenali lewat kuncinya, diberi keadaan lamanya
-   sekejap, lalu keadaan barunya — transisinya sama dengan di sini
-   (simtlhp.js, potretIsi · pasangSifatLama · sambungIsi). */
+/* --- Gerak ---
+   Grafik tumbuh hanya saat pertama muncul (data-tumbuh). */
 .dsb-kpi[data-tumbuh] > .dsb-ubin{animation:simtMuncul .3s var(--kurva) backwards;}
 .dsb-kpi[data-tumbuh] > .dsb-ubin:nth-child(2){animation-delay:50ms;}
 .dsb-kpi[data-tumbuh] > .dsb-ubin:nth-child(3){animation-delay:100ms;}
@@ -3982,31 +3403,17 @@ button.dsb-ubin[aria-expanded="true"] .l > .buka{transform:rotate(180deg);color:
 [data-tumbuh] .dsb-pita .batang{animation:simtNaik .6s var(--kurva) .15s backwards;}
 [data-tumbuh] .dsb-pita .dsb-cap,
 [data-tumbuh] .dsb-pita .tag{animation:simtPudar .3s ease-out .5s backwards;}
-[data-tumbuh] .dsb-sirip svg,
 [data-tumbuh] .dsb-garis svg{animation:simtGambar .8s var(--kurva) .15s backwards;}
-[data-tumbuh] .dsb-sirip > i{animation:simtTitik .3s var(--kurva) .85s backwards;}
 [data-tumbuh] .dsb-garis .titik{animation:simtPudar .3s ease-out .7s backwards;}
 
 
 /* ===== src/data-master.css ===== */
-/* ==================================================================
-   DATA MASTER & LOG AKTIVITAS (27 Sep)
-   ==================================================================
-   Satu kerangka untuk kedua layar: deret tab berbingkai (kelas tl-tabs yang
-   sama dengan rincian tindak lanjut), lalu satu kartu berisi kepala tab —
-   judul, satu kalimat, Info, alat di kanan — ringkasan, dan tabel yang hanya
-   dibaca. Menambah dan mengubah lewat jendela melayang.
-
-   Di prototipe berkas ini dimuat SEBELUM gaya utama, di Laravel SESUDAHNYA —
-   jadi aturan di sini sengaja memakai kelas dm- sendiri, bukan menimpa
-   aturan lama. */
+/* ---- Data master & Log aktivitas ---- */
 
 .dm{display:grid;gap:14px;align-content:start}
 .dm .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-/* ---------- deret tab ----------
-   Di prototipe tombol (kelas tl-tabs), di Laravel link — halamannya
-   berpindah alamat. Wujudnya disamakan di sini. */
+/* ---------- Deret tab ---------- */
 .dm-tabs{flex-wrap:wrap;overflow:visible}
 .dm-tabs a{display:flex;align-items:center;gap:7px;flex:none;white-space:nowrap;min-height:38px;padding:7px 14px;border:1px solid #B8C0CC;border-radius:10px;background:var(--surface);font-size:13.5px;font-weight:500;color:#1F2937;text-decoration:none;box-shadow:0 1px 2px rgba(16,24,40,.06);transition:border-color .15s ease,background-color .15s ease,color .15s ease}
 .dm-tabs a svg{flex:none;color:#4B5563}
@@ -4161,8 +3568,7 @@ a.lg-objek{display:inline}
 
 /* ---------- layar sempit: baris jadi kartu ---------- */
 @media not all and (min-width:768px){
-  /* Deret tab satu baris yang bisa digeser, bukan enam baris bertumpuk —
-     "Gua tuh menghindari banyak scroll". */
+  /* Deret tab satu baris yang bisa digeser. */
   .dm-tabs{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;margin:0 -16px;padding:3px 16px}
   .dm-tabs > *{scroll-snap-align:start}
   .dm-kepala{padding:16px 16px 12px}
@@ -4173,8 +3579,7 @@ a.lg-objek{display:inline}
   .dm-tabel{overflow:visible}
   .dm-tabel thead{display:none}
   .dm-tabel table,.dm-tabel tbody{display:block}
-  /* Kartu dua kolom: isian pendek berdampingan, yang panjang selebar kartu —
-     kartunya jadi separuh tingginya. */
+  /* Kartu dua kolom: isian pendek berdampingan. */
   .dm-tabel tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 14px;padding:12px 16px;border-bottom:1px solid var(--line)}
   .dm-tabel tbody tr > td:first-child,.dm-tabel tbody tr > td.dm-aksi,
   .dm-tabel td[data-label="Penanggung jawab"],.dm-tabel td[data-label=Aktivitas],
@@ -4199,24 +3604,7 @@ a.lg-objek{display:inline}
 
 
 /* ===== src/akun.css ===== */
-/* ==================================================================
-   PROFIL & PENGATURAN AKUN (28 Sep)
-   ==================================================================
-   Kata Hizkia: "buat sistem atau page untuk profil User, lengkap dengan
-   pilihan menu menu lainnya yang berkaitan dengan pengaturan profil".
-
-   - Tombol pengguna di kanan atas membuka menu akun (kelas ak-menu): kepala
-     berisi siapa yang sedang masuk, lalu Profil saya, Keamanan,
-     Pemberitahuan, Tampilan, Aktivitas saya, Panduan singkat, dan Keluar
-     (di prototipe: Ganti akun).
-   - Halaman Profil & pengaturan memakai kerangka Data master: deret tab
-     berbingkai, lalu satu kartu. Di atasnya kartu kecil pengenal akun.
-   - Isi tiap tab dibagi blok (ak-blok) yang dipisah garis tipis — judul
-     kecil, satu kalimat, isinya. Saklar untuk nyala/mati, pilihan berbingkai
-     (dm-opsi) untuk pilihan yang saling meniadakan.
-
-   Keterbacaan mengikuti aturan umum: garis isian #8B95A5, bingkai kartu dan
-   pilihan #B8C0CC, tulisan paling pucat #4B5563. */
+/* ---- Profil & pengaturan akun ---- */
 
 /* ---------- tombol pengguna & menu akun ---------- */
 .ak-wadah{position:relative;display:inline-flex}
@@ -4274,7 +3662,7 @@ a.lg-objek{display:inline}
 .ak-peran .teks > span{font-size:12.5px;color:#4B5563;line-height:1.45}
 .ak-hak{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:9px}
 .ak-hak li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;line-height:1.45;color:var(--ink)}
-/* Hanya yang bisa dilakukan (28 Sep) — tiap butir bertanda centang hijau. */
+/* Hanya yang bisa dilakukan — tiap butir bercentang hijau. */
 .ak-hak li svg{flex:none;margin-top:1px;color:var(--ok)}
 .ak-catat{display:flex;align-items:flex-start;gap:7px;margin:14px 0 0;font-size:12.5px;line-height:1.5;color:#4B5563}
 .ak-catat svg{flex:none;margin-top:2px}
@@ -4316,9 +3704,8 @@ input[type=password]:focus{outline:none;border-color:var(--aksen);box-shadow:0 0
 .ak-atur > li{padding:14px 0;border-bottom:1px solid var(--line)}
 .ak-atur > li:first-child{padding-top:2px}
 .ak-atur > li:last-child{border-bottom:0;padding-bottom:2px}
-/* Seluruh baris satu label: menekan tulisannya ikut menyalakan saklarnya.
-   Selektor saklarnya sengaja panjang — aturan dasar `input[type=checkbox]`
-   (width:auto) di gaya utama dimuat sesudah berkas ini di prototipe. */
+/* Seluruh baris satu label (menekan tulisan menyalakan saklar). Selektor sengaja panjang supaya
+   mengalahkan `input[type=checkbox]` di gaya utama. */
 .ak-baris{display:flex;align-items:center;justify-content:space-between;gap:16px}
 label.ak-baris{cursor:pointer}
 .ak-atur .teks{display:grid;gap:2px;min-width:0}
@@ -4348,10 +3735,8 @@ input[type=checkbox].ak-saklar:disabled{opacity:.5;cursor:not-allowed}
 /* aktivitas saya */
 .ak .lg-filter{padding:0 20px 14px}
 
-/* ---------- gerak dikurangi (Tampilan) ----------
-   Pilihan akun, bukan pengaturan perangkat: "Kurangi animasi" mematikan
-   seluruh animasi dan peralihan di aplikasi ini, sama dengan saklar umum
-   prefers-reduced-motion. Laravel memasang tandanya di <body>. */
+/* ---------- Gerak dikurangi ----------
+   "Kurangi animasi" (pilihan akun) mematikan seluruh animasi dan peralihan. */
 body[data-animasi="kurang"] *,body[data-animasi="kurang"] *::before,body[data-animasi="kurang"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 
 /* ---------- layar sempit ---------- */

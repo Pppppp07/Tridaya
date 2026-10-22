@@ -4,8 +4,7 @@
   use App\Models\Temuan;
   use App\Support\Tampil;
 
-  /* Satu temuan beserta rekomendasinya — padanan BlokTemuan. Selalu tertutup
-     saat pertama tampil; yang genting tetap tercetak di kepalanya. */
+  /* Satu temuan beserta rekomendasinya; tertutup sejak awal, yang genting tercetak di kepalanya. */
   $mendesak = $tem->rekomendasi->filter(fn ($r) => $r->perluPerhatian())->count();
   $nilai = $tem->nilaiTemuan();
   $ditagih = (int) $tem->rekomendasi->sum('nilai_pulih');
@@ -13,12 +12,8 @@
   $memadai = $tem->rekomendasi->filter(fn ($r) => $r->keadaanUnor() === HasilTelaah::M)->count();
   $idIsi = 'temuan-'.$tem->id;
 
-  /* Keterangan temuannya berbaris ke bawah (27 Sep) — padanan daftar Fakta di
-     BlokTemuan, bentuk yang sama dengan Uraian temuan di rincian rekomendasi.
-     Angka uangnya memakai nama dan urutan Pemulihan dana tingkat laporan:
-     tagihan disebut kalau berbeda dari nilai temuannya, yang sudah dan belum
-     dipulihkan hanya kalau memang ada yang ditagih. Judul, butir, dan kode
-     tidak diulang — kepala bloknya sudah menyebutnya. */
+  /* Keterangan temuan berbaris ke bawah; nama dan urutan angka uangnya sama dengan Pemulihan
+     dana tingkat laporan. */
   $uang = $nilai > 0 && ! $tem->hanya_terperiksa;
   $sisa = $ditagih - $kembali;
   $angka = fn (string $teks) => '<b class="angkafakta">'.$teks.'</b>';
@@ -43,8 +38,7 @@
   ];
 @endphp
 
-{{-- data-temuan dan data-satker: sasaran pintasan (26 Sep) — nama satuan kerja
-     dan angka di kepala halaman membuka blok ini lalu menyorot barisnya. --}}
+{{-- data-temuan dan data-satker: sasaran pintasan dari kepala halaman. --}}
 <div class="temblok" data-temblok data-temuan="{{ $tem->id }}" data-satker="{{ $tem->satkers->pluck('id')->join('|') }}">
   <button type="button" class="kep" aria-expanded="false" aria-controls="{{ $idIsi }}" data-buka-temuan>
     <span class="panah" style="color:var(--ink-3);flex:none">›</span>
@@ -78,21 +72,17 @@
     <div class="tw">
       <table data-tabel-temuan>
         <thead>
-          <tr><th class="num">No</th><th>Uraian rekomendasi</th><th>Kode</th><th>Satuan kerja</th><th>Tenggat jawab</th>
-            <th>Kemajuan <x-info :teks="\App\Support\TindakLanjutRingkas::KETERANGAN" /></th></tr>
+          <tr><th class="num">No</th><th>Uraian rekomendasi</th><th>Kode</th><th>Tenggat jawab</th><th>Satuan kerja</th>
+            <th>Kemajuan <x-info :teks="\App\Support\TindakLanjutRingkas::keterangan($peran, $u->satkerAktifId())" /></th></tr>
         </thead>
         <tbody>
           @foreach($tem->rekomendasi as $j => $rek)
             @php
               $lewat = $rek->telatTenggat();
               $lewatBatas = $rek->hariLewatPerbaikan();
-              $satker = $rek->satkerTampil($peran, $u->satker_id);
+              $satker = $rek->satkerTampil($peran, $u->satkerAktifId());
             @endphp
-            {{-- Menekan barisnya langsung membuka halaman rincian
-                 rekomendasinya — sama seperti tabel Rekomendasi. Dulu barisnya
-                 membuka rincian kecil di bawahnya; isinya mengulang sebagian
-                 halaman rincian dengan lebih sedikit keterangan, dan yang
-                 membacanya tetap harus membuka halamannya juga. --}}
+            {{-- Menekan baris membuka rincian rekomendasinya. --}}
             <tr class="bukaan{{ $rek->perluPerhatian() ? ' awas' : '' }}" data-rek="{{ $rek->id }}"
               data-satker="{{ $satker->pluck('id')->join('|') }}"
               data-href="{{ route('rekomendasi.show', ['rekomendasi' => $rek, 'dari' => 'laporan']) }}">
@@ -105,12 +95,12 @@
                 {{ $rek->refLhp() }}
                 <div class="lbl" style="margin-top:3px">{{ $rek->kode }}</div>
               </td>
-              <td style="font-size:12.5px">{{ $satker->count() === 1 ? $satker->first()->namaPendek() : ($satker->count() ? $satker->count().' satuan kerja' : '—') }}</td>
               <td class="mono" style="font-size:12px;color:{{ $lewat ? 'var(--bad)' : 'inherit' }}">
                 {{ Tampil::tgl($rek->tenggat_jawab) }}
                 @if($lewat)<div class="lbl" style="color:var(--bad)">{{ Tampil::lamaTelat($rek->lewatTenggat()) }}</div>@endif
                 @if($lewatBatas > 0)<div class="lbl" style="color:var(--bad)">lewat batas perbaikan {{ $lewatBatas }} hari</div>@endif
               </td>
+              <td style="font-size:12.5px">{{ $satker->count() === 1 ? $satker->first()->namaPendek() : ($satker->count() ? $satker->count().' satuan kerja' : '—') }}</td>
               <td><x-kemajuan :rek="$rek" /></td>
             </tr>
           @endforeach

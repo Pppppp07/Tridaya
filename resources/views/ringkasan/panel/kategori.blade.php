@@ -1,8 +1,4 @@
-{{-- Per kategori internal — padanan `panelKategori`. Namanya dari data
-     master. Sejak 27 Sep batangnya memakai warna keadaan, sama dengan Per
-     satuan kerja — bukan warna kategori, yang dulu terbaca sebagai keadaan.
-     Klik batangnya memfilter kategori itu (baris "Kategori internal" ikut
-     terpasang). --}}
+{{-- Per kategori internal; batang memakai warna keadaan. Klik batang memfilter kategori itu. --}}
 @php
   $lengkap = in_array('kategori', $k['semua'], true);
   $dipilih = $f['lain']['intern'] ?? [];
@@ -12,7 +8,7 @@
   $tabelOn = in_array('kategori', $k['tabel'], true);
 @endphp
 <x-dsb-panel id="dsb-p-kategori" :kelas="$kelas" judul="Per kategori internal"
-  :info="['Kelompok buatan BPSDM, diatur di Data master.', 'Warnanya sama dengan Per satuan kerja: '.$kecil($kataBM).' dan '.$kecil($kataM).'.']"
+  :info="['Jumlah penugasan menurut kategori internal BPSDM pada temuan.', 'Warna menunjukkan hasil '.$kecil($kataBM).' dan '.$kecil($kataM).'. Klik kategori untuk memfilter data.']"
   :kosong="! $d['kategori'] ? 'Tidak ada tindak lanjut pada pilihan ini.' : null"
   kunci-tabel="kategori" :tabel="$tabelOn">
   <x-slot:isiTabel>

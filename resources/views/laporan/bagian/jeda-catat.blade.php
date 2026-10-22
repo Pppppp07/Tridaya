@@ -1,7 +1,6 @@
 @use('App\Models\Laporan')
-{{-- Jarak surat diterima ke pencatatannya, kalau lewat sepekan — atau mundur,
-     yang berarti salah satu tanggalnya salah. Dipakai di kolom Diterima dan,
-     di layar sempit, di bawah nomor laporan (22 Sep). --}}
+{{-- Jarak surat diterima → dicatat bila lewat sepekan, atau mundur (salah satu tanggalnya
+     salah). --}}
 @if($j !== null && $j < 0)
   <div class="jedacatat salah">dicatat {{ -$j }} hari sebelum diterima</div>
 @elseif($j !== null && $j > Laporan::BATAS_JEDA_CATAT)

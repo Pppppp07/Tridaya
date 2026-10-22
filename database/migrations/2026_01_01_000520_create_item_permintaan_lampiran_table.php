@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Menautkan butir kelengkapan ke berkas yang memenuhinya. Kalau berkas
-        // itu ditarik, centangnya ikut batal — supaya kelengkapan tidak bisa
-        // dicurangi dengan mengunggah asal lalu menariknya lagi.
+        // Butir kelengkapan ↔ berkas yang memenuhinya.
         Schema::create('item_permintaan_lampiran', function (Blueprint $table) {
             $table->id();
             $table->foreignId('item_permintaan_id')->constrained('item_permintaans')->cascadeOnDelete();

@@ -2,15 +2,7 @@
   use App\Support\Tampil;
 @endphp
 
-{{-- Arsip rekomendasi: seluruh berkas rekomendasi ini di satu tempat, tanpa
-     kecuali, termasuk bukti setoran. Jendela melayang dari tombol di atas
-     halaman, bukan kartu di kaki halaman (rapat 18 Sep: "Gua tuh menghindari
-     banyak scroll"). Padanan `JendelaArsip` prototipe (disamakan 25 Sep).
-
-     Terbuka lewat #arsip walau skrip tidak jalan. Skripnya (pasangArsip)
-     membukanya tanpa mengubah alamat, mengunci latarnya, menaruh fokus di
-     tombol Tutup, lalu mengembalikannya ke tombol pembuka — sama dengan
-     panduan. --}}
+{{-- Arsip rekomendasi: seluruh berkasnya di satu jendela (dari tombol di atas halaman). --}}
 <div id="arsip" class="tirai tirai-arsip" data-arsip>
   <div class="lembar arsip" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="arsip-judul">
     <div class="kep">
@@ -20,11 +12,8 @@
         <span class="lbl">{{ $arsip->count() }} berkas · Rekomendasi {{ $r->refLhp() ?: $r->kode }}</span>
       </span>
       <x-info :teks="[
-        'Tempat mengumpulkan seluruh berkas rekomendasi ini, baik yang diunggah satuan kerja maupun unit lain.',
-        'Bukti setoran ikut tersimpan di sini, dan tetap tampil juga di tabel pemulihan nilai.',
-        'Berkas yang sudah dikirim tidak bisa dihapus atau ditarik siapa pun, termasuk pengunggahnya.',
-        'Berkas yang keliru diganti saat berkasnya dikirim ulang untuk pemberkasan ulang. Berkas lama tetap tersimpan sebagai jejak.',
-        'Berkas di sini berupa link. Jika link tersebut memuat data pribadi, tutup aksesnya di tempat penyimpanannya.',
+        'Kumpulan dokumen yang terkait dengan rekomendasi ini, termasuk surat, bukti tindak lanjut, dan bukti pemulihan nilai.',
+        'Setiap dokumen menampilkan jenis, pengirim, dan tanggal pencatatannya. File dibuka melalui link ke layanan penyimpanan asal.',
       ]" />
       <a class="btn btn-s" href="#r-arsip" data-tutup-arsip><x-ikon n="X" :s="13" /> Tutup</a>
     </div>

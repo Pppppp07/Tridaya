@@ -3,23 +3,8 @@
 namespace App\Enums;
 
 /**
- * Sumbu penilaian Itjen — terpisah dari StatusTindakLanjut, yang milik BPK.
- *
- * Lembar pemantauan SETBA memang memisahkan keduanya, dan 312 barisnya memakai
- * "Belum memadai" — bukan "tidak memadai", karena berkasnya masih bisa
- * diperbaiki dan dikembalikan.
- *
- * Maknanya sama untuk kedua jenis laporan — cukup atau belum cukup — tapi
- * sebutannya berbeda, dan Mbak Puspi menegaskan itu: "hasil verifikasinya ini
- * tergantung jenis laporannya."
- *
- *     LHA   Sesuai / Belum sesuai
- *     LHP   Memadai / Belum memadai
- *
- * Kolomnya tetap satu. Yang berbeda hanya cara menyebutnya.
- *
- * NULL punya artinya sendiri dan bukan sekadar kosong: belum ditelaah. Itu
- * tidak sama dengan belum memadai, dan tidak boleh ditampilkan seakan sama.
+ * Penilaian Itjen, terpisah dari StatusTindakLanjut (BPK). Sebutannya mengikuti jenis laporan: LHA
+ * Sesuai/Belum sesuai, LHP Memadai/Belum memadai. NULL = belum ditelaah, bukan belum memadai.
  */
 enum HasilTelaah: string
 {
@@ -47,11 +32,7 @@ enum HasilTelaah: string
         return $this === self::M ? 'cap-ss' : 'cap-bs';
     }
 
-    /**
-     * Singkatannya ikut sebutannya: LHP M / BM, LHA S / BS. Sesuai disingkat
-     * "S", bukan "SS" — dua huruf itu milik BPK dan di sana berarti "Sudah
-     * sesuai", kalimat yang berbeda dari putusan Itjen atas LHA.
-     */
+    /** Singkatan: LHP M/BM, LHA S/BS. "SS" milik BPK (Sudah sesuai). */
     public function kode(?SumberLaporan $sumber = null): string
     {
         if ($sumber === SumberLaporan::LHA) {

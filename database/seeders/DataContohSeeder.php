@@ -34,21 +34,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Data contoh yang sama persis dengan prototipe.
- *
- * Dibaca dari `database/data/data-contoh.json` — salinan
- * `Prototipe/alat/data-contoh.json`, yang juga menjadi `AWAL` dan `PEMBERITAHUAN_AWAL`
- * di prototipe. Data itu tidak diketik: ia dibangun dengan memutar tindakan
- * aplikasi prototipe sendiri, jadi setiap keadaannya memang bisa dicapai.
- * Menyalinnya di sini, bukan mengarang ulang, membuat kedua artefak
- * memperagakan berkas yang sama — dan selisih tampilan di antara keduanya
- * berarti selisih aturan, bukan selisih data.
- *
- * Tanggalnya disusun untuk "hari ini" 17 Agustus 2026. Pasang
- * `SIMTLHP_HARI_INI=2026-08-17` supaya tenggat dan keterlambatannya terbaca
- * sama dengan prototipe.
- */
+/** Data contoh dari database/data/data-contoh.json (salinan Prototipe/alat/data-contoh.json). */
 class DataContohSeeder extends Seeder
 {
     /** Kunci posisi prototipe yang namanya berbeda di sini. */
@@ -59,14 +45,15 @@ class DataContohSeeder extends Seeder
     /** Peran prototipe yang namanya berbeda di sini. */
     private const PERAN = ['balai' => 'satker'];
 
+    /** Jejak simpan draf di data prototipe; di sini draf tidak meninggalkan jejak. */
+    private const JEJAK_DRAF = '/^(Kemajuan dicatat|Isian disimpan|Kemajuan tindak lanjut)\b/u';
+
     private Collection $satkerPanjang;
     private Collection $satkerPendek;
     private array $bentuk;
     private array $kategoriIntern;
     private array $sifat;
-    private array $alasanTd;
     private ?int $setba;
-    /** @var array<string, Rekomendasi> id prototipe => rekomendasi */
     private array $rek = [];
 
     public function run(): void
@@ -78,7 +65,6 @@ class DataContohSeeder extends Seeder
         $this->bentuk = Referensi::where('jenis', JenisReferensi::BENTUK_TL->value)->pluck('id', 'nama')->all();
         $this->kategoriIntern = Referensi::where('jenis', JenisReferensi::KATEGORI_INTERN->value)->pluck('id', 'nama')->all();
         $this->sifat = Referensi::where('jenis', JenisReferensi::SIFAT_REKOM->value)->pluck('id', 'nama')->all();
-        $this->alasanTd = Referensi::where('jenis', JenisReferensi::ALASAN_TD->value)->pluck('id', 'nama')->all();
         $this->setba = User::where('peran', PeranPengguna::SETBA->value)->value('id');
 
         DB::transaction(function () use ($data) {
@@ -89,39 +75,51 @@ class DataContohSeeder extends Seeder
                 $this->pemberitahuan($k);
             }
 
-            /* Catatan data contoh tidak punya urutan pencatatan — di prototipe
-               idnya bukan buatan `uid()`. Riwayat status memakai `created_at`
-               sebagai urutan itu; dikosongkan supaya seri pada tanggal yang
-               sama diputus urutan sumbernya, sama seperti prototipe. */
+            /* Data contoh tanpa urutan pencatatan: `created_at` dikosongkan supaya urutan sehari
+               mengikuti `id`. */
             foreach (['riwayat_statuses', 'tindak_lanjuts', 'surats', 'telaahs',
                 'keputusan_verifikasis', 'pengembalians'] as $tabel) {
                 DB::table($tabel)->update(['created_at' => null, 'updated_at' => null]);
             }
 
             $this->logDariRiwayat();
+            $this->lengkapiPelaku();
         });
     }
 
-    /**
-     * Log aktivitas awal (27 Sep): satu baris per baris riwayat berkas data
-     * contoh — padanan `logDariRiwayat` prototipe, jadi kedua artefak membuka
-     * Log aktivitas dengan isi yang sama. Pelakunya dicari menurut sebutan di
-     * riwayat: "Setba", "UKI", "Inspektorat" → akun pusatnya; nama pendek
-     * satuan kerja → penanggung jawabnya sekarang. Waktunya cuma tanggal
-     * (riwayat lama tidak menyimpan jam), alamat dan perangkatnya kosong.
-     * Sesudah ini, perbuatan baru dicatat App\Support\Aktivitas.
-     */
+    /** Akun pusat menurut sebutannya di riwayat: yang aktif pertama tiap peran. */
+    private static function akunPusat(): array
+    {
+        return [
+            'Setba'       => User::where('peran', PeranPengguna::SETBA->value)->where('aktif', true)->orderBy('id')->first(),
+            'UKI'         => User::where('peran', PeranPengguna::UKI->value)->where('aktif', true)->orderBy('id')->first(),
+            'Inspektorat' => User::where('peran', PeranPengguna::INSPEKTORAT->value)->where('aktif', true)->orderBy('id')->first(),
+        ];
+    }
+
+    /** Akun pencatat riwayat contoh, dicari dari sebutan perannya. */
+    public function lengkapiPelaku(): void
+    {
+        foreach (self::akunPusat() as $sebut => $u) {
+            if (! $u) {
+                continue;
+            }
+            DB::table('riwayat_statuses')->whereNull('oleh_id')->where('oleh', $sebut)->update(['oleh_id' => $u->id]);
+            DB::table('telaahs')->whereNull('oleh_id')
+                ->where(fn ($q) => $q->where('label_pencatat', $sebut)
+                    ->orWhere(fn ($w) => $w->whereNull('label_pencatat')->where('label_oleh', $sebut)))
+                ->update(['oleh_id' => $u->id]);
+        }
+    }
+
+    /** Log aktivitas awal: satu baris per riwayat berkas data contoh. */
     public function logDariRiwayat(): void
     {
         /* Sekali saja: kalau log berkas sudah ada, riwayatnya sudah tersalin. */
         if (\App\Models\LogAktivitas::where('aksi', 'berkas')->exists()) {
             return;
         }
-        $pusat = [
-            'Setba'       => User::where('peran', PeranPengguna::SETBA->value)->where('aktif', true)->orderBy('id')->first(),
-            'UKI'         => User::where('peran', PeranPengguna::UKI->value)->where('aktif', true)->orderBy('id')->first(),
-            'Inspektorat' => User::where('peran', PeranPengguna::INSPEKTORAT->value)->where('aktif', true)->orderBy('id')->first(),
-        ];
+        $pusat = self::akunPusat();
         $pj = User::where('peran', PeranPengguna::SATKER->value)->where('aktif', true)->with('satker')->get()
             ->filter(fn ($u) => $u->satker)->keyBy(fn ($u) => $u->satker->nama_pendek);
 
@@ -223,12 +221,6 @@ class DataContohSeeder extends Seeder
             'target_selesai'     => $this->tgl($r['targetSelesai']),
             'catatan'            => $r['catatanSetba'] ?: null,
             'status'             => $r['status'] ?: 'BT',
-            'alasan_td_id'       => $this->alasanTd[$r['alasanTd']] ?? null,
-            'catatan_td'         => $r['catatanTd'] ?: null,
-            'siptl_tanggal'      => $r['siptl']['tanggal'] ?? null,
-            'siptl_status'       => $r['siptlStatus']['status'] ?? null,
-            'siptl_catatan'      => $r['siptlStatus']['catatan'] ?? null,
-            'siptl_dicatat_pada' => $r['siptlStatus']['dicatat'] ?? null,
         ]);
         $this->rek[$r['id']] = $rek;
 
@@ -285,8 +277,7 @@ class DataContohSeeder extends Seeder
             }
         }
 
-        /* Baris milik satu satuan kerja pada satu tindakan. Nama satuan kerja
-           boleh panjang atau pendek — tanggapan menyimpan yang pendek. */
+        /* Baris satu satuan kerja pada satu tindakan; tanggapan menyimpan nama pendek. */
         $sasaran = function (?string $satker, ?string $tkId) use ($baris) {
             if (! $satker) {
                 return null;
@@ -486,9 +477,7 @@ class DataContohSeeder extends Seeder
             ]);
         }
 
-        /* ---- draf yang belum dikirim ----
-           Butir yang dipenuhi disimpan sebagai id butir sungguhan; berkasnya
-           tetap di dalam draf sampai dikirim. */
+        /* ---- Draf yang belum dikirim ---- */
         foreach ($r['draf'] as $df) {
             $s = $sasaran($df['satker'], $df['tindakan']);
             if (! $s) {
@@ -513,6 +502,9 @@ class DataContohSeeder extends Seeder
 
         /* ---- riwayat aktivitas ---- */
         foreach ($r['riwayat'] as $rw) {
+            if (preg_match(self::JEJAK_DRAF, $rw['k'])) {
+                continue;
+            }
             RiwayatBerkas::create([
                 'rekomendasi_id' => $rek->id,
                 'waktu'          => $rw['t'],
@@ -525,7 +517,7 @@ class DataContohSeeder extends Seeder
     private function pemberitahuan(array $k): void
     {
         $rek = $this->rek[$k['rekId']] ?? null;
-        if (! $rek) {
+        if (! $rek || preg_match(self::JEJAK_DRAF, $k['aksi'])) {
             return;
         }
 
@@ -544,8 +536,7 @@ class DataContohSeeder extends Seeder
         ]);
         $n->satker()->attach(collect($k['satker'])->map(fn ($s) => $this->satker($s)->id)->unique()->all());
 
-        /* Tanda baca prototipe milik peran — "setba", "balai:<satker>" — dan
-           di sini milik akun. Seluruh akun di balik kunci itu ikut membacanya. */
+        /* Tanda baca prototipe milik peran; di sini milik akun. */
         $pembaca = collect($k['dibaca'])->flatMap(function ($kunci) {
             if (str_starts_with($kunci, 'balai:')) {
                 return User::where('peran', PeranPengguna::SATKER->value)

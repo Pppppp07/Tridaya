@@ -2,12 +2,15 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-/* Draf tanggapan yang belum dikirim seminggu dan kewajibannya sudah tuntas dikirim
-   sendiri ke Setba, tiap malam. Jalankan `php artisan schedule:work` (atau cron
-   `schedule:run`) supaya ini berjalan. */
-Schedule::command('tlhp:kirim-draf')->dailyAt('00:30');
-
-/* Log aktivitas yang melewati masa simpannya (SIMTLHP_LOG_SIMPAN_HARI,
-   bawaan 5 tahun) dipangkas tiap malam, supaya tabelnya tidak tumbuh tanpa
-   batas di server (27 Sep). */
+/* Pangkas log aktivitas yang lewat masa simpan (SIMTLHP_LOG_SIMPAN_HARI). Butuh `schedule:work`
+   atau cron `schedule:run`. */
 Schedule::command('model:prune', ['--model' => [\App\Models\LogAktivitas::class]])->dailyAt('01:00');
+
+/* Pekerja antrean untuk server tanpa supervisor: tiap menit mengosongkan antrean lalu berhenti, tidak
+   pernah dua sekaligus. Email dikirim berurutan dengan batas per menit (PemberitahuanEmail). */
+if (config('simtlhp.beban.antrean_lewat_jadwal') && config('queue.default') !== 'sync') {
+    Schedule::command('queue:work --queue=email,default --stop-when-empty --max-time=55 --sleep=3 --memory=128')
+        ->everyMinute()->withoutOverlapping(5)->runInBackground();
+}
+/* Pekerjaan gagal disimpan seminggu untuk diperiksa, lalu dibuang. */
+Schedule::command('queue:prune-failed', ['--hours' => 168])->dailyAt('01:30');

@@ -3,24 +3,21 @@
   use App\Enums\PeranPengguna;
   use App\Enums\PosisiBerkas;
 
-  /* Putusan UKI atau Inspektorat atas satu baris — padanan PanelPeriksa.
-     Daftarnya berisi satu satuan kerja saja: yang barisnya sedang dibuka, jadi
-     "Tanda tiap satuan kerja" tidak ditanyakan — putusannya memang putusan
-     satuan kerja itu (25 Sep). Berbentuk panel kerja (`x-panel-kerja`):
-     putusannya dua kartu, dan isian lainnya baru muncul sesudah dipilih,
-     karena yang wajib bergantung pada putusan itu. */
+  /* Putusan UKI atau Inspektorat atas satu baris (hanya satuan kerja yang barisnya dibuka). */
   $uki = $x->pos() === PosisiBerkas::UKI;
   $atasNama = ! $uki && $peran === PeranPengguna::SETBA;
   $nama = $uki ? 'UKI' : 'Inspektorat';
   $kataM = HasilTelaah::M->nama($jenis);
   $kataBM = HasilTelaah::BM->nama($jenis);
-  /* Satuan kerja LAIN yang belum memadai: surat CHV-nya akan berbunyi belum
-     memadai walau baris ini ditandai memadai — satu CHV memutus seluruh
-     rekomendasi. */
+  /* Satuan kerja LAIN yang belum memadai: CHV tetap berbunyi belum memadai walau baris ini
+     memadai. */
   $lainBelum = $uki ? collect() : $r->semuaBaris()
     ->filter(fn ($y) => $y->satker_id !== $x->satker_id && $y->hasil !== HasilTelaah::M)
     ->map->satker->unique('id')->values();
   $hari = now()->toDateString();
+  /* Kiriman bertahap: dokumen yang belum terlampir disebut namanya sebagai bahan putusan. */
+  $belumDok = $r->permintaanUntuk($x->satker_id, $x->tindakan_id)->flatMap->item->where('terpenuhi', false)->values();
+  $jumlahDok = $r->permintaanUntuk($x->satker_id, $x->tindakan_id)->flatMap->item->count();
   $k = $x->id;
 @endphp
 
@@ -32,9 +29,9 @@
   <x-panel-kerja ikon="ClipboardCheck" wajib aksi-tersembunyi
     :judul="$uki ? 'Telaah berkas' : ($atasNama ? 'Catat hasil verifikasi Inspektorat' : 'Catat hasil verifikasi')"
     :info="$atasNama ? [
-      'Meja Inspektorat boleh dikerjakan Inspektorat sendiri, dan boleh juga oleh Setba.',
-      'Kalau Setba yang mengerjakan, yang dicatat adalah isi surat CHV yang dikirim Inspektorat — riwayatnya menyebut Setba sebagai pencatat, dengan Inspektorat sebagai yang berwenang.',
-    ] : 'Putusannya ditentukan '.$nama.'. Aplikasi tidak menghitungnya sendiri dari kelengkapan berkas.'">
+      'Catat putusan, nomor surat, tanggal, dan catatan sesuai CHV yang diterbitkan Inspektorat.',
+      'Setba mencatat hasilnya; pihak yang menetapkan keputusan tetap Inspektorat.',
+    ] : 'Catat hasil pemeriksaan '.$nama.' untuk penugasan ini, beserta surat dan catatan perbaikannya.'">
     <x-slot:kalimat>Berkas <b>{{ $x->satker->namaPendek() }}</b> menunggu putusan {{ $nama }}.</x-slot:kalimat>
 
     @if($atasNama)
@@ -42,6 +39,15 @@
         <div class="kerja-awas">
           <x-ikon n="FileText" :s="15" />
           <span>Anda mengerjakan meja Inspektorat atas nama mereka. Salin apa yang tertulis di surat CHV.</span>
+        </div>
+      </x-baris-lajur>
+    @endif
+
+    @if($belumDok->isNotEmpty())
+      <x-baris-lajur>
+        <div class="kerja-awas" data-dok-kurang>
+          <x-ikon n="AlertTriangle" :s="15" />
+          <span>Dokumen yang diminta baru {{ $jumlahDok - $belumDok->count() }} dari {{ $jumlahDok }} terlampir. Belum: {{ $belumDok->pluck('nama')->join(', ') }}.</span>
         </div>
       </x-baris-lajur>
     @endif
@@ -55,9 +61,7 @@
           <x-ikon n="RotateCcw" :s="18" /><b>{{ $kataBM }}</b><span>Kembali untuk pemberkasan ulang</span>
         </button>
       </div>
-      {{-- Disebutkan sebelum tombolnya ditekan, bukan sesudahnya. Satu CHV
-           memutus SELURUH rekomendasi — tanpa peringatan ini orang menekan
-           memadai lalu suratnya tercatat sebaliknya. --}}
+      {{-- Diperingatkan sebelum ditekan: satu CHV memutus seluruh rekomendasi. --}}
       @if($lainBelum->isNotEmpty())
         <div class="kerja-awas" style="margin-top:8px" data-hanya-m hidden>
           <x-ikon n="AlertTriangle" :s="15" />
@@ -66,23 +70,19 @@
             satuan kerja ini tetap {{ mb_strtolower($kataM) }}, tapi satu CHV
             memutus seluruh rekomendasi — dan {{ $lainBelum->count() }} satuan kerja
             lain belum: {{ $lainBelum->take(3)->map->namaPendek()->join(', ') }}{{ $lainBelum->count() > 3 ? ' dan '.($lainBelum->count() - 3).' lainnya' : '' }}.<x-info :teks="[
-              'Tanda per satuan kerja dan putusan surat itu dua hal yang berbeda.',
-              'Tandanya menggerakkan berkas satuan kerja ini; putusan suratnya menilai perkaranya secara utuh.',
-              'Mbak Puspi: “satker 1 sama satker 2 sudah, cuma satker 3 karena masih ada kekurangan makanya rekomendasi ini belum selesai, belum memadai.”',
-              'Begitu satuan kerja terakhir memadai, CHV berikutnya baru bisa berbunyi memadai — dan yang dipakai selalu CHV yang terakhir terbit.',
+              'Putusan penugasan ini dicatat tersendiri. Rangkuman hasil CHV untuk rekomendasi baru menjadi '.mb_strtolower($kataM).' setelah seluruh penugasannya dinyatakan '.mb_strtolower($kataM).'.',
             ]" />
           </span>
         </div>
       @endif
     </x-baris-isi>
 
-    {{-- Isiannya baru ditanyakan sesudah putusannya dipilih. Bintangnya ikut
-         putusan: memadai berdiri di atas surat (nomor dan tanggal wajib),
-         belum memadai berdiri di atas catatan. --}}
+    {{-- Isian muncul sesudah putusan dipilih: memadai wajib surat (nomor, tanggal), belum
+         memadai wajib catatan. --}}
     <div class="kerja-susul" data-mode-isi hidden>
       <x-baris-isi :label="$uki ? 'Nomor surat hasil validasi' : 'Nomor CHV'" :untuk="'nomor-'.$k" bila="M" :info="[
-        'Status berdiri di atas surat. Menyatakan memadai tanpa nomor suratnya berarti menyatakan sesuatu yang tidak punya dasar.',
-        'Waktu mengembalikan berkas, nomornya boleh menyusul — yang wajib catatannya, supaya satuan kerja tahu apa yang kurang.',
+        $uki ? 'Nomor surat UKI yang memuat hasil validasi tindak lanjut ini.' : 'Nomor Catatan Hasil Verifikasi (CHV) dari Inspektorat untuk tindak lanjut ini.',
+        'Salin nomor sesuai surat. Wajib diisi untuk hasil '.mb_strtolower($kataM).'; boleh kosong untuk hasil '.mb_strtolower($kataBM).'.',
       ]">
         <input id="nomor-{{ $k }}" type="text" class="mono fb-sedang" name="nomor" data-f="nomor" data-wajib-bila="M"
           placeholder="{{ $uki ? '031/VAL-UKI/BPSDM/VIII/2026' : '65/CHV/ITJEN/VIII/2026' }}">
@@ -94,33 +94,41 @@
       {{-- Penolakan Inspektorat: batas waktunya milik Inspektorat, wajib. --}}
       @if(! $uki)
         <x-baris-isi label="Batas waktu perbaikan" :untuk="'batas-'.$k" wajib data-hanya-bm hidden :info="[
-          'Ditetapkan Inspektorat bersama penolakannya — sampai kapan satuan kerja harus memperbaiki.',
-          'Satuan kerja membacanya sesudah Setba mengirim ulang berkasnya, bersama alasannya.',
+          'Tanggal terakhir Satker harus melengkapi perbaikan, sesuai batas waktu yang ditetapkan Inspektorat.',
         ]">
           <input id="batas-{{ $k }}" type="date" name="batas_waktu" min="{{ $hari }}" aria-required="true" data-f="batas_waktu">
         </x-baris-isi>
       @endif
 
       <x-baris-isi label="Catatan" :untuk="'catatan-'.$k" bila="BM" info-bila="BM"
-        info="Lewat catatan ini satuan kerja tahu apa yang perlu diperbaiki.">
+        info="Jelaskan kekurangan bukti atau tindakan yang perlu diperbaiki oleh satuan kerja.">
         <textarea id="catatan-{{ $k }}" rows="3" name="catatan" data-f="catatan" data-wajib-bila="BM"
           data-contoh-m="Contoh: bukti setor dan Nota Konfirmasi KPPN sudah lengkap dan cocok dengan nilai temuan."
           data-contoh-bm="Contoh: bukti setor belum dilampiri Nota Konfirmasi KPPN."></textarea>
       </x-baris-isi>
 
-      {{-- Belum memadai: dokumen apa yang harus dilengkapi. Setba memeriksanya
-           dulu dan menyetel daftar akhirnya sebelum mengirim ulang. --}}
+      {{-- Belum memadai: dokumen yang harus dilengkapi; Setba menyetel daftar akhirnya sebelum
+           mengirim ulang. --}}
       <x-baris-isi label="Dokumen yang diminta" gabung :kunci="'dok-periksa-'.$k" data-hanya-bm hidden :info="[
-        'Dokumen yang harus dilengkapi satuan kerja saat pemberkasan ulang.',
-        'Berkasnya ke Setba dulu. Setba memeriksa daftar ini, boleh menyesuaikannya, lalu mengirim ulang ke satuan kerja.',
+        'Daftar bukti yang perlu dilengkapi Satker sesuai kekurangan yang ditemukan dalam pemeriksaan.',
       ]">
         @include('rekomendasi.bagian.daftar-isian', ['nama' => 'dokumen', 'nilai' => [''], 'placeholder' => 'Contoh: Nota Konfirmasi KPPN setoran sisa', 'tambah' => 'Tambah dokumen'])
       </x-baris-isi>
 
       {{-- Perihal, LHV, dan pindaian suratnya boleh menyusul. --}}
+      @php $buktiTinjau = \App\Models\Lampiran::where('sasaran_id', $x->id)->whereNull('ditolak_pada')->orderByDesc('id')->limit(100)->get(); @endphp
+      @if($buktiTinjau->isNotEmpty())
+        <x-baris-isi label="Bukti yang perlu diganti" gabung data-hanya-bm hidden
+          info="Bukti yang ditolak dan harus dilengkapi ulang oleh Satker. Pilih dokumennya dan jelaskan alasan pada Catatan; arsip lama tetap tersimpan.">
+          <div class="bukti-tolak-list">
+          @foreach($buktiTinjau as $bukti)
+            <label><input type="checkbox" name="bukti_tolak[]" value="{{ $bukti->id }}"> <span>{{ $bukti->labelTampil() }}</span></label>
+          @endforeach
+          </div>
+        </x-baris-isi>
+      @endif
       <x-opsional :judul="$uki ? 'Perihal surat dan link berkas' : 'LHV, perihal surat, dan link berkas'" :jumlah="$uki ? 2 : 4">
-        {{-- LHV — surat pengantar Eselon 1 yang mengesahkan CHV. Rapat 30 Agu:
-             nomor dicatat dari CHV, TANGGAL dari LHV. Terbitnya belakangan. --}}
+        {{-- LHV mengesahkan CHV: nomor dari CHV, tanggal dari LHV. --}}
         @if(! $uki)
           <x-baris-isi label="Nomor LHV" :untuk="'lhv-'.$k" info="Surat pengantar Eselon 1 yang mengesahkan CHV.">
             <div class="fb-sebaris">
@@ -140,8 +148,9 @@
           <div class="fb-dua">
             <input type="text" name="berkas" aria-label="Judul berkas hasil"
               placeholder="Judul, mis. {{ $uki ? 'Catatan hasil validasi UKI' : 'Catatan hasil verifikasi Inspektorat' }}">
-            <input type="text" class="mono" name="link" aria-label="Link berkas hasil" placeholder="Link, mis. https://…">
+            <input type="text" class="mono" name="link" aria-label="Link berkas hasil" placeholder="Link satu file Google Drive/Docs">
           </div>
+          <x-panduan-link-bukti />
         </x-baris-isi>
       </x-opsional>
     </div>

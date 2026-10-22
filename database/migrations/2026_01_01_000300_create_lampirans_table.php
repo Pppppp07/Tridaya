@@ -31,8 +31,7 @@ return new class extends Migration
             $table->timestamps();
             $table->index('rekomendasi_id');
         });
-        // Berkas disimpan di luar direktori publik dan disajikan lewat rute
-        // terotorisasi. Kolom di sini hanya menyimpan alamatnya, bukan isinya.
+        // Kolom ini hanya menyimpan alamat berkas, bukan isinya.
     }
 
     public function down(): void

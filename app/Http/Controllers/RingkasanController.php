@@ -4,32 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Enums\HasilTelaah;
 use App\Enums\JenisReferensi;
+use App\Enums\StatusTindakLanjut;
 use App\Enums\SumberLaporan;
 use App\Models\KategoriTemuan;
 use App\Models\Referensi;
 use App\Models\Satker;
 use App\Support\Dasbor;
 use App\Support\DasborKeadaan;
+use App\Support\Halaman;
 use App\Support\Tampil;
 use App\Support\Terlihat;
 use Illuminate\Http\Request;
 
 /**
- * Ringkasan — dasbor pemantauan, padanan `DasborUji` prototipe (uji coba 23–24
- * Sep 2026, disetujui 25 Sep menggantikan Ringkasan lama). Kata mentor Hizkia:
- * Ringkasan lama "lebih ke laporan bukan dashboard monitoring yang simple,
- * visual aktif". Susunannya:
- *
- *   1  Filter sekali untuk seluruh halaman (jenis, tahun, satuan kerja, dan
- *      filter tambahan), bentuknya seperti slicer Power BI.
- *   2  Ringkasan utama: lima kartu, semuanya per TINDAK LANJUT SATUAN KERJA.
- *   3  Rincian: klik satu kartu untuk membuka bagian-bagian angkanya dan dua
- *      sampai tiga grafiknya. Tiap grafik juga filter.
- *   4  Tabel keseluruhan di halaman keduanya (Tahun → Satuan kerja); tiap
- *      angkanya pintasan ke rekomendasi di baliknya.
- *
- * Hitungannya di `App\Support\Dasbor` (padanan `dasbor-uji.js`), keadaannya di
- * `App\Support\DasborKeadaan` (padanan `filterDasbor`).
+ * Dashboard pemantauan: satu filter untuk seluruh halaman, empat kartu (semua per tindak lanjut
+ * satuan kerja), klik kartu untuk rinciannya.
  */
 class RingkasanController extends Controller
 {
@@ -48,44 +37,57 @@ class RingkasanController extends Controller
     public function __invoke(Request $req)
     {
         $terlihat = Terlihat::untuk();
-        /* Dimuat lewat filter hak akses, bukan Rekomendasi::all(): angka yang
-           bocor jauh lebih sulit disadari daripada halaman yang bocor. */
+        /* Dimuat lewat filter hak akses, bukan Rekomendasi::all(): angka yang bocor lebih sulit
+           disadari daripada halaman yang bocor. */
         $rek = $terlihat->rekomendasi()->with(self::MUAT)->orderBy('rekomendasis.id')->get()
             ->map(fn ($r) => $terlihat->pangkasRekomendasi($r));
-        $items = Dasbor::butir($rek);
+        $utuh = Dasbor::butir($rek);
+        /* Tab data (semua, sistem, historis) hanya ada bila ada data historis yang terlihat. */
+        $adaHistoris = collect($utuh)->contains(fn ($x) => $x['semua']->contains(fn ($b) => $b->historis()));
+        $tabData = fn (array $k) => $adaHistoris ? $k['data'] : 'semua';
 
-        /* Isi tiap filter dibaca dari data dan data master SAAT INI. */
-        $kelompok = Dasbor::kelompokSatker(Satker::orderBy('id')->get(), $items);
-        $opsiTambahan = $this->opsiTambahan($items);
-        $tahunSemua = Dasbor::daftarTahun($items);
-        $sah = [
-            'tahun'  => $tahunSemua,
-            'satker' => array_column($kelompok['semua'], 'k'),
-            'lain'   => array_map(fn ($o) => array_column($o, 'k'), $opsiTambahan),
-        ];
+        /* Isi tiap filter dibaca dari data tab yang dipilih dan data master SAAT INI. */
+        $siapkan = function (string $data) use ($utuh, $terlihat) {
+            $items = Dasbor::dalamData($utuh, $data);
+            $kelompok = Dasbor::kelompokSatker($terlihat->satkers()->orderBy('id')->get(), $items);
+            $opsiTambahan = $this->opsiTambahan($items);
+            $tahunSemua = Dasbor::daftarTahun($items);
+            $sah = [
+                'tahun' => $tahunSemua,
+                'satker' => array_column($kelompok['semua'], 'k'),
+                'lain' => array_map(fn ($o) => array_column($o, 'k'), $opsiTambahan),
+            ];
 
-        /* Dibuka lewat menu (tanpa isi alamat): filter dan kartu terakhir
-           dibawa lagi, halamannya kembali ke kartu dan tabelnya tertutup —
-           sama dengan prototipe, yang menyimpan filternya di App selama
-           sesi. Alamatnya ikut ditulis, jadi yang terlihat selalu bisa disalin. */
-        if ($req->query() === [] && is_array($simpan = session(self::SESI))) {
+            return [$items, $kelompok, $opsiTambahan, $tahunSemua, $sah];
+        };
+
+        /* Dibuka lewat menu (tanpa isi alamat): filter dan kartu terakhir dibawa lagi dari sesi,
+           dan alamatnya ikut ditulis. */
+        if ($req->query() === [] && ! Halaman::bagian() && is_array($simpan = session(self::SESI))) {
             $k = DasborKeadaan::dari(Request::create('/', 'GET', $simpan));
-            $k = array_merge($k, ['hal' => 'dasbor', 'buka' => [], 'periode' => '12', 'tabel' => [], 'semua' => [], 'pintas' => '']);
-            $k['f'] = Dasbor::bersihkan($k['f'], $sah);
+            $k = array_merge($k, ['hal' => 'dasbor', 'buka' => [], 'periode' => '', 'tabel' => [], 'semua' => [], 'pintas' => '']);
+            $k['data'] = $tabData($k);
+            $k['f'] = Dasbor::bersihkan($k['f'], $siapkan($k['data'])[4]);
             if (DasborKeadaan::keQuery($k)) {
                 return redirect(DasborKeadaan::alamat($k));
             }
         }
 
         $k = DasborKeadaan::dari($req);
+        $k['data'] = $tabData($k);
+        [$items, $kelompok, $opsiTambahan, $tahunSemua, $sah] = $siapkan($k['data']);
+        /* Tanpa pilihan di alamat: LHP, kecuali akun yang hanya punya tindak lanjut LHA. */
+        $jenisDiAlamat = in_array($req->query('jenis'), ['LHP', 'LHA'], true);
+        if (! $jenisDiAlamat) {
+            $k['f']['jenis'] = self::jenisAwal($items);
+        }
         /* Filter yang BERLAKU: pilihan yang sudah tidak ada di daftarnya dibuang. */
         $k['f'] = Dasbor::bersihkan($k['f'], $sah);
+        $k = self::tanpaSiptl($k);
 
-        /* Rekomendasi dibuka dari dasbor (tabel "Sisa nilai terbesar", daftar
-           pintasan): tombol Kembali di rinciannya mendarat di sini lagi. */
-        /* `lihat` = "rekomendasi[:satuan kerja[:tindakan]]" (26 Sep): kalau baris
-           yang diwakilinya milik SATU satuan kerja, tiket dan barisnya dibuka
-           lalu disorot di rincian — padanan `tujuBaris` prototipe. */
+        /* Rekomendasi dibuka dari dasbor: tombol Kembali di rinciannya mendarat di sini lagi. */
+        /* `lihat` = "rekomendasi[:satuan kerja[:tindakan]]": baris milik satu satuan kerja
+           dibuka dan disorot di rincian. */
         if ($req->filled('lihat') && preg_match('/^(\d+)(?::(\d+))?(?::(\d+))?$/', (string) $req->query('lihat'), $m)) {
             return redirect($this->keRincian((int) $m[1], $k, isset($m[2]) ? (int) $m[2] : null,
                 isset($m[3]) ? (int) $m[3] : null));
@@ -94,9 +96,16 @@ class RingkasanController extends Controller
         if ($req->filled('ubah')) {
             [$ubah, $jangkar] = array_pad(explode('@', (string) $req->query('ubah'), 2), 2, '');
             $k = DasborKeadaan::terapkan($k, $ubah, fn ($j) => SumberLaporan::from($j)->melewatiSiptl());
+            $k['data'] = $tabData($k);
+            if (str_starts_with($ubah, 'data:')) {
+                [$items, $kelompok, $opsiTambahan, $tahunSemua, $sah] = $siapkan($k['data']);
+                if (! $jenisDiAlamat) {
+                    $k['f']['jenis'] = self::jenisAwal($items);
+                }
+            }
             $k['f'] = Dasbor::bersihkan($k['f'], $sah);
-            /* Angka yang di baliknya cuma satu rekomendasi langsung membuka
-               rinciannya; lebih dari satu membuka daftarnya di dekat sel. */
+            $k = self::tanpaSiptl($k);
+            /* Satu rekomendasi → langsung rinciannya; lebih → daftarnya di dekat sel. */
             if (str_starts_with($ubah, 'pintas:')) {
                 $daftar = $this->isiPintas(Dasbor::terapkanFilter($items, $k['f']), $k['pintas']);
                 if (count($daftar) === 1) {
@@ -110,18 +119,58 @@ class RingkasanController extends Controller
                 }
             }
 
-            /* Disimpan sebelum dialihkan (29 Sep): "Hapus filter" tanpa kartu
-               terbuka berakhir di alamat kosong, dan tanpa ini alamat kosong
-               itu dibaca sebagai "dibuka lewat menu" — filter lama dipasang
-               lagi dari sesi. */
+            /* Disimpan sebelum dialihkan: tanpa ini, "Hapus filter" mendarat di alamat kosong
+               yang dibaca sebagai "dibuka lewat menu". */
             session([self::SESI => DasborKeadaan::keQuery($k)]);
 
-            return redirect(DasborKeadaan::alamat($k, $jangkar));
+            if (! Halaman::bagian()) {
+                return redirect(DasborKeadaan::alamat($k, $jangkar));
+            }
         }
 
         session([self::SESI => DasborKeadaan::keQuery($k)]);
 
-        return view('ringkasan.index', $this->susun($k, $items, $kelompok, $opsiTambahan, $tahunSemua));
+        /* Angka di tab data: tindak lanjut jenis laporan yang dipilih, sebelum filter lain. */
+        $jumlahData = [];
+        foreach ($adaHistoris ? array_keys(Dasbor::DATA) : [] as $d) {
+            $jumlahData[$d] = collect(Dasbor::dalamData($utuh, $d))
+                ->filter(fn ($x) => $x['lap']->sumber->value === $k['f']['jenis'])
+                ->sum(fn ($x) => $x['semua']->count());
+        }
+        $data = $this->susun($k, $items, $kelompok, $opsiTambahan, $tahunSemua)
+            + ['adaHistoris' => $adaHistoris, 'jumlahData' => $jumlahData];
+        if (Halaman::bagian()) {
+            return response()->view('ringkasan.index', $data)
+                ->header('X-Simtlhp-Url', DasborKeadaan::alamat($k, $jangkar ?? ''));
+        }
+
+        return view('ringkasan.index', $data);
+    }
+
+    private static function jenisAwal(array $items): string
+    {
+        $ada = fn (string $j) => collect($items)->contains(fn ($x) => $x['lap']->sumber->value === $j);
+
+        return ! $ada(Dasbor::JENIS_AWAL) && $ada('LHA') ? 'LHA' : Dasbor::JENIS_AWAL;
+    }
+
+    /** Jenis laporan yang dipilih ikut SIPTL? */
+    private static function adaSiptl(array $f): bool
+    {
+        return SumberLaporan::from($f['jenis'])->melewatiSiptl();
+    }
+
+    /** LHA tidak diunggah ke SIPTL: kartu dan filter status BPK-nya tidak berlaku. */
+    private static function tanpaSiptl(array $k): array
+    {
+        if (! self::adaSiptl($k['f'])) {
+            $k['f']['bpk'] = [];
+            if ($k['kartu'] === 'ss') {
+                $k['kartu'] = '';
+            }
+        }
+
+        return $k;
     }
 
     /** Alamat rincian rekomendasi yang Kembali-nya mendarat di dasbor ini. */
@@ -135,11 +184,8 @@ class RingkasanController extends Controller
     }
 
     /**
-     * Satuan kerja (dan tindak lanjutnya, kalau cuma satu) yang diwakili
-     * sekumpulan baris — atau [null, null] kalau barisnya milik beberapa
-     * satuan kerja.
-     *
-     * @return array{0: ?int, 1: ?int}
+     * Satuan kerja (dan tindak lanjutnya bila hanya satu) yang diwakili sekumpulan baris; [null,
+     * null] bila milik beberapa satuan kerja.
      */
     public static function tujuBaris($baris): array
     {
@@ -177,7 +223,6 @@ class RingkasanController extends Controller
         $ref = fn (JenisReferensi $j) => Referensi::where('jenis', $j->value)->orderBy('urutan')->orderBy('id')->get();
         $urutSumber = array_flip(['LHP', 'LHA']);
         $master = [
-            /* Tanpa titik warna sejak 27 Sep — kategori tidak lagi berwarna. */
             'intern' => $ref(JenisReferensi::KATEGORI_INTERN)->map(fn ($x) => ['nama' => $x->nama,
                 'aktif' => (bool) $x->aktif])->all(),
             'kategori' => KategoriTemuan::orderBy('urutan')->orderBy('id')->get()
@@ -191,9 +236,7 @@ class RingkasanController extends Controller
             fn ($d) => Dasbor::opsiLain($d, $master[$d], $items, $d === 'bentuk'), Dasbor::URUT_LAIN));
     }
 
-    /**
-     * Seluruh angka halaman — padanan memo `d` dan turunannya di `DasborUji`.
-     */
+    /** Seluruh angka halaman. */
     private function susun(array $k, array $items, array $kelompok, array $opsiTambahan, array $tahunSemua): array
     {
         $f = $k['f'];
@@ -201,44 +244,43 @@ class RingkasanController extends Controller
         $K = Dasbor::terapkanFilter($items, $f, ['hasil']);
         $T = Dasbor::terapkanFilter($items, $f);
 
-        /* Jumlah tiap pilihan dihitung dengan filter lain yang berlaku,
-           tanpa filternya sendiri. */
+        /* Jumlah tiap pilihan dihitung dengan filter lain, tanpa filternya sendiri. */
         $hitung = [
-            'jenis'  => Dasbor::hitungPilihan('jenis', Dasbor::terapkanFilter($items, $f, ['jenis'])),
-            'tahun'  => Dasbor::hitungPilihan('tahun', Dasbor::terapkanFilter($items, $f, ['tahun'])),
+            'jenis' => Dasbor::hitungPilihan('jenis', Dasbor::terapkanFilter($items, $f, ['jenis'])),
+            'tahun' => Dasbor::hitungPilihan('tahun', Dasbor::terapkanFilter($items, $f, ['tahun'])),
             'satker' => Dasbor::hitungPilihan('satker', Dasbor::terapkanFilter($items, $f, ['satker'])),
-            'lain'   => [],
+            'lain' => [],
         ];
         foreach (array_keys($f['lain']) as $d) {
             $hitung['lain'][$d] = Dasbor::hitungPilihan($d, Dasbor::terapkanFilter($items, $f, ["lain:$d"]));
         }
 
-        $bulan = Dasbor::bulanTerakhir($hariIni, 12);
-        $tahunTren = Dasbor::tahunKejadian($items);
-        /* Tahun yang tidak ada lagi di data jatuh ke 12 bulan. */
-        $periode = $k['periode'] !== '12' && in_array($k['periode'], $tahunTren, true) ? $k['periode'] : '12';
-        $bulanTren = $periode === '12' ? $bulan : Dasbor::bulanTahun((int) $periode, $hariIni);
+        $tahunTren = Dasbor::tahunKejadian(array_filter($items, fn ($x) => $x['lap']->sumber->value === $f['jenis']));
+        /* Grafik per bulan memakai satu tahun kalender; bawaannya tahun terbaru di data. */
+        $periode = in_array($k['periode'], $tahunTren, true) ? $k['periode'] : ($tahunTren[0] ?? substr($hariIni, 0, 4));
+        $bulanTren = Dasbor::bulanTahun((int) $periode, $hariIni);
 
         $t = Dasbor::hitungTindak($K);
         $d = [
-            'K'        => $K,
-            'T'        => $T,
-            'hitung'   => $hitung,
-            'tindak'   => $t,
-            'tunggu'   => Dasbor::perTunggu(Dasbor::terapkanFilter($items, $f, ['satker', 'hasil'])),
-            'tahun'    => Dasbor::perTahun(Dasbor::terapkanFilter($items, $f, ['tahun', 'hasil'])),
-            'satker'   => Dasbor::perSatker(Dasbor::terapkanFilter($items, $f, ['satker', 'hasil'])),
-            'meja'     => Dasbor::perMeja(Dasbor::terapkanFilter($items, $f, ['meja'])),
-            'banding'  => Dasbor::hitungBanding(Dasbor::terapkanFilter($items, $f, ['hasil', 'bpk'])),
-            'kategori' => Dasbor::perKategori(Dasbor::terapkanFilter($items, $f, ['lain:intern', 'hasil']), $opsiTambahan['intern']),
-            'tren'     => Dasbor::tren($T, $bulanTren),
-            'tumpukan' => Dasbor::tumpukan($K, $bulan),
-            'perlu'    => Dasbor::perluPerhatian($T, 5),
+            'K' => $K,
+            'T' => $T,
+            'hitung' => $hitung,
+            'tindak' => $t,
+            'tunggu' => Dasbor::perProses(Dasbor::terapkanFilter($items, $f, ['satker', 'hasil'])),
+            'tahun' => Dasbor::perTahun(Dasbor::terapkanFilter($items, $f, ['tahun', 'hasil'])),
+            'satker' => Dasbor::perSatker(Dasbor::terapkanFilter($items, $f, ['satker', 'hasil'])),
+            'meja' => Dasbor::perMeja(Dasbor::terapkanFilter($items, $f, ['meja'])),
+            'banding' => Dasbor::hitungBanding(Dasbor::terapkanFilter($items, $f, ['hasil', 'bpk'])),
+            'tren' => Dasbor::tren($T, $bulanTren),
+            'perlu' => Dasbor::perluPerhatian($T, 5),
         ];
+        /* Kotak rincian kartu = tombol filter: dihitung tanpa filternya sendiri, seperti keping filter
+           utama, supaya pilihan lain tetap tampil dengan angkanya. */
+        $sendiri = ['tunggu' => 'meja', 'ss' => 'bpk'][$k['kartu']] ?? null;
+        $d['tindakKotak'] = $sendiri ? Dasbor::hitungTindak(Dasbor::terapkanFilter($items, $f, ['hasil', $sendiri])) : $t;
 
-        $jenisUtama = $f['jenis'] !== 'semua' ? $f['jenis'] : ($t['lapLhp'] >= $t['lap'] - $t['lapLhp'] ? 'LHP' : 'LHA');
-        $sumber = SumberLaporan::from($jenisUtama);
-        $tp = $d['tumpukan'];
+        /* LHP "memadai", LHA "sesuai". */
+        $sumber = SumberLaporan::from($f['jenis']);
 
         $namaSatker = function ($id) use ($kelompok) {
             foreach ($kelompok['semua'] as $o) {
@@ -250,53 +292,47 @@ class RingkasanController extends Controller
             return 'Tidak diisi';
         };
 
-        $tindakSemua = array_sum(array_map(fn ($x) => $x['semua']->count(), $items));
+        /* Acuan "dari N": seluruh tindak lanjut jenis laporan yang dipilih. */
+        $tindakSemua = array_sum(array_map(fn ($x) => $x['semua']->count(),
+            array_filter($items, fn ($x) => $x['lap']->sumber->value === $f['jenis'])));
 
         return [
-            'k'            => $k,
-            'f'            => $f,
-            'd'            => $d,
-            't'            => $t,
-            'kataM'        => HasilTelaah::M->nama($sumber),
-            'kataBM'       => HasilTelaah::BM->nama($sumber),
-            'kelompok'     => $kelompok,
-            'namaSatker'   => $namaSatker,
-            'opsiJenis'    => array_map(fn ($j) => ['k' => $j, 'nama' => $j,
+            'k' => $k,
+            'f' => $f,
+            'd' => $d,
+            't' => $t,
+            'kataM' => HasilTelaah::M->nama($sumber),
+            'kataBM' => HasilTelaah::BM->nama($sumber),
+            'adaSiptl' => self::adaSiptl($f),
+            'kelompok' => $kelompok,
+            'namaSatker' => $namaSatker,
+            'opsiJenis' => array_map(fn ($j) => ['k' => $j, 'nama' => $j,
                 'lengkap' => $j.' · '.SumberLaporan::from($j)->nama()], ['LHP', 'LHA']),
-            'opsiTahun'    => array_map(fn ($th) => ['k' => $th, 'nama' => $th], array_reverse($tahunSemua)),
+            'opsiTahun' => array_map(fn ($th) => ['k' => $th, 'nama' => $th], array_reverse($tahunSemua)),
             'opsiTambahan' => $opsiTambahan,
-            'tahunSemua'   => $tahunSemua,
-            'bulan'        => $bulan,
-            'bulanTren'    => $bulanTren,
-            'tahunTren'    => $tahunTren,
-            'periode'      => $periode,
-            'tp'           => $tp,
-            'gerak'        => $tp[count($tp) - 1] - $tp[count($tp) - 2],
-            'bulanLalu'    => Dasbor::NAMA_BULAN[$bulan[count($bulan) - 2]['bl']],
-            'jmlTindakT'   => array_sum(array_map(fn ($x) => $x['baris']->count(), $T)),
-            'tindakSemua'  => $tindakSemua,
-            'aktif'        => $this->aktif($f, $namaSatker),
-            'tk'           => $k['hal'] === 'tabel' && $K ? $this->tabelKeseluruhan($T, $kelompok) : null,
-            'pintas'       => $k['pintas'] !== '' ? $this->pintas($T, $k['pintas'], $namaSatker) : null,
-            'hariIni'      => Tampil::tgl($hariIni),
+            'tahunSemua' => $tahunSemua,
+            'bulanTren' => $bulanTren,
+            'tahunTren' => $tahunTren,
+            'periode' => $periode,
+            'jmlTindakT' => array_sum(array_map(fn ($x) => $x['baris']->count(), $T)),
+            'tindakSemua' => $tindakSemua,
+            'aktif' => $this->aktif($f, $namaSatker, array_column($kelompok['semua'], 'pendek', 'k')),
+            'tk' => $k['hal'] === 'tabel' && $K ? $this->tabelKeseluruhan($T, $kelompok) : null,
+            'pintas' => $k['pintas'] !== '' ? $this->pintas($T, $k['pintas'], $namaSatker) : null,
+            'hariIni' => Tampil::tgl($hariIni),
         ];
     }
 
     /**
-     * Seluruh filter yang sedang berlaku, satu keping per jenis filter.
-     * Lebih dari dua pilihan cukup disebut jumlahnya; daftar lengkapnya di
-     * keterangan kepingnya.
+     * Filter yang berlaku, satu keping per jenis; lebih dari dua pilihan cukup disebut jumlahnya.
      */
-    private function aktif(array $f, callable $namaSatker): array
+    private function aktif(array $f, callable $namaSatker, array $pendekSatker): array
     {
         $namaLain = fn ($v) => $v !== '' ? $v : 'Tidak diisi';
         $tahun = $f['tahun'];
         sort($tahun, SORT_STRING);
-        $pendek = fn ($id) => Satker::find($id)?->namaPendek() ?? 'Tidak diisi';
+        $pendek = fn ($id) => $pendekSatker[$id] ?? 'Tidak diisi';
         $a = [];
-        if ($f['jenis'] !== 'semua') {
-            $a[] = ['k' => 'jenis', 'nama' => 'Hanya '.$f['jenis'], 'lengkap' => 'Jenis laporan: '.$f['jenis']];
-        }
         if ($tahun) {
             $a[] = ['k' => 'tahun', 'nama' => count($tahun) <= 2 ? 'Tahun '.implode(', ', $tahun) : count($tahun).' tahun',
                 'lengkap' => 'Tahun '.implode(', ', $tahun)];
@@ -321,9 +357,14 @@ class RingkasanController extends Controller
             $a[] = ['k' => 'hasil', 'hasil' => $f['hasil']];
         }
         if ($f['bpk']) {
-            $a[] = ['k' => 'bpk', 'nama' => 'BPK: '.implode(', ', $f['bpk']),
-                'lengkap' => 'Status BPK: '.implode(', ', array_map(
-                    fn ($x) => $x.' '.\App\Enums\StatusTindakLanjut::from($x)->pendek(), $f['bpk']))];
+            /* "Belum diunggah" bukan status BPK: disebut terpisah. */
+            $st = array_values(array_diff($f['bpk'], ['belumUnggah']));
+            $belum = in_array('belumUnggah', $f['bpk'], true);
+            $a[] = ['k' => 'bpk',
+                'nama' => implode(' · ', array_filter([$st ? 'BPK: '.implode(', ', $st) : '', $belum ? 'Belum diunggah' : ''])),
+                'lengkap' => implode(' · ', array_filter([
+                    $st ? 'Status BPK: '.implode(', ', array_map(fn ($x) => $x.' '.StatusTindakLanjut::from($x)->pendek(), $st)) : '',
+                    $belum ? 'Belum diunggah ke SIPTL' : '']))];
         }
         if ($f['meja']) {
             $nama = array_map(fn ($m) => Dasbor::NAMA_MEJA[$m], $f['meja']);
@@ -335,10 +376,8 @@ class RingkasanController extends Controller
     }
 
     /**
-     * Tabel keseluruhan: satu tabel bertingkat Tahun → Satuan kerja, memakai
-     * SEMUA filter yang berlaku. Satuan kerja tiap tahun dihitung dengan
-     * `perSatker` yang sama, dijalankan per tahun; kolom Rekomendasi
-     * menghitung rekomendasi unik.
+     * Tabel keseluruhan Tahun → Satuan kerja, memakai semua filter; kolom Rekomendasi menghitung
+     * rekomendasi unik.
      */
     private function tabelKeseluruhan(array $T, array $kelompok): array
     {
@@ -346,7 +385,7 @@ class RingkasanController extends Controller
         foreach ($kelompok['semua'] as $i => $o) {
             $urutMaster[$o['k']] = $i;
         }
-        $kunci = ['rek', 'tugas', 'M', 'BM', 'lhp', 'SS', 'BS', 'BT', 'TD', 'nilai', 'sisaBpk', 'sisa'];
+        $kunci = ['rek', 'tugas', 'M', 'BM', 'siptl', 'SS', 'BS', 'BT', 'belumUnggah', 'nilai', 'sisaBpk', 'sisa'];
         $jumlah = fn (array $arr) => array_combine($kunci, array_map(
             fn ($kk) => array_sum(array_column($arr, $kk)), $kunci));
         $rekUnik = fn (array $arr) => count(array_unique(array_map(fn ($x) => $x['rek']->id,
@@ -359,10 +398,11 @@ class RingkasanController extends Controller
             $baris = array_map(fn ($o) => [
                 'k' => $o['k'], 'nama' => $o['pendek'], 'rek' => $o['nRek'], 'tugas' => $o['M'] + $o['BM'],
                 'urutNama' => $urutMaster[$o['k']] ?? 9999,
-                'M' => $o['M'], 'BM' => $o['BM'], 'lhp' => $o['lhp'], 'SS' => $o['SS'], 'BS' => $o['BS'],
-                'BT' => $o['BT'], 'TD' => $o['TD'], 'nilai' => $o['nilai'], 'sisaBpk' => $o['sisaBpk'], 'sisa' => $o['sisa'],
+                'M' => $o['M'], 'BM' => $o['BM'], 'siptl' => $o['siptl'], 'SS' => $o['SS'], 'BS' => $o['BS'],
+                'BT' => $o['BT'], 'belumUnggah' => $o['belumUnggah'], 'nilai' => $o['nilai'], 'sisaBpk' => $o['sisaBpk'], 'sisa' => $o['sisa'],
             ], Dasbor::perSatker($Ty));
             if ($baris) {
+                /* Rekomendasi dihitung sekali per tahun (label baris), bukan dijumlah per satuan kerja. */
                 $kelompokTk[] = ['k' => $y, 'baris' => $baris, 'jumlah' => array_merge($jumlah($baris), ['rek' => $rekUnik($Ty)])];
             }
         }
@@ -370,8 +410,7 @@ class RingkasanController extends Controller
 
         return [
             'kelompok' => $kelompokTk,
-            'total'    => array_merge($jumlah($semuaBaris), ['rek' => $rekUnik($T)]),
-            'adaTD'    => collect($semuaBaris)->contains(fn ($o) => $o['TD'] > 0),
+            'total' => array_merge($jumlah($semuaBaris), ['rek' => $rekUnik($T)]),
         ];
     }
 
@@ -385,12 +424,12 @@ class RingkasanController extends Controller
         }
 
         return [
-            'kunci'      => $pintas,
-            'tahun'      => $tahun,
-            'satker'     => $satker !== '' ? (int) $satker : null,
-            'namaSatker' => $satker !== '' ? (\App\Models\Satker::find((int) $satker)?->namaPendek() ?? 'Tidak diisi') : null,
-            'kolom'      => $kolom,
-            'daftar'     => $daftar,
+            'kunci' => $pintas,
+            'tahun' => $tahun,
+            'satker' => $satker !== '' ? (int) $satker : null,
+            'namaSatker' => $satker !== '' ? (Satker::find((int) $satker)?->namaPendek() ?? 'Tidak diisi') : null,
+            'kolom' => $kolom,
+            'daftar' => $daftar,
         ];
     }
 }

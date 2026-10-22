@@ -2,36 +2,30 @@
 
 namespace App\Support;
 
+use App\Enums\HasilTelaah;
 use App\Enums\PeranPengguna;
+use App\Enums\StatusTindakLanjut;
 use App\Enums\SumberLaporan;
 use App\Models\Rekomendasi;
+use App\Models\User;
 use App\Models\Verifikasi;
-use Illuminate\Support\Collection;
 
 /**
- * Riwayat status tindak lanjut — padanan `susunRiwayat` dan `RiwayatBaris`
- * prototipe. Sejak 21 Sep isinya tab "Riwayat" di tiap baris tabel tindak
- * lanjut (riwayat-baris.blade.php), bukan kartu tersendiri.
- *
- * Tujuh catatan yang bentuknya berbeda-beda disamakan jadi satu bentuk baris:
- * perubahan status per baris (dikelompokkan menurut aksi), surat validasi,
- * surat verifikasi, telaah tanpa surat, pengembalian, kiriman satuan kerja, dan
- * penerusan Setba. Satu tindakan, satu baris.
- *
- * Periode verifikasi ditutup oleh penolakan gerbang terakhir: LHP di BPK lewat
- * SIPTL (BS → BT), LHA di verifikasi Inspektorat (→ BM).
+ * Riwayat (tab Progres) tiap baris tindak lanjut. Tujuh jenis catatan disamakan jadi satu bentuk
+ * baris; satu tindakan, satu baris. Periode ditutup penolakan gerbang terakhir: LHP di BPK (BS →
+ * BT), LHA di Inspektorat (→ BM).
  */
 class RiwayatTindakLanjut
 {
     /** Kolom Sumber kartu riwayat: kode => [kelas, nama]. */
     public const SUMBER = ['UKI' => ['uki', 'UKI'], 'ITJEN' => ['itjen', 'Itjen'], 'SIPTL' => ['siptl', 'SIPTL'],
-        'KEMBALI' => ['balik', 'Kembali'], 'SATKER' => ['satker', 'Satker'], 'SETBA' => ['setba', 'Setba']];
+        'KEMBALI' => ['balik', 'Kembali'], 'SATKER' => ['satker', 'Satker'], 'SETBA' => ['setba', 'Setba'], 'HISTORIS' => ['setba', 'Historis']];
 
     /** @return list<array> butir riwayat, terbaru di atas */
-    public static function susun(Rekomendasi $r, PeranPengguna $peran, ?int $satkerId): array
+    public static function susun(Rekomendasi $r, PeranPengguna $peran, int|array|null $satkerId): array
     {
         $jenis = $r->jenis();
-        $balai = $peran === PeranPengguna::SATKER;
+        $balai = $peran->terbatasSatker();
         $barisku = $r->barisTerlihat($peran, $satkerId);
         $terlihat = $barisku->pluck('satker_id')->unique()->all();
         $out = [];
@@ -43,6 +37,10 @@ class RiwayatTindakLanjut
             ? ['lingkup' => 'baris', 'satker_id' => $s->satker_id, 'kunci' => $s->tindakan_id.'|'.$s->satker_id]
             : ['lingkup' => 'rek', 'satker_id' => null, 'kunci' => ''];
         $seq = fn ($m) => $m->created_at ? $m->created_at->getTimestamp() : -1;
+        /* Akun pencatat, peran saat itu, dan waktu pencatatan. Data contoh lama tanpa jam —
+           dibiarkan kosong, tidak dikarang. */
+        $pelaku = fn ($id, ?string $peran, $m) => ['pelakuId' => $id ?: null, 'pelakuPeran' => $peran ?: null,
+            'dicatatPada' => $m?->created_at?->toDateTimeString()];
 
         $aksiBerjejak = [];
         $aksiSatker = [];
@@ -64,6 +62,13 @@ class RiwayatTindakLanjut
         foreach ($barisku as $x) {
             $dasar = ['satker_id' => $x->satker_id, 'kunci' => $x->tindakan_id.'|'.$x->satker_id,
                 'bentuk' => $x->tindakan?->namaBentuk() ?? '', 'lingkup' => 'baris'];
+            if ($x->tanggal_acuan_historis) {
+                $tambah($dasar + [
+                    'id' => 'historis-'.$x->id, 'seq' => $seq($x), 'tanggal' => $x->tanggal_acuan_historis->toDateString(),
+                    'sumber' => 'HISTORIS', 'oleh' => 'Setba · impor historis',
+                    'catatan' => 'Snapshot data historis. Riwayat tahapan sebelum impor belum tersedia.',
+                ] + $pelaku(null, 'Setba · impor historis', $x));
+            }
             $jejak = $x->riwayatStatus->values();
             $sudah = [];
             foreach ($jejak as $j) {
@@ -72,7 +77,8 @@ class RiwayatTindakLanjut
                         'id' => 'rs-'.$j->id, 'seq' => $seq($j), 'tanggal' => $j->tanggal?->toDateString(),
                         'sumber' => strtoupper($j->sumber), 'dari' => $j->dari, 'ke' => $j->ke, 'oleh' => $j->oleh,
                         'catatan' => (string) $j->catatan, 'tutupPeriode' => self::menutupPeriode($j->sumber, $j->dari, $j->ke, $jenis),
-                    ]);
+                    ] + $pelaku($j->oleh_id, $j->oleh, $j));
+
                     continue;
                 }
                 if (isset($sudah[$j->aksi_id])) {
@@ -83,8 +89,7 @@ class RiwayatTindakLanjut
                 $tutup = $serangkai->contains(fn ($y) => self::menutupPeriode($y->sumber, $y->dari, $y->ke, $jenis));
                 $kembali = $kembaliAksi($j->aksi_id, $x->satker_id);
 
-                /* Dikembalikan karena BPK menolak: yang digambar pengembaliannya,
-                   bukan "Itjen M → BM". */
+                /* Dikembalikan karena BPK menolak: yang digambar pengembaliannya. */
                 if ($j->jenis_aksi === 'kembaliBpk') {
                     $tambah($dasar + [
                         'id' => 'rs-'.$j->id, 'seq' => $seq($j), 'tanggal' => $j->tanggal?->toDateString(),
@@ -96,7 +101,8 @@ class RiwayatTindakLanjut
                             $kembali && $kembali->dokumen ? 'dokumen diminta: '.implode(', ', $kembali->dokumen) : '',
                         ])->filter()->join(' · '),
                         'tutupPeriode' => $tutup,
-                    ]);
+                    ] + $pelaku($kembali?->oleh_id ?? $j->oleh_id, $kembali?->label_oleh ?: 'Setba', $kembali ?? $j));
+
                     continue;
                 }
 
@@ -117,7 +123,7 @@ class RiwayatTindakLanjut
                     'berkas' => $berkas,
                     'judulBerkas' => $v ? ($itjen ? 'Surat hasil verifikasi ' : 'Surat hasil validasi ').$v->nomor_surat : 'Dokumen perbaikan',
                     'catatanRek' => $itjen && $surat && $putusan->ke === 'M' && $surat->hasil?->value === 'BM'
-                        ? 'Rekomendasinya secara keseluruhan masih '.mb_strtolower(\App\Enums\HasilTelaah::BM->nama($jenis)).' — ada satuan kerja lain yang belum selesai.'
+                        ? 'Rekomendasinya secara keseluruhan masih '.mb_strtolower(HasilTelaah::BM->nama($jenis)).' — ada satuan kerja lain yang belum selesai.'
                         : '',
                     'tolak' => $putusan->ke === 'BM',
                     'batasWaktu' => $telaah?->batas_waktu?->toDateString() ?? $kembali?->batas_waktu?->toDateString() ?? '',
@@ -125,7 +131,7 @@ class RiwayatTindakLanjut
                     'kembali' => $kembali ? ['batasWaktu' => $kembali->batas_waktu?->toDateString() ?? '',
                         'keteranganSetba' => (string) $kembali->keterangan_setba] : null,
                     'tutupPeriode' => $tutup,
-                ]);
+                ] + $pelaku($putusan->oleh_id ?? $telaah?->oleh_id ?? $v?->dicatat_oleh, $putusan->oleh, $putusan));
             }
         }
 
@@ -143,7 +149,7 @@ class RiwayatTindakLanjut
                 'sumber' => 'UKI', 'ke' => $k->hasil?->value, 'oleh' => $v->pejabat ?: 'UKI', 'nomor' => $v->nomor_surat,
                 'catatan' => $balai && ! $k->sasaran_id ? '' : (string) $k->catatan,
                 'berkas' => $v->lampiran, 'judulBerkas' => 'Surat hasil validasi '.$v->nomor_surat,
-            ] + $milik($k->sasaran));
+            ] + $milik($k->sasaran) + $pelaku($v->dicatat_oleh, null, $k));
         }
 
         /* 3. Surat verifikasi Inspektorat yang tidak tercakup jejak — data lama. */
@@ -163,7 +169,7 @@ class RiwayatTindakLanjut
                 'catatan' => $catatan.($k->tenggat_baru ? ' · tenggat baru '.Tampil::tgl($k->tenggat_baru) : ''),
                 'berkas' => $v->lampiran, 'judulBerkas' => 'Surat hasil verifikasi '.$v->nomor_surat,
                 'lingkup' => 'rek', 'satker_id' => null, 'kunci' => '',
-            ]);
+            ] + $pelaku($v->dicatat_oleh, null, $k));
         }
 
         /* 4. Telaah tanpa surat yang tidak tercakup jejak. */
@@ -180,7 +186,7 @@ class RiwayatTindakLanjut
                 'oleh' => $t->label_pencatat ?: $t->label_oleh,
                 'catatan' => $balai && ! $t->sasaran_id ? '' : (string) $t->catatan,
                 'berkas' => $t->lampiran, 'judulBerkas' => 'Dokumen perbaikan',
-            ] + $milik($t->sasaran));
+            ] + $milik($t->sasaran) + $pelaku($t->oleh_id, $t->label_pencatat ?: $t->label_oleh, $t));
         }
 
         /* 5. Pengembalian — yang lahir dari putusan sudah tergambar di barisnya. */
@@ -203,7 +209,7 @@ class RiwayatTindakLanjut
                 ])->filter()->join(' · '),
                 'ket' => $p->dari ? 'Dikirim ulang' : 'Berkas dikembalikan',
                 'ikutTutupan' => ! $jenis->melewatiSiptl() && $p->dari === 'Inspektorat',
-            ] + $milik($p->sasaran));
+            ] + $milik($p->sasaran) + $pelaku($p->oleh_id, $p->label_oleh, $p));
         }
 
         /* 6. Satuan kerja mengirim berkasnya ke Setba. */
@@ -217,7 +223,7 @@ class RiwayatTindakLanjut
                 'sumber' => 'SATKER', 'ket' => 'Dikirim ke Setba', 'oleh' => $t->label_pencatat,
                 'catatan' => (string) $t->uraian, 'pindahKe' => 'Setba',
                 'lingkup' => 'baris', 'satker_id' => $x->satker_id, 'kunci' => $x->tindakan_id.'|'.$x->satker_id,
-            ]);
+            ] + $pelaku($t->dicatat_oleh, $t->label_pencatat, $t));
         }
 
         /* 7. Setba meneruskan berkasnya, dengan surat pengantarnya. */
@@ -229,7 +235,17 @@ class RiwayatTindakLanjut
                 'id' => 'sp-'.$q->id, 'seq' => $seq($q), 'tanggal' => ($q->tanggal ?? $q->tanggal_catat)?->toDateString(),
                 'sumber' => 'SETBA', 'ket' => "Diteruskan ke {$q->ke}", 'oleh' => 'Setba', 'nomor' => $q->nomor ?? '',
                 'catatan' => (string) $q->perihal, 'pindahKe' => $q->ke,
-            ] + $milik($q->sasaran));
+            ] + $milik($q->sasaran) + $pelaku($q->dicatat_oleh, 'Setba', $q));
+        }
+
+        /* Nama orang dibaca sekali untuk semua butir; sebutannya peran saat mencatat. */
+        $idAkun = array_values(array_unique(array_filter(array_column($out, 'pelakuId'))));
+        $akun = $idAkun ? User::with('satker')->whereIn('id', $idAkun)->get()->keyBy('id') : collect();
+        foreach ($out as $i => $b) {
+            $u = $akun[$b['pelakuId'] ?? 0] ?? null;
+            $peran = ($b['pelakuPeran'] ?? '') ?: ($u ? self::sebutan($u) : '');
+            $out[$i]['pelaku'] = $u || $peran !== ''
+                ? ['nama' => $u?->name, 'peran' => $peran, 'waktu' => $b['dicatatPada'] ?? null] : null;
         }
 
         /* Terbaru di atas; seri pada tanggal yang sama diputus urutan pencatatan. */
@@ -240,17 +256,8 @@ class RiwayatTindakLanjut
     }
 
     /**
-     * Kolom Catatan terakhir di tabel tindak lanjut — kolom Catatan pada baris
-     * "Terbaru" kartu riwayat pasangan ini. Padanan `catatanTerakhir`
-     * prototipe. Kata Hizkia (21 Sep): "catatannya berdasarkan catatan riwayat
-     * tindak lanjut saja".
-     *
-     * Sumbernya yang disebut, bukan pengetiknya: putusan Inspektorat diketik
-     * Setba, dan "Setba" di bawah catatan Inspektorat terbaca seolah catatan
-     * Setba.
-     *
-     * @param  list<array>  $kartu  hasil kartu()
-     * @return array{teks:string, ket:string}|null  null = belum ada peristiwa
+     * Kolom Catatan terakhir = catatan baris "Terbaru" di Progres. Yang disebut sumbernya, bukan
+     * pengetiknya. Null = belum ada peristiwa.
      */
     public static function catatanTerakhir(array $kartu, string $kunci): ?array
     {
@@ -269,6 +276,12 @@ class RiwayatTindakLanjut
         ];
     }
 
+    /** Sebutan akun bila peran saat mencatat tidak tersimpan: "Setba", atau nama pendek satuan kerjanya. */
+    private static function sebutan(User $u): string
+    {
+        return $u->peran === PeranPengguna::SATKER && $u->satker ? $u->satker->namaPendek() : $u->peran->pendek();
+    }
+
     public static function menutupPeriode(string $sumber, ?string $dari, ?string $ke, SumberLaporan $jenis): bool
     {
         return $jenis->melewatiSiptl()
@@ -276,14 +289,39 @@ class RiwayatTindakLanjut
             : strtoupper($sumber) === 'ITJEN' && $ke === 'BM';
     }
 
+    /** Hasil satu kunjungan penilai, dari peristiwanya saat itu (bukan hasil terkini baris). */
+    private static function hasilJalur(array $b, SumberLaporan $jenis): ?array
+    {
+        $sumber = $b['sumber'];
+        $kode = $b['ke'] ?? '';
+        $dasar = ['sumber' => $sumber, 'tanggal' => $b['tanggal'] ?? null,
+            'peristiwa' => $b['id'], 'penilaian' => true];
+
+        if (in_array($sumber, ['UKI', 'ITJEN'], true) && ($hasil = HasilTelaah::tryFrom($kode))) {
+            return $dasar + ['kode' => $hasil->kode($jenis), 'nama' => $hasil->nama($jenis),
+                'kelas' => $hasil->memadai() ? 'ss' : 'bs'];
+        }
+        if ($sumber !== 'SIPTL') {
+            return null;
+        }
+        if ($kode === 'BT' && empty($b['dari'])) {
+            return array_replace($dasar, ['kode' => 'BT', 'nama' => 'Menunggu penilaian BPK',
+                'kelas' => 'bt', 'penilaian' => false]);
+        }
+        if (in_array($kode, ['SS', 'BS'], true)) {
+            $hasil = StatusTindakLanjut::from($kode);
+
+            return $dasar + ['kode' => $kode, 'nama' => $hasil->pendek(), 'kelas' => strtolower($kode)];
+        }
+
+        return null;
+    }
+
     /**
-     * Isi tab Riwayat untuk tiap lingkup — pasangan bentuk tindak lanjut dan
-     * satuan kerja, sama dengan satu baris tabel tindak lanjut. Tiap lingkup
-     * punya periodenya sendiri, jadi dihitung terpisah.
-     *
-     * @return list<array>
+     * Isi tab Progres tiap lingkup (bentuk tindak lanjut × satuan kerja); tiap lingkup punya
+     * periodenya sendiri.
      */
-    public static function kartu(Rekomendasi $r, PeranPengguna $peran, ?int $satkerId): array
+    public static function kartu(Rekomendasi $r, PeranPengguna $peran, int|array|null $satkerId): array
     {
         $jenis = $r->jenis();
         $semua = self::susun($r, $peran, $satkerId);
@@ -322,10 +360,10 @@ class RiwayatTindakLanjut
                     return 'Satker';
                 }
                 if ($s === 'SIPTL') {
-                    if (empty($b['dari']) && ! empty($b['ke'])) {
+                    if (empty($b['dari']) && ($b['ke'] ?? '') === 'BT') {
                         return 'BPK';
                     }
-                    if (in_array($b['ke'] ?? '', ['SS', 'TD'], true)) {
+                    if (($b['ke'] ?? '') === 'SS') {
                         return 'Selesai';
                     }
                     if (($b['ke'] ?? '') === 'BS') {
@@ -335,24 +373,38 @@ class RiwayatTindakLanjut
 
                 return null;
             };
-            $jalurPeriode = function ($k) use ($baris, $nomorPeriode, $tujuan) {
-                $j = [['tempat' => 'Satker', 'tanggal' => '']];
+            $jalurPeriode = function ($k) use ($baris, $nomorPeriode, $tujuan, $jenis, $aktif) {
+                $acuan = $aktif['x']->tanggal_acuan_historis;
+                $j = $k === 1 && $acuan ? [['tempat' => 'Historis', 'tanggal' => $acuan->toDateString()]] : [['tempat' => 'Satker', 'tanggal' => '']];
                 $isi = array_values(array_filter($baris, fn ($b) => $nomorPeriode($b) === $k));
                 usort($isi, fn ($a, $c) => strcmp((string) $a['tanggal'], (string) $c['tanggal'])
                     ?: ($a['seq'] >= 0 && $c['seq'] >= 0 ? $a['seq'] <=> $c['seq'] : $a['urut'] <=> $c['urut']));
                 foreach ($isi as $b) {
+                    $hasil = self::hasilJalur($b, $jenis);
+                    if ($hasil) {
+                        $penilai = match ($b['sumber']) {
+                            'UKI' => 'UKI', 'ITJEN' => 'Inspektorat', 'SIPTL' => 'BPK',
+                        };
+                        /* Putusan menempel pada kunjungan penilainya. Data lama tanpa surat
+                           penerusan tetap memakai tanggal penilaian nyata. */
+                        if (end($j)['tempat'] !== $penilai) {
+                            $j[] = ['tempat' => $penilai, 'tanggal' => $b['tanggal']];
+                        }
+                        $idx = array_key_last($j);
+                        $j[$idx]['hasil'] = $hasil;
+                    }
                     $t = $tujuan($b);
                     if ($t && $t !== end($j)['tempat']) {
-                        $j[] = ['tempat' => $t, 'tanggal' => $b['tanggal']];
+                        $j[] = ['tempat' => $t, 'tanggal' => $b['tanggal']]
+                            + ($t === 'Selesai' && $hasil ? ['hasil' => $hasil] : []);
                     }
                 }
 
                 return $j;
             };
 
-            /* "Posisi saat ini" dulu dihitung di sini untuk kartu riwayat. Tab
-               Riwayat tidak menyebutnya lagi: alur tahap di atas tab sudah
-               menandainya (21 Sep). */
+            /* Jalur dan hasil per kunjungan ada di Progres; hasil penilaian terpisah dari
+               penanda tempat terakhir. */
 
             $babak = [];
             for ($k = $periodeKini; $k >= 1; $k--) {

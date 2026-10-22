@@ -4,11 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Setoran yang tidak diakui BPK, milik satu satuan kerja. Dikurangkan dari
- * uang yang sudah masuk — `Rekomendasi::totalSetor()` — supaya sisa tagihan
- * tidak terbaca lunas padahal sebagian setorannya ditolak.
- */
+/** Setoran yang tidak diakui BPK, milik satu satuan kerja; dikurangkan di totalSetor(). */
 class TolakanBpk extends Model
 {
     protected $table = 'tolakan_bpks';

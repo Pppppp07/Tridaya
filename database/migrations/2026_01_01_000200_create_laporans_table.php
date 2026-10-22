@@ -15,17 +15,13 @@ return new class extends Migration
             $table->date('tgl_surat');
             $table->date('tgl_terima');                  // dasar penghitungan tenggat
 
-            // Kapan Setba memasukkannya ke sistem. Bukan tgl_terima: surat bisa
-            // menganggur berminggu-minggu sebelum dicatat, dan selama itu tenggat
-            // jawabannya sudah berjalan tanpa ada yang bisa mengerjakannya.
+            // Kapan Setba memasukkannya ke sistem (bukan tgl_terima).
             $table->date('dicatat_pada')->nullable();
             $table->foreignId('dicatat_oleh')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->index('sumber');
         });
-        // Status laporan sengaja tidak disimpan — selalu disimpulkan dari
-        // rekomendasi di bawahnya. Kalau disimpan, cepat atau lambat berbeda
-        // dengan kenyataan.
+        // Status laporan tidak disimpan — selalu disimpulkan dari rekomendasinya.
     }
 
     public function down(): void

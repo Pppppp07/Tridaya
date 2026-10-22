@@ -1,35 +1,37 @@
-{{-- Tabel keseluruhan — padanan `TabelKeseluruhan`: SATU tabel bertingkat,
-     tahun lalu satuan kerja lalu angka-angkanya. Hizkia (24 Sep): "informasi
-     tertinggi nya ada di tahun, lalu kedua Satuan kerja". Tiap tahun punya
-     baris ringkas di atas baris satuan kerjanya dan bisa ditutup (awalnya
-     tertutup semua). Semua hitungan status per TINDAK LANJUT, supaya baris
-     satuan kerja menjumlah tepat ke baris tahunnya; kolom Rekomendasi
-     menghitung rekomendasi unik. Angka yang ada isinya sekaligus pintasan ke
-     rekomendasi di baliknya. --}}
+{{-- Tabel keseluruhan bertingkat: tahun → satuan kerja → angka. --}}
 @php
   $urut = $k['urut'];
   $rasio = fn ($b) => $b['M'] + $b['BM'] > 0 ? $b['M'] / ($b['M'] + $b['BM']) : -1;
   $pct = fn ($b) => (int) round(max(0, $rasio($b)) * 100);
-  $kodeBpk = array_merge(['SS', 'BS', 'BT'], $tk['adaTD'] ? ['TD'] : []);
-  /* `lepas`: kolom tanpa kelompok di kepala tingkat pertama. `awal`: kolom
-     pertama sebuah kelompok (bergaris kiri). */
+  $kodeBpk = ['SS', 'BS', 'BT'];
+  /* Kolom Belum diunggah hanya bila ada isinya; kolom SIPTL hanya untuk LHP. */
+  $belumKol = $adaSiptl && $tk['total']['belumUnggah'] > 0;
+  /* `lepas`: kolom tanpa kelompok di kepala tingkat pertama. `awal`: kolom pertama kelompok
+     (bergaris kiri). */
+  /* Satuan hitungnya tindak lanjut. Rekomendasi tidak ditampilkan: satu rekomendasi bisa dipikul
+     beberapa satuan kerja, jadi angkanya tidak bisa dijumlah per baris. */
   $KOLOM = array_merge([
-    ['k' => 'rek', 'nama' => 'Rekomendasi', 'lepas' => true],
     ['k' => 'tugas', 'nama' => 'Tindak lanjut', 'lepas' => true],
     ['k' => 'M', 'nama' => $kataM, 'awal' => true],
     ['k' => 'BM', 'nama' => $kataBM],
     ['k' => 'pct', 'nama' => '% '.mb_strtolower($kataM)],
-    ['k' => 'lhp', 'nama' => 'LHP', 'awal' => true],
-  ], array_map(fn ($x) => ['k' => $x, 'nama' => $x], $kodeBpk), [
+  ], $adaSiptl ? array_merge([
+    /* Status SIPTL hanya dari yang sudah diunggah; Jumlah = SS + BS + BT. */
+    ['k' => 'siptl', 'nama' => 'Jumlah', 'awal' => true],
+  ], array_map(fn ($x) => ['k' => $x, 'nama' => $x], $kodeBpk), $belumKol ? [['k' => 'belumUnggah', 'nama' => 'Belum diunggah']] : []) : [], [
     ['k' => 'nilai', 'nama' => 'Nilai', 'awal' => true, 'rp' => true],
-    ['k' => 'sisaBpk', 'nama' => 'Sisa SIPTL', 'rp' => true],
+  ], $adaSiptl ? [['k' => 'sisaBpk', 'nama' => 'Sisa SIPTL', 'rp' => true]] : [], [
     ['k' => 'sisa', 'nama' => 'Sisa Inspektorat', 'rp' => true],
   ]);
-  $GRUP = [['nama' => 'Status BPSDM', 'n' => 3], ['nama' => 'Status SIPTL', 'n' => 1 + count($kodeBpk)], ['nama' => 'Nilai (Rp)', 'n' => 3]];
+  $GRUP = array_merge([['nama' => 'Status BPSDM', 'n' => 3, 'info' => $INFO_BPSDM]],
+    $adaSiptl ? [['nama' => 'Status SIPTL', 'n' => 1 + count($kodeBpk) + ($belumKol ? 1 : 0), 'info' => $belumKol
+      ? ['Jumlah = SS + BS + BT: tindak lanjut LHP yang sudah dicatat di SIPTL.',
+        'Belum diunggah: sudah memadai, tapi unggahannya ke SIPTL belum dicatat Setba. Tidak termasuk Jumlah.']
+      : null]] : [],
+    [['nama' => 'Nilai (Rp)', 'n' => $adaSiptl ? 3 : 2]]);
 
-  /* Urutan. Kolom angka: tahun menurut jumlah tahunnya, satuan kerja menurut
-     angkanya sendiri di dalam tahun itu. Pengurut tetap: belum memadai
-     terbanyak, sisa terbesar, lalu urutan alami. */
+  /* Urutan kolom angka: tahun menurut jumlahnya, satuan kerja menurut angkanya di dalam tahun
+     itu. */
   $nilai = fn ($b, $kk) => $kk === 'pct' ? $rasio($b) : ($b[$kk] ?? 0);
   $master = fn ($a, $b) => ($a['urutNama'] <=> $b['urutNama']) ?: strnatcasecmp((string) $a['nama'], (string) $b['nama']);
   $bandingAnak = function ($a, $b) use ($urut, $nilai, $master) {
@@ -46,8 +48,7 @@
   $kelasSel = fn ($x) => trim(($x['k'] === 'pct' ? 'pct' : 'num').(! empty($x['awal']) ? ' awal-grup' : '').($urut['k'] === $x['k'] ? ' aktif' : ''));
 @endphp
 @php
-  /* Judul kolom = tombol pengurut. Klik pertama: terbesar dulu (tahun:
-     terbaru dulu; satuan kerja: urutan data master); klik lagi: kebalikannya. */
+  /* Judul kolom = tombol pengurut: pertama terbesar dulu, lagi kebalikannya. */
   $kepala = function ($kk, $isi, $kelas, $rentang = null) use ($urut) {
     $aktif = $urut['k'] === $kk;
     return ['k' => $kk, 'isi' => $isi, 'kelas' => $kelas, 'rentang' => $rentang, 'aktif' => $aktif];
@@ -67,7 +68,7 @@
           @include('ringkasan.tk-kepala', ['h' => $h])
         @endforeach
         @foreach($GRUP as $g)
-          <th colspan="{{ $g['n'] }}" class="dsb-tk-grup awal-grup">{{ $g['nama'] }}</th>
+          <th colspan="{{ $g['n'] }}" class="dsb-tk-grup awal-grup">{{ $g['nama'] }}@if(! empty($g['info'])) <x-info :teks="$g['info']" />@endif</th>
         @endforeach
       </tr>
       <tr>

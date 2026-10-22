@@ -7,20 +7,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Pengaturan akun sendiri (28 Sep) — Profil & pengaturan → Pemberitahuan dan
- * Tampilan. Padanan `setelanBawaan`, `BERANDA_AKUN`, dan `simpanSetelan`
- * prototipe.
- *
- * Disimpan di `users.pengaturan` (JSON). Yang belum pernah dipilih mengikuti
- * bawaan perannya:
- * - popup  — pemberitahuan baru dimunculkan sebagai pop-up sekali di pojok kanan atas (nyala);
- * - email   — pemberitahuan dikirim juga ke email: nyala untuk penanggung jawab unit
- *             kerja (sejak 27 Sep pemberitahuannya memang dikirim ke email), mati untuk
- *             petugas pusat sampai ia menyalakannya sendiri;
- * - animasi — "ikut" pengaturan perangkat, atau "kurang": tanpa animasi;
- * - tema — terang (bawaan) atau gelap, diterapkan sebelum halaman digambar;
- * - menu — otomatis, lebar, atau ringkas, mengikuti akun di semua perangkat;
- * - beranda — halaman pertama sesudah masuk.
+ * Pengaturan akun sendiri di `users.pengaturan` (JSON): popup, email, pembaruan, animasi, tema, menu,
+ * beranda.
+ * Yang belum dipilih mengikuti bawaan peran.
  */
 class Setelan
 {
@@ -29,24 +18,28 @@ class Setelan
         'laporan' => ['nama' => 'Daftar laporan', 'rute' => 'laporan.index'],
         'dashboard' => ['nama' => 'Dashboard', 'rute' => 'ringkasan', 'peran' => [P::SETBA, P::PIMPINAN, P::ADMIN]],
         'log' => ['nama' => 'Log aktivitas', 'rute' => 'log', 'peran' => [P::DTI, P::ADMIN]],
+        'master' => ['nama' => 'Data master', 'rute' => 'master', 'peran' => [P::ADMIN]],
         'pemberitahuan' => ['nama' => 'Pemberitahuan', 'rute' => 'pemberitahuan'],
     ];
 
     /** Nama tiap pengaturan di log, sebelum → sesudah (bagian/beda-log). */
-    public const NAMA = ['popup' => 'Pop-up pemberitahuan', 'email' => 'Email pemberitahuan', 'animasi' => 'Animasi', 'beranda' => 'Halaman pertama', 'tema' => 'Tema', 'menu' => 'Menu samping'];
+    public const NAMA = ['popup' => 'Pop-up pemberitahuan', 'email' => 'Email pemberitahuan', 'pembaruan' => 'Sorot pembaruan', 'animasi' => 'Animasi', 'beranda' => 'Halaman pertama', 'tema' => 'Tema', 'menu' => 'Menu samping'];
 
-    /** @return array{popup:bool, email:bool, animasi:string, beranda:string, tema:string, menu:string} */
+    /** @return array{popup:bool, email:bool, pembaruan:bool, animasi:string, beranda:string, tema:string, menu:string} */
     public static function bawaan(User $u): array
     {
         return [
             'popup' => true,
             'email' => $u->peran === P::SATKER,
+            /* Daftar Rekomendasi: yang baru diperbarui di atas, bertitik merah sampai dibuka. */
+            'pembaruan' => true,
             'animasi' => 'ikut',
             'tema' => 'terang',
             'menu' => 'otomatis',
-            'beranda' => match ($u->peran) {
+            'beranda' => match ($u->peranAktif()) {
                 P::PIMPINAN => 'dashboard',
                 P::DTI => 'log',
+                P::ADMIN => 'master',
                 default => 'rekomendasi',
             },
         ];
@@ -60,15 +53,11 @@ class Setelan
         return array_merge($bawaan, array_intersect_key((array) ($u->pengaturan ?? []), $bawaan));
     }
 
-    /**
-     * Pilihan halaman pertama yang boleh untuk peran ini.
-     *
-     * @return list<string>
-     */
+    /** Halaman pertama yang boleh untuk peran ini. */
     public static function berandaBoleh(User $u): array
     {
         return array_keys(array_filter(self::BERANDA,
-            fn ($b) => ! isset($b['peran']) || in_array($u->peran, $b['peran'], true)));
+            fn ($b) => ! isset($b['peran']) || in_array($u->peranAktif(), $b['peran'], true)));
     }
 
     /** Rute halaman pertama — pilihannya, kalau masih boleh untuk perannya sekarang. */
@@ -86,7 +75,7 @@ class Setelan
     public static function sebut(string $kunci, mixed $v): string
     {
         return match ($kunci) {
-            'popup', 'email' => $v ? 'aktif' : 'nonaktif',
+            'popup', 'email', 'pembaruan' => $v ? 'aktif' : 'nonaktif',
             'animasi' => $v === 'kurang' ? 'dikurangi' : 'ikuti perangkat',
             'tema' => $v === 'gelap' ? 'Gelap' : 'Terang',
             'menu' => ['otomatis' => 'Otomatis', 'lebar' => 'Selalu lebar', 'ringkas' => 'Selalu ringkas'][$v] ?? (string) $v,
@@ -96,13 +85,11 @@ class Setelan
     }
 
     /**
-     * Simpan pilihan baru. Hanya yang berubah yang dicatat di log, sebelum →
-     * sesudah. False kalau tidak ada yang berubah.
+     * Simpan pilihan baru; hanya yang berubah dicatat di log. False bila tidak ada yang berubah.
      */
     public static function simpan(User $u, array $baru, string $bagian): bool
     {
-        // Dua tab dapat menyimpan tema dan pengaturan lain bersamaan. Gabungkan
-        // dengan nilai terbaru yang dikunci, bukan salinan model dari sesi awal.
+        // Dua tab bisa menyimpan bersamaan: gabungkan dengan nilai terbaru yang dikunci.
         return DB::transaction(function () use ($u, $baru, $bagian) {
             $terkini = User::whereKey($u->id)->lockForUpdate()->firstOrFail();
             $lama = self::untuk($terkini);

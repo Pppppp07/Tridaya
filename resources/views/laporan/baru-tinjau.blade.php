@@ -2,15 +2,13 @@
   use App\Enums\SumberLaporan;
   use App\Support\Tampil;
 
-  /* Langkah 2 — tinjau. Yang dibaca di sini persis yang akan tersimpan: tiap
-     tindak lanjut, siapa yang memikulnya, dan catatannya. */
+  /* Langkah 2: tinjau — persis yang akan tersimpan. */
   $s = $d['surat'];
   $sumber = SumberLaporan::from($s['sumber']);
   $administratif = $sifat->firstWhere('nama', 'Administratif')?->id;
   $nama = fn ($id) => $satker->firstWhere('id', (int) $id)?->namaPendek() ?? '—';
   $semuaSatker = collect($d['temuan'])->flatMap(fn ($t) => $t['satker'])->map(fn ($id) => (int) $id)->unique()->values();
-  /* Satuan kerja yang muncul di lebih dari satu temuan disebut jumlahnya —
-     padanan `DaftarSatker` prototipe. */
+  /* Satuan kerja yang muncul di lebih dari satu temuan disebut jumlahnya. */
   $nTemuan = fn ($id) => collect($d['temuan'])->filter(fn ($t) => in_array($id, array_map('intval', $t['satker']), true))->count();
 @endphp
 
@@ -23,8 +21,7 @@
     <x-meta label="Sumber">{{ $sumber->nama() }} — {{ $sumber->penerbit() }}</x-meta>
     <x-meta label="Tanggal surat">{{ Tampil::tgl($s['tgl_surat']) }}</x-meta>
     <x-meta label="Diterima">{{ Tampil::tgl($s['tgl_terima']) }}</x-meta>
-    {{-- Ditumpuk sebagai keping, bukan disambung koma (Bang Kamal: "jangan
-         dikoma-koma, kagak bagus"). --}}
+    {{-- Ditumpuk sebagai keping, bukan disambung koma. --}}
     <x-meta label="Satuan kerja terperiksa">
       @if($semuaSatker->isEmpty())
         —
@@ -116,14 +113,12 @@
             </x-meta>
           </div>
 
-          {{-- SELURUH tindak lanjutnya, bukan cuma yang pertama: tindak lanjut
-               kedua, siapa yang memikulnya, dan catatannya harus terbaca
-               sebelum laporannya terkirim, bukan sesudah. --}}
+          {{-- Seluruh tindak lanjut ditampilkan, bukan hanya yang pertama. --}}
           @foreach($r['tindakan'] as $k => $tk)
             @php $dok = collect($tk['dokumen'])->filter(fn ($x) => trim($x) !== ''); @endphp
             <div style="border-top:1px solid var(--rule-2);padding-top:9px;margin-top:2px">
               <div class="lbl" style="margin-bottom:4px">
-                Tindak lanjut {{ $k + 1 }} · {{ $tk['bentuk'] ?: 'bentuk belum diisi' }}
+                Tindak lanjut {{ $k + 1 }} · {{ $form->namaBentuk((string) $tk['bentuk']) ?: 'bentuk belum diisi' }}
               </div>
               <div style="font-size:12.5px">
                 @if(count($tk['satker']))

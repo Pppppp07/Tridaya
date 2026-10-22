@@ -4,16 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Apa yang sudah dikerjakan satuan kerja atas bagiannya.
- *
- * Dulu bernama TindakLanjut dan menggantung pada rekomendasi. Sekarang
- * menggantung pada sasaran: yang menjawab adalah satu satuan kerja, dan
- * jawaban Balai Medan tidak boleh tercampur dengan jawaban Politeknik PU
- * hanya karena rekomendasinya sama.
- *
- * Rekam jejak - hanya bertambah, tidak pernah menimpa yang sebelumnya.
- */
+/** Jawaban satu satuan kerja atas bagiannya (menggantung pada sasaran). Hanya bertambah. */
 class Tanggapan extends Model
 {
     protected $table = 'tindak_lanjuts';

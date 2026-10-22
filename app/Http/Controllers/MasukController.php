@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Support\Aktivitas;
 use App\Support\Akun;
+use App\Support\Sso\Penyedia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -13,26 +14,15 @@ use Illuminate\Support\Str;
 class MasukController extends Controller
 {
     /**
-     * Halaman masuk yang sungguhan — rupanya sama dengan saat dipasang: bersih,
-     * tanpa akun contoh. Di sinilah SSO dipasang (28 Sep, permintaan Hizkia).
-     *
-     * Formulir email dan password tampil di sini hanya bila masuk dengan kata
-     * password dibolehkan DAN Login developer tidak ada — yaitu pemasangan
-     * sungguhan yang masih memakai password sebagai pintu cadangan. Selama
-     * pengembangan formulir itu tinggal di Login developer, jadi halaman ini
-     * tampil persis seperti nanti bila SSO satu-satunya pintu.
+     * Halaman masuk sungguhan (SSO). Formulir password hanya tampil bila password dibolehkan dan
+     * Login developer tidak ada.
      */
     public function form()
     {
         return $this->tampil(false);
     }
 
-    /**
-     * Login developer: tampilan masuk selama pengembangan — SSO simulasi,
-     * email dan password, dan daftar akun contoh. Hanya ada di pemasangan
-     * demo (config simtlhp.akun_demo, padam sendiri di produksi) yang
-     * masih membolehkan password; selain itu tidak ditemukan.
-     */
+    /** Login developer: password dan akun contoh; hanya di pemasangan demo. */
     public function pengembang()
     {
         abort_unless(self::adaPengembang(), 404);
@@ -42,37 +32,28 @@ class MasukController extends Controller
 
     public static function adaPengembang(): bool
     {
-        return config('simtlhp.akun_demo') && config('simtlhp.masuk.password');
+        return ! app()->isProduction() && config('simtlhp.akun_demo') && config('simtlhp.masuk.password');
     }
 
     private function tampil(bool $pengembang)
     {
         return view('masuk', [
-            'pengembang'    => $pengembang,
+            'pengembang' => $pengembang,
             'adaPengembang' => self::adaPengembang(),
-            /* Daftar akun contoh supaya demo tidak tersendat mengetik kata
-               password — hanya di Login developer. */
-            'akun'          => $pengembang ? User::with('satker')->where('aktif', true)->orderBy('id')->get() : collect(),
-            'password'         => config('simtlhp.masuk.password') && ($pengembang || ! self::adaPengembang()),
-            'sso'           => \App\Support\Sso\Penyedia::aktif() ? config('simtlhp.sso.nama') : null,
+            /* Akun contoh hanya di Login developer. */
+            'akun' => $pengembang ? User::with('satker')->where('aktif', true)->orderBy('id')->get() : collect(),
+            'password' => config('simtlhp.masuk.password') && ($pengembang || ! self::adaPengembang()),
+            /* Tombol SSO selalu tampil; bila penyedianya belum disambungkan, tombolnya memberi tahu. */
+            'sso' => Penyedia::nama() === 'dwaradaya' ? 'Dwaradaya' : (config('simtlhp.sso.nama') ?: 'SSO PU'),
+            'dwaradaya' => Penyedia::nama() === 'dwaradaya',
+            'ssoBelum' => (bool) request()->session()->get('sso_belum', false),
+            'sesiBerakhir' => (bool) request()->session()->pull('sesi_berakhir', false),
         ]);
     }
 
     /**
-     * Masuk dengan email dan password.
-     *
-     * Dijaga tiga hal (27 Sep):
-     * - percobaan yang salah dibatasi per email + alamat — lima kali semenit,
-     *   lalu dikunci sementara. Menebak password jadi tidak mungkin dalam
-     *   waktu yang wajar;
-     * - pesannya sama untuk email yang tidak ada dan password yang salah,
-     *   jadi formulir ini tidak bisa dipakai menebak email siapa yang terdaftar;
-     * - tidak ada lagi "ingat saya" yang dipaksakan. Dulu setiap orang yang
-     *   masuk dibekali cookie lima tahun — di komputer bersama, orang berikutnya
-     *   langsung masuk sebagai dia. Sekarang sesinya habis sendiri bila lama
-     *   tidak dipakai (SESSION_LIFETIME).
-     *
-     * Setiap percobaan — berhasil, salah, dikunci — tercatat di log aktivitas.
+     * Masuk dengan email dan password: dibatasi per email + alamat lalu dikunci sementara; pesan
+     * sama untuk email dan password salah; tanpa "ingat saya".
      */
     public function masuk(Request $r)
     {
@@ -97,8 +78,7 @@ class MasukController extends Controller
             ]);
         }
 
-        /* Akun yang dinonaktifkan — penanggung jawab yang sudah diganti,
-           petugas yang pindah — tidak bisa masuk lagi. */
+        /* Akun nonaktif tidak bisa masuk. */
         if (! Auth::attempt(['email' => $email, 'password' => $data['password'], 'aktif' => true])) {
             RateLimiter::hit($kunci, max(10, (int) config('simtlhp.masuk.jeda_detik', 60)));
             Aktivitas::catat('masuk.gagal', 'Gagal masuk: email atau password salah', [
@@ -126,10 +106,9 @@ class MasukController extends Controller
         $r->session()->invalidate();
         $r->session()->regenerateToken();
 
-        /* Masuk lewat SSO, keluar juga di SSO — kalau Pusdatin menyediakan
-           alamat keluarnya. Tanpa itu sesi SSO-nya tetap hidup, dan menekan
-           "Masuk dengan SSO" langsung masuk lagi tanpa ditanya. */
-        if ($lewatSso && ($ke = \App\Support\Sso\Penyedia::alamatKeluar())) {
+        /* Masuk lewat SSO, keluar juga di SSO (bila alamat keluarnya ada); tanpa itu sesi SSO
+           tetap hidup. */
+        if ($lewatSso && ($ke = Penyedia::alamatKeluar())) {
             return redirect()->away($ke);
         }
 

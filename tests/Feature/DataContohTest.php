@@ -7,6 +7,7 @@ use App\Models\DrafTanggapan;
 use App\Models\Laporan;
 use App\Models\Notifikasi;
 use App\Models\Rekomendasi;
+use App\Models\RiwayatBerkas;
 use App\Models\Sasaran;
 use App\Models\Satker;
 use App\Models\Temuan;
@@ -16,19 +17,7 @@ use Illuminate\Support\Facades\Artisan;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Penjaga kewarasan data contoh.
- *
- * Data contoh yang tidak masuk akal membuat seluruh tampilan di atasnya ikut
- * tidak bisa dipercaya — dan yang paling berbahaya, salahnya tidak kelihatan
- * sampai ada orang yang membaca angkanya sungguh-sungguh.
- *
- * Angkanya sama persis dengan yang diperagakan prototipe: 26 laporan, 29
- * temuan, 49 rekomendasi, 102 penugasan. Sejak 21 Sep, 22 penugasan di
- * antaranya belum disentuh satuan kerjanya sama sekali — sebelumnya cuma 5,
- * dan Hizkia mencatat data contohnya "rata rata yang sudah menunggu dan
- * selesai".
- */
+/** Penjaga kewarasan data contoh. */
 class DataContohTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -107,26 +96,23 @@ class DataContohTest extends TestCase
         }
     }
 
-    public function test_penyapu_draf_sudah_berjalan_sekali(): void
+    public function test_draf_tetap_di_satuan_kerja_tanpa_jejak(): void
     {
-        /* Penyemai memanggil `tlhp:kirim-draf`, jadi draf yang belum dikirim lewat
-           tujuh hari sudah terkirim — sama seperti prototipe yang menyapunya
-           saat aplikasi dibuka. */
-        $sapuan = Notifikasi::where('aksi', 'like', 'Terkirim otomatis%')->count();
-        $this->assertGreaterThan(0, $sapuan);
-
-        foreach (DrafTanggapan::with('sasaran')->get() as $draf) {
-            $this->assertNotNull($draf->sasaran, 'Draf tanggapan tanpa barisnya.');
+        $draf = DrafTanggapan::with('sasaran')->get();
+        $this->assertCount(4, $draf);
+        foreach ($draf as $d) {
+            $this->assertNotNull($d->sasaran, 'Draf tanggapan tanpa barisnya.');
+            $this->assertSame(PosisiBerkas::SATKER, $d->sasaran->pos(), 'Draf tidak pernah terkirim sendiri.');
         }
+
+        $this->assertSame(0, Notifikasi::where('aksi', 'like', 'Kemajuan tindak lanjut%')
+            ->orWhere('aksi', 'like', 'Terkirim otomatis%')->count());
+        $this->assertSame(0, RiwayatBerkas::where('aksi', 'like', 'Kemajuan dicatat%')
+            ->orWhere('aksi', 'like', 'Terkirim otomatis%')->count());
     }
 
-    public function test_perintah_penyapu_aman_dijalankan_ulang(): void
+    public function test_perintah_kirim_draf_sudah_tidak_ada(): void
     {
-        $sebelum = Notifikasi::count();
-
-        Artisan::call('tlhp:kirim-draf');
-
-        /* Yang sudah terkirim tidak dikirim dua kali. */
-        $this->assertSame($sebelum, Notifikasi::count());
+        $this->assertArrayNotHasKey('tlhp:kirim-draf', Artisan::all());
     }
 }

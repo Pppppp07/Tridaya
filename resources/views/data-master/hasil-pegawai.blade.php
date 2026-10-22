@@ -2,22 +2,17 @@
   use App\Support\DirektoriIrm;
   use App\Support\Rangka;
 
-  /* Hasil pencarian direktori di jendela Tambah pengguna — padanan daftar di
-     `JendelaPenggunaBaru` prototipe. Dipakai dua kali: saat halamannya
-     digambar (`?jendela=pengguna&q=`), dan sebagai potongan yang diambil skrip
-     sambil mengetik — satu templat, jadi keduanya tidak mungkin berbeda.
-
-     Tiap baris cuma link ke langkah berikutnya dengan NIP-nya. Nama,
-     jabatan, dan email diambil ulang dari direktori di server. */
+  /* Hasil pencarian direktori di jendela Tambah pengguna — templat yang sama untuk halaman dan
+     potongan skrip. */
   $mencari = mb_strlen($q) >= 2;
 @endphp
 <div class="lbl hasil-lbl">
   @if($error)
     {{ $error }}
   @elseif(! $mencari)
-    Ketik paling tidak dua huruf.
+    Ketik minimal 2 karakter.
   @else
-    {{ $hasil->count() ? $hasil->count().' pegawai cocok' : 'Tidak ada pegawai yang cocok dengan “'.$q.'”.' }}
+    {{ $hasil->count() ? $hasil->count().' pegawai ditemukan' : 'Tidak ada pegawai yang cocok dengan “'.$q.'”.' }}
   @endif
 </div>
 <div class="daftarpegawai">
@@ -40,7 +35,7 @@
         </span>
         <span class="ket">
           @if($sudah)
-            Sudah berakun {{ $a->peran->pendek() }}{{ $a->peran === \App\Enums\PeranPengguna::SATKER && $a->satker ? ' · '.$a->satker->namaPendek() : '' }}
+            Sudah memiliki akun {{ $a->peran->pendek() }}{{ $a->peran === \App\Enums\PeranPengguna::SATKER && $a->satker ? ' · '.$a->satker->namaPendek() : '' }}
           @elseif($a)
             Akun nonaktif · Aktifkan <x-ikon n="ChevronRight" :s="13" />
           @else

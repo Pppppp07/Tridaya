@@ -12,10 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('laporan_id')->constrained('laporans')->cascadeOnDelete();
 
-            // Satuan kerja tempat temuannya terjadi. Sengaja di sini, bukan di
-            // laporan: satu laporan pemeriksaan lazim memeriksa beberapa satuan
-            // kerja sekaligus. Berbeda dari satker penanggung jawab di
-            // rekomendasi — yang menanggung perbaikan belum tentu yang diperiksa.
+            // Satuan kerja tempat temuan terjadi (bukan penanggung jawab rekomendasi).
             $table->foreignId('satker_id')->nullable()->constrained('satkers')->nullOnDelete();
 
             $table->string('kode', 30)->unique();

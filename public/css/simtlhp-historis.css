@@ -1,0 +1,89 @@
+/* Upload dan review historis. Warna mengikuti tema akun; tanpa animasi/librari tambahan. */
+.hrv-entry{display:flex;justify-content:flex-end;margin-bottom:16px}
+.hrv{--hrv-gap:20px}
+.hrv-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.hrv h2{font-size:22px;margin:10px 0 6px}.hrv h3{font-size:16px;margin:0 0 10px}
+.hrv p{margin:6px 0 14px;color:var(--ink-2);line-height:1.6}
+.hrv-back{font-size:13px;color:var(--ink-2)}
+.hrv-steps{display:flex;gap:8px;list-style:none;padding:0;margin:0 0 24px;flex-wrap:wrap}
+.hrv-steps li{padding:8px 14px;border-radius:8px;background:var(--surface-2);color:var(--ink-3);font-size:13px}
+.hrv-steps li[aria-current]{background:var(--aksen-bg);color:var(--aksen);font-weight:700}
+.hrv-card{padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--surface);margin-bottom:20px;min-width:0}
+.hrv-upload{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-top:22px}.hrv-upload .fld{flex:1;min-width:200px;margin:0}
+.hrv input[type=file]{width:100%;padding:12px;border:1px dashed var(--line-2);border-radius:8px;background:var(--surface-2);color:var(--ink)}
+.hrv-counts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.hrv-counts>div{display:flex;align-items:center;gap:14px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.hrv-counts strong{font-size:28px;color:var(--ink)}.hrv-counts span{font-size:13px;color:var(--ink-2)}
+.hrv-filters{display:flex;gap:8px;margin:22px 0 14px;flex-wrap:wrap}
+/* Tandai sekaligus baris tanpa masalah; keterangannya di samping tombol. */
+.hrv-tandai{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.hrv-tandai .hint{margin:0}
+/* Review berdampingan: ringkasan kolom sistem, tanda per baris, dan perbandingan isi file ↔ isian sistem. */
+.hrv-badge.info{background:var(--aksen-bg);border-color:var(--aksen-line);color:var(--aksen-kuat)}
+.hrv .wajib{color:var(--bad);margin-left:3px}
+.hrv-ringkas-tabel{min-width:880px}
+.hrv-ringkas-tabel th,.hrv-ringkas-tabel td{padding:9px 12px;font-size:13px;vertical-align:top}
+.hrv-ringkas-tabel thead th{font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.hrv-ringkas-tabel tbody th{font-weight:600;color:var(--ink);text-align:left;white-space:nowrap}
+.hrv-ringkas-tabel td.dari{color:var(--ink-2);max-width:280px}
+.hrv-ringkas-tabel a.n{display:inline-block;min-width:30px;padding:2px 7px;border-radius:6px;font-weight:600;color:var(--aksen);text-align:center;text-decoration:none}
+.hrv-ringkas-tabel a.n:hover{background:var(--aksen-bg)}
+.hrv-ringkas-tabel a.n.warn{color:var(--warn);background:var(--warn-bg)}
+.hrv-ringkas-tabel .nol{color:var(--ink-3)}
+.hrv-ringkas-tabel tr.ada-masalah th{box-shadow:inset 3px 0 0 var(--warn)}
+.hrv-ringkas-tabel tr.dipilih>*{background:var(--aksen-bg)}
+.hrv-lain{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.hrv-lain dl{margin:12px 0 0}.hrv-lain dt{margin-top:12px;font-size:12px;color:var(--ink-3)}.hrv-lain dd{margin:3px 0 0;font-size:13px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-wrap}
+.hrv-saring{font-size:13px;color:var(--ink-2);margin:0 0 10px}
+.hrv-kolom{font-size:12px;line-height:1.5;max-width:250px}
+.hrv-kolom>span{display:block;color:var(--ink-2)}.hrv-kolom>span.warn{color:var(--warn)}.hrv-kolom>span.hrv-badge{display:inline-block}
+.hrv-table tr[data-href]{cursor:pointer}.hrv-table tr[data-href]:hover>td{background:var(--surface-2)}
+.hrv-nav{display:flex;gap:8px;flex-wrap:wrap}
+.hrv-hitung{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.hrv-banding-wadah{border:0;padding:0;margin:0;min-width:0}
+.hrv-banding{width:100%;border-collapse:collapse;table-layout:fixed}
+.hrv-banding th,.hrv-banding td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+.hrv-banding thead th{font-size:12px;font-weight:600;color:var(--ink-2);background:var(--surface-2)}
+.hrv-banding thead th:nth-child(1){width:17%}.hrv-banding thead th:nth-child(2){width:32%}.hrv-banding thead th:nth-child(3){width:33%}.hrv-banding thead th:nth-child(4){width:18%}
+.hrv-banding tbody th{font-size:13px;font-weight:600;color:var(--ink)}
+.hrv-banding .asli .judul{display:block;font-size:11px;color:var(--ink-3);margin-bottom:2px}
+.hrv-banding .asli .isi{display:block;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;max-height:9em;overflow:auto;margin-bottom:6px}
+.hrv-banding .asli .tiada{font-size:12px;color:var(--ink-3);font-style:italic}
+.hrv-banding .sistem :is(input,select,textarea){width:100%}
+.hrv-banding .salah{display:block;margin-top:6px;font-size:12px;color:var(--bad)}
+.hrv-banding tr.k-tidak_terbaca>*{background:var(--warn-bg)}
+.hrv-banding tr.k-diubah>th{box-shadow:inset 3px 0 0 var(--aksen)}
+.hrv-banding tr.k-salah .sistem :is(input,select,textarea){border-color:var(--bad)}
+@media(max-width:900px){
+  .hrv-banding thead{display:none}
+  .hrv-banding,.hrv-banding tbody,.hrv-banding tr,.hrv-banding th,.hrv-banding td{display:block;width:auto}
+  .hrv-banding tr{border-bottom:1px solid var(--line);padding:10px 0}
+  .hrv-banding th,.hrv-banding td{border:0;padding:4px 8px}
+  .hrv-banding td[data-judul]::before{content:attr(data-judul);display:block;font-size:11px;font-weight:600;color:var(--ink-3);margin-bottom:2px}
+}
+.hrv-badge{display:inline-block;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);font-size:12px;white-space:nowrap;padding:5px 9px;border-radius:6px}
+.hrv-badge.ok{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}.hrv-badge.warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn)}.hrv-badge.bad{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad)}
+.hrv-table th,.hrv-table td{padding:14px 16px}.hrv-table table{min-width:760px}
+.hrv-sub,.hrv-source span{display:block;margin-top:5px;color:var(--ink-3);font-size:12px}
+.hrv-excerpt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--ink-2);font-size:12px;line-height:1.5;max-width:430px;margin-top:6px}
+.hrv-source{font-size:12px;white-space:nowrap}.hrv-link{display:block;margin-top:8px;font-size:12px;color:var(--aksen)}
+.hrv-empty{padding:32px!important;text-align:center;color:var(--ink-3)}
+.hrv-pagination{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin:14px 0;font-size:13px}
+.hrv-confirm{margin-top:24px}.hrv-check{display:flex;align-items:flex-start;gap:10px;margin:14px 0;font-size:13px;line-height:1.6;color:var(--ink-2)}.hrv-check input{margin-top:4px;flex-shrink:0}
+.hrv-detail{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,1fr);gap:20px;align-items:start}
+.hrv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;border:0;padding:0;margin:18px 0 0;min-width:0}
+.hrv-grid .fld{margin:0}.hrv-grid textarea{resize:vertical}.hrv-wide{grid-column:1/-1}.hrv-decisions{border-top:1px solid var(--line);padding-top:8px}
+.hrv-original dl{margin:18px 0}.hrv-original dt{color:var(--ink-3);font-size:12px;margin-top:16px}.hrv-original dd{margin:4px 0 0;font-size:13px;line-height:1.7;overflow-wrap:anywhere;white-space:pre-wrap}
+.hrv summary{cursor:pointer;color:var(--aksen);font-size:13px;font-weight:600}.hrv-original details{border-top:1px solid var(--line);padding-top:16px}
+.hrv-issues{border-color:var(--warn-line)}.hrv-issues ul{padding-left:20px;font-size:13px;line-height:1.8;color:var(--ink-2);margin:8px 0}.hrv-warnings{padding:12px 16px;margin-top:14px;background:var(--warn-bg);border-radius:8px;font-size:13px;color:var(--ink-2)}
+.hrv-success{border-color:var(--ok-line)}
+@media(max-width:1000px){.hrv-counts{grid-template-columns:repeat(2,1fr)}.hrv-detail{grid-template-columns:1fr}.hrv-original{order:-1}.hrv-original>dl{display:none}}
+@media(max-width:600px){.hrv-head{align-items:flex-start;flex-direction:column}.hrv-card{padding:18px}.hrv-grid{grid-template-columns:1fr}.hrv-counts>div{padding:12px;gap:8px}.hrv-counts strong{font-size:24px}.hrv-upload .btn{width:100%}}
+/* Keterangan paket data historis bisa ratusan karakter: dua baris, selengkapnya di title. */
+.tl-tiket .tiket-paket{align-items:flex-start;min-width:0;max-width:100%}
+.tl-tiket .tiket-paket svg{margin-top:2px}
+.tiket-paket-isi{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
+/* Teks bentuk dari file hanya tampil selama belum ada bentuk yang dipilih dari daftar. */
+.hrv-bentuk-teks{display:none;gap:4px;margin-top:10px}
+.hrv-banding td.sistem:has(select option[value=""]:checked) .hrv-bentuk-teks{display:grid}
+.hrv-bentuk-teks label{font-size:12px;font-weight:600;color:var(--ink-2)}

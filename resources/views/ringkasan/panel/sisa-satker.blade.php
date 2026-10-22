@@ -1,8 +1,4 @@
-{{-- Nilai per satuan kerja — rincian kartu Sisa nilai. Batangnya bertumpuk
-     seperti pita di kartunya: hijau yang sudah DIAKUI, kuning SISA-nya
-     (Hizkia, 24 Sep: "nilai yang diakui tidak ada visualisasinya"). Panjang
-     batang = nilai tindak lanjut baris itu; urut sisa terbesar dulu, dan
-     angka di kanan sisanya. --}}
+{{-- Nilai per satuan kerja: hijau diakui, kuning sisa; urut sisa terbesar. --}}
 @php
   $lengkap = in_array('sisasatker', $k['semua'], true);
   $sisaSatker = array_map(fn ($o) => $o + ['diakui' => max(0, $o['nilai'] - $o['sisa'])], $d['satker']);
@@ -15,7 +11,7 @@
   $tabelOn = in_array('sisasatker', $k['tabel'], true);
 @endphp
 <x-dsb-panel id="dsb-p-sisasatker" :kelas="$kelas" judul="Nilai per satuan kerja"
-  :info="['Batang = nilai tindak lanjut satuan kerja itu: hijau sudah diakui, kuning sisa.', 'Angka di kanan = sisa. Urut dari sisa terbesar.']"
+  :info="['Nilai kewajiban tiap Satker: hijau menunjukkan nilai yang diakui berdasarkan verifikasi Inspektorat; kuning menunjukkan sisa yang belum diakui.', 'Angka di kanan adalah sisa nilai. Satker diurutkan dari sisa terbesar. Sisa nilai dapat tetap ada meskipun pemulihan sudah dilakukan.']"
   :kosong="! $sisaSatker ? 'Tidak ada nilai rupiah.' : null"
   kunci-tabel="sisasatker" :tabel="$tabelOn">
   <x-slot:isiTabel>
@@ -33,7 +29,7 @@
         data-petunjuk="{{ $petunjuk(['judul' => $o['pendek'],
           'baris' => [['warna' => $W['M'], 'nilai' => $rpk($o['diakui']), 'nama' => 'diakui'], ['warna' => 'var(--warn)', 'nilai' => $rpk($o['sisa']), 'nama' => 'sisa']],
           'ket' => 'dari '.$rpk($o['nilai']).' · '.$o['BM'].' dari '.($o['M'] + $o['BM']).' tindak lanjut '.$kecil($kataBM)
-            .($o['lhp'] ? ' · sisa SIPTL '.$rpk($o['sisaBpk']) : '')]) }}">
+            .($o['siptl'] ? ' · sisa SIPTL '.$rpk($o['sisaBpk']) : '')]) }}">
         <span class="nm" title="{{ $o['pendek'] }}">{{ $namaSatker($o['k']) }}</span>
         @include('ringkasan.panel.batang-nilai', ['o' => $o, 'maks' => $maksSisa])
         <span class="n">@if($o['sisa'] > 0)<b>{{ $rpk($o['sisa']) }}</b>@else<span class="dsb-lunas">tanpa sisa</span>@endif</span>

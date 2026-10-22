@@ -5,12 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Arsip satu pengiriman ulang untuk pemberkasan ulang.
- *
- * Yang mengirim selalu Setba; `dari` menyebut siapa yang menolak — UKI,
- * Inspektorat, atau BPK. Keadaan yang sedang berlaku ada di baris
- * penugasannya (`sasarans.alasan_perbaikan` dan kawan-kawan) dan dikosongkan
- * saat perbaikannya dikirim; yang di sini tidak pernah dikosongkan.
+ * Arsip satu pengiriman ulang (pengirim selalu Setba; `dari` = penolaknya). Keadaan yang berlaku
+ * ada di `sasarans`; yang di sini tidak pernah dikosongkan.
  */
 class Pengembalian extends Model
 {

@@ -1,10 +1,8 @@
 @php
   use App\Support\Pemberitahuan;
 
-  /* Pemberitahuan per hari, yang terbaru di atas — padanan `DaftarPemberitahuan` (26 Sep).
-     `$tab` menentukan yang tampil sejak digambar: "belum" = yang belum dibaca,
-     "semua" = seluruhnya (di panel: `$semuaId`, 40 terbaru). Skrip mengganti
-     tabnya di tempat; hari yang tidak punya isi di tab itu disembunyikan. */
+  /* Pemberitahuan per hari, terbaru di atas. `$tab`: "belum" atau "semua" (panel: `$semuaId`, 40
+     terbaru). */
   $u = auth()->user();
   $tab ??= 'semua';
   $tampilkah = fn ($k) => $tab === 'belum' ? ! Pemberitahuan::sudahDibaca($k, $u)

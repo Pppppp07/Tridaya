@@ -3,31 +3,15 @@
 namespace App\Enums;
 
 /**
- * Di meja siapa berkas satu tindak lanjut satuan kerja berada.
- *
- * Satu rel, milik BARIS PENUGASAN (`sasarans.posisi`) — bukan milik
- * rekomendasinya. Rekomendasi tidak menempuh proses apa pun: yang dikirim,
- * ditelaah, dan diunggah ke SIPTL adalah tindak lanjut tiap satuan kerja.
- *
- *   satker → setba_kembali → setba_tinjau → uki → setba_teruskan → inspektorat → tuntas
- *
- * Dulu ada tingkat dua sesudah `tuntas` — siptl → bpk → selesai — yang disimpan
- * di `rekomendasis.posisi`. Dibuang bersama kolomnya (prototipe, 10 Sep):
- * unggahan SIPTL dan status BPK kini dicatat per baris, sebagai catatan, bukan
- * sebagai posisi.
- *
- * URUTAN CASE ADALAH URUTAN RANTAI. `urutan()` membacanya dari sini, dan
- * pembanding "mana yang paling tertinggal" memakai urutan itu — bukan nomor
- * tahap, yang seri di dua tempat (satker dan setba_tinjau sama-sama tahap 2).
+ * Di meja siapa berkas satu tindak lanjut satuan kerja berada (`sasarans.posisi`): satker →
+ * setba_kembali → setba_tinjau → uki → setba_teruskan → inspektorat → tuntas. Urutan case = urutan
+ * rantai.
  */
 enum PosisiBerkas: string
 {
     case SATKER          = 'satker';
-    /* Ditolak UKI, Inspektorat, atau BPK. Berkasnya TIDAK langsung pulang ke
-       satuan kerja: Setba yang menerima penolakannya, lalu mengirimkannya
-       ulang bersama alasan dan dokumen yang diminta. Tahapnya tetap 2 dan
-       bukan transit — tindak lanjutnya memang sedang kembali di tahap
-       tanggapan; yang berbeda cuma siapa yang memegangnya. */
+    /* Ditolak UKI, Inspektorat, atau BPK: berkasnya ke Setba dulu, yang lalu mengirim ulang ke
+       satuan kerja. */
     case SETBA_KEMBALI   = 'setba_kembali';
     case SETBA_TINJAU    = 'setba_tinjau';
     case UKI             = 'uki';
@@ -35,11 +19,7 @@ enum PosisiBerkas: string
     case INSPEKTORAT     = 'inspektorat';
     case TUNTAS          = 'tuntas';
 
-    /**
-     * Labelnya menyebut POSISI, bukan putusan. `TUNTAS` dulu berbunyi
-     * "Tindak lanjutnya sudah memadai" — meminjam kata milik sumbu
-     * Inspektorat, yang punya kolomnya sendiri persis di sebelahnya.
-     */
+    /** Label menyebut posisi, bukan putusan. */
     public function label(): string
     {
         return match ($this) {
@@ -59,10 +39,7 @@ enum PosisiBerkas: string
         return array_search($this, self::cases(), true);
     }
 
-    /**
-     * Peran yang berkasnya sedang di tangannya. Null pada `TUNTAS`: berkasnya
-     * sudah berhenti berpindah meja — urusan SIPTL-nya dibaca terpisah.
-     */
+    /** Peran pemegang berkas; null pada TUNTAS (urusan SIPTL dibaca terpisah). */
     public function pemegang(): ?PeranPengguna
     {
         return match ($this) {
@@ -76,7 +53,7 @@ enum PosisiBerkas: string
         };
     }
 
-    /** Sebutan pemegangnya di rel prototipe: "Balai", "Setba", "UKI", "Inspektorat", "—". */
+    /** Sebutan pemegang: "Balai", "Setba", "UKI", "Inspektorat", "—". */
     public function pegang(): string
     {
         return match ($this) {
@@ -97,11 +74,7 @@ enum PosisiBerkas: string
         };
     }
 
-    /**
-     * Tahapnya sudah tuntas, berkasnya tinggal diteruskan. Duduk di tahap yang
-     * sama dengan yang sedang dikerjakan, tapi artinya berbeda: yang satu
-     * "sedang dikerjakan", yang satu "sudah selesai, tinggal dioper".
-     */
+    /** Tahap sudah tuntas, tinggal diteruskan. */
     public function transit(): bool
     {
         return in_array($this, [self::SETBA_TINJAU, self::SETBA_TERUSKAN], true);

@@ -1,13 +1,8 @@
 @php
   use App\Support\Pemberitahuan;
 
-  /* Satu pemberitahuan — padanan `ButirPemberitahuan` prototipe (26 Sep). Seluruh barisnya satu
-     link: membukanya menandai pemberitahuan itu dibaca lalu mengantar ke bagiannya.
-     Tombol kecil di ujungnya menandai dibaca/belum dibaca tanpa pindah halaman
-     (formulir biasa tanpa skrip; dengan skrip dikirim di tempat).
-     `$lengkap` (halaman Pemberitahuan) menambah judul temuan dan tujuannya.
-     `$semua`: termasuk isi tab "Semua" (panel memuat 40 terbaru ditambah yang
-     belum dibaca). */
+  /* Satu pemberitahuan: barisnya satu link (menandai dibaca lalu mengantar ke bagiannya); tombol
+     di ujung menandai dibaca/belum tanpa pindah halaman. */
   $u = auth()->user();
   $r = $k->rekomendasi;
   $dibaca = Pemberitahuan::sudahDibaca($k, $u);
@@ -18,18 +13,24 @@
   $lengkap ??= false;
   $semua ??= true;
 @endphp
-<li class="kb-butir{{ $dibaca ? '' : ' belum' }}" data-pemberitahuan="{{ $k->id }}" @if($semua) data-semua @endif @if($sembunyi ?? false) hidden @endif>
+<li class="kb-butir{{ $dibaca ? '' : ' belum' }}" data-pemberitahuan="{{ $k->id }}" data-jenis="{{ Pemberitahuan::jenis($k) }}" @if($semua) data-semua @endif @if($sembunyi ?? false) hidden @endif>
   <a class="kb-buka" href="{{ route('pemberitahuan.buka', $k) }}"
-    aria-label="{{ $dibaca ? '' : 'Belum dibaca. ' }}{{ $k->label_pelaku }} — {{ $k->aksi }}. {{ $r?->kode ?? $k->rekomendasi_id }}, {{ $sebut }}.">
+    aria-label="{{ $dibaca ? '' : 'Belum dibaca. ' }}{{ $k->label_pelaku }} — {{ $k->aksi }}. {{ $k->sistem() ? 'Perubahan sistem' : ($r?->kode ?? $k->rekomendasi_id) }}, {{ $sebut }}.">
     <span class="kb-ikon {{ $rupa['nada'] }}" aria-hidden="true"><x-ikon :n="$rupa['ikon']" :s="$lengkap ? 17 : 15" /></span>
     <span class="kb-teks">
       <span class="kb-apa"><b>{{ $k->label_pelaku }}</b> — {{ $k->aksi }}</span>
       <span class="kb-meta">
-        <x-sumber :j="$r?->temuan->laporan->sumber ?? 'LHP'" />
-        <span class="mono">{{ $r?->kode ?? $k->rekomendasi_id }}</span>
-        <span>· {{ $sebut }}{{ $bentuk ? ' · '.$bentuk : '' }}</span>
+        @if($k->sistem())
+          <span>Perubahan sistem · {{ $sebut }}</span>
+        @else
+          <x-sumber :j="$r?->temuan->laporan->sumber ?? 'LHP'" />
+          <span class="mono">{{ $r?->kode ?? $k->rekomendasi_id }}</span>
+          <span>· {{ $sebut }}{{ $bentuk ? ' · '.$bentuk : '' }}</span>
+        @endif
       </span>
-      @if($lengkap)
+      @if($lengkap && $k->sistem())
+        <span class="kb-meta"><span class="kb-tujuan">Buka di Log admin <x-ikon n="ChevronRight" :s="12" /></span></span>
+      @elseif($lengkap)
         <span class="kb-meta">
           <span>{{ $r?->temuan->judul ?? '—' }}</span>
           @if($tujuan)<span class="kb-tujuan">· Buka {{ $tujuan }} <x-ikon n="ChevronRight" :s="12" /></span>@endif

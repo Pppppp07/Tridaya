@@ -10,32 +10,32 @@ use App\Support\Rangka;
 use Illuminate\Http\Request;
 
 /**
- * Pemberitahuan — padanan `PanelPemberitahuan`, `Pemberitahuan`, `bukaPemberitahuan`,
- * `tandaiBaca`, dan `tandaiTerbaca` prototipe.
- *
- * Dirombak 26 Sep. Kata Hizkia: disesuaikan ulang "dari segi visualisasi,
- * peningkatan fungsional yang lebih dinamis, lokasi … pop up … yang lebih baik
- * dan strategis dan juga logika kondisi Notifikasi saat di klik atau belum
- * dilihat". Tiga keadaan: BARU (belum pernah tampil di daftar — angka di
- * lonceng), BELUM DIBACA (titik biru), SUDAH DIBACA. Membuka pemberitahuan kini
- * menandainya dibaca; pemberitahuan yang dibaca tetap ada di tab "Semua", dan bisa
- * ditandai belum dibaca lagi dari barisnya.
+ * Pemberitahuan: BARU (angka lonceng), BELUM DIBACA, SUDAH DIBACA. Membuka = dibaca; bisa ditandai
+ * belum dibaca lagi.
  */
 class PemberitahuanController extends Controller
 {
     /** Pemberitahuan yang baru saat daftarnya terakhir dibuka — untuk lencana "Baru". */
     private const BARU_TADI = 'pemberitahuan_baru_tadi';
 
-    /**
-     * Halaman Pemberitahuan: riwayat lengkapnya. Membukanya menandai semua
-     * yang ada sudah dilihat; lencana "Baru" yang tadi tampil di panel ikut ke
-     * sini (padanan `keHalamanPemberitahuan`).
-     */
+    /** Jenis yang dipilih di filter halaman, atau null bila tidak dikenal. */
+    private function jenis(Request $req): ?string
+    {
+        $j = $req->input('jenis');
+
+        return is_string($j) && isset(Pemberitahuan::JENIS[$j]) ? $j : null;
+    }
+
+    /** Halaman Pemberitahuan; membukanya menandai semua sudah dilihat. Bisa disaring per jenis. */
     public function index(Request $req)
     {
         $u = auth()->user();
-        $daftar = Pemberitahuan::untuk($u);
-        $belum = $daftar->reject(fn ($k) => Pemberitahuan::sudahDibaca($k, $u))->count();
+        $jenis = $this->jenis($req);
+        $d = Pemberitahuan::daftarTerbatas($u, Pemberitahuan::BATAS_HALAMAN, $jenis);
+        $hitung = Pemberitahuan::hitungJenis($u);
+        /* Angka tab dan kosong mengikuti yang tampil: tersaring bila satu jenis dipilih. */
+        $belum = $jenis ? ($hitung['belum'][$jenis] ?? 0) : $d['belum'];
+        $semuaTampil = $jenis ? ($hitung['semua'][$jenis] ?? 0) : $d['semua'];
 
         $baru = Pemberitahuan::idBaru($u);
         if ($baru) {
@@ -46,63 +46,53 @@ class PemberitahuanController extends Controller
         $tab = in_array($req->query('tab'), ['belum', 'semua'], true) ? $req->query('tab') : ($belum ? 'belum' : 'semua');
 
         return view('pemberitahuan', [
-            'daftar' => $daftar, 'belum' => $belum, 'semua' => $daftar->count(), 'tab' => $tab,
-            'kosong' => $tab === 'belum' ? $belum === 0 : $daftar->isEmpty(),
+            'daftar' => $d['daftar'], 'semuaId' => $d['semuaId'], 'tab' => $tab,
+            'belumSemua' => $d['belum'], 'semua' => $d['semua'], 'belum' => $belum, 'semuaTampil' => $semuaTampil,
+            'jenis' => $jenis, 'hitungJenis' => $hitung,
+            'kosong' => $tab === 'belum' ? $belum === 0 : $semuaTampil === 0,
             'baruTadi' => session(self::BARU_TADI, []),
         ]);
     }
 
-    /**
-     * Isi panel di bawah lonceng, diambil skrip saat lonceng ditekan. Yang baru
-     * diberi lencana, lalu semuanya dicatat sudah dilihat — angka di lonceng
-     * hilang (padanan `bukaPanelPemberitahuan`). 40 pemberitahuan terbaru untuk tab "Semua",
-     * ditambah yang belum dibaca untuk tab "Belum dibaca".
-     */
+    /** Isi panel lonceng; yang baru diberi lencana lalu dicatat sudah dilihat. */
     public function panel()
     {
         $u = auth()->user();
-        $semua = Pemberitahuan::untuk($u);
+        $d = Pemberitahuan::daftarTerbatas($u, Pemberitahuan::BATAS_PANEL);
         $baru = Pemberitahuan::idBaru($u);
         session([self::BARU_TADI => $baru]);
         Pemberitahuan::catatDilihat($u);
+        $tab = $d['belum'] ? 'belum' : 'semua';
 
-        $belum = $semua->reject(fn ($k) => Pemberitahuan::sudahDibaca($k, $u))->values();
-        $terbaru = $semua->take(40);
-        $tab = $belum->isNotEmpty() ? 'belum' : 'semua';
-
-        return view('bagian.pemberitahuan-panel', [
-            'daftar' => $terbaru->concat($belum->take(40))->unique('id')->values(),
-            'semuaId' => $terbaru->pluck('id')->all(),
-            'belum' => $belum->count(), 'semua' => $semua->count(), 'tab' => $tab,
-            'kosong' => $tab === 'belum' ? $belum->isEmpty() : $semua->isEmpty(),
+        return view('bagian.pemberitahuan-panel', $d + [
+            'tab' => $tab,
+            'kosong' => $tab === 'belum' ? ! $d['belum'] : ! $d['semua'],
             'baruTadi' => $baru,
         ]);
     }
 
     /**
-     * Dari pemberitahuan langsung ke bagian yang berubah: menandainya dibaca, membuka
-     * rincian rekomendasinya, lalu menunjuk bagiannya — baris satuan kerja
-     * yang diberitahukan dibuka dan disorot.
+     * Dari pemberitahuan langsung ke bagian yang berubah (ditandai dibaca, baris satuan kerja
+     * disorot).
      */
     public function buka(Notifikasi $notifikasi)
     {
         $u = auth()->user();
-        abort_unless(Pemberitahuan::boleh($notifikasi, $u), 403);
+        if (! Pemberitahuan::boleh($notifikasi, $u)) {
+            /* Email bisa dibuka saat peran aktifnya lain: beralih lewat tombol, tidak diam-diam. */
+            $peran = Pemberitahuan::peranLain($notifikasi, $u);
+            abort_unless($peran, 403);
+
+            return view('pemberitahuan-peran', ['n' => $notifikasi, 'peran' => $peran, 'sekarang' => $u->peranAktif()]);
+        }
         Pemberitahuan::tandai($notifikasi, $u, true);
 
-        /* Satuan kerja cuma dituju barisnya sendiri, walau pemberitahuannya dikirim ke
-           beberapa satuan kerja sekaligus. Peran lain: hanya kalau pemberitahuannya
-           memang tentang SATU satuan kerja. */
-        $satker = $u->peran === PeranPengguna::SATKER
-            ? collect([$u->satker_id])
-            : $notifikasi->satker()->pluck('satkers.id');
+        /* Perubahan sistem: entri Log admin-nya, terbuka. */
+        if ($notifikasi->sistem()) {
+            return redirect()->route('log', ['kejadian' => $notifikasi->log_aktivitas_id, 'rinci' => $notifikasi->log_aktivitas_id]);
+        }
 
-        return redirect()->route('rekomendasi.show', array_filter([
-            'rekomendasi' => $notifikasi->rekomendasi_id,
-            'sorot'       => $notifikasi->blok,
-            'satker'      => $satker->count() === 1 ? $satker->first() : null,
-            'tindakan'    => $notifikasi->tindakan_id,
-        ]));
+        return redirect()->route('rekomendasi.show', Pemberitahuan::tujuan($notifikasi, $u));
     }
 
     /** Tanda dibaca satu pemberitahuan, dipasang (`baca=1`) atau dilepas (`baca=0`). */
@@ -118,28 +108,19 @@ class PemberitahuanController extends Controller
     public function tandaiSemua(Request $req)
     {
         $u = auth()->user();
-
-        foreach (Pemberitahuan::untuk($u) as $k) {
-            if (! Pemberitahuan::sudahDibaca($k, $u)) {
-                $k->dibaca()->attach($u->id, ['dibaca_pada' => now()]);
-            }
-        }
+        Pemberitahuan::tandaiSemua($u, $this->jenis($req));
 
         return $req->ajax() ? response()->json($this->hitungan($u)) : back();
     }
 
-    /**
-     * Ditanya skrip berkala (tiap menit, selama tabnya terlihat): angka lonceng
-     * terkini, dan kotak popup kalau ada pemberitahuan baru yang belum pernah
-     * dimunculkan sebagai pop-up. Di prototipe pemberitahuan hanya datang saat berganti akun; di sini
-     * orang lain bisa bertindak kapan saja.
-     */
+    /** Ditanya skrip tiap menit: angka lonceng dan pop-up pemberitahuan baru. */
     public function ringkas()
     {
         $u = auth()->user();
-        $s = Rangka::popupPemberitahuan($u, Pemberitahuan::jumlahBaru($u));
+        $baru = Pemberitahuan::jumlahBaru($u);
+        $s = Rangka::popupPemberitahuan($u, $baru);
 
-        return response()->json($this->hitungan($u) + [
+        return response()->json(['baru' => $baru, 'belum' => Pemberitahuan::belumDibaca($u)] + [
             'popup' => $s ? view('bagian.pemberitahuan-popup', ['k' => $s['pemberitahuan'], 'jumlah' => $s['jumlah']])->render() : null,
         ]);
     }

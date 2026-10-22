@@ -8,108 +8,98 @@ use App\Models\User;
 use App\Support\Aktivitas;
 use App\Support\DirektoriIrm;
 use App\Support\PenanggungJawab;
+use App\Support\PusatData;
 use App\Support\Terlihat;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * Data master unit kerja — padanan kartu "Unit kerja" di `LayarMaster`.
- *
- * Kata Bang Kamal: "Master unit kerja nggak ada nih." Daftar satuan kerja dulu
- * cuma bisa diisi lewat seeder; sekarang Setba boleh menambah, menonaktifkan,
- * dan memilih penanggung jawab tiap unit kerja dari IRM.
- *
- * Tidak ada yang dihapus. Unit kerja yang sudah tertulis di berkas juga tidak
- * bisa berganti nama — kalau namanya berubah karena penataan organisasi,
- * tambahkan yang baru lalu nonaktifkan yang lama.
+ * Unit kerja (Admin DTI): tambah, nonaktifkan, pilih penanggung jawab dari IRM. Tidak ada yang
+ * dihapus; nama yang sudah tertulis di berkas tidak diganti.
  */
 class UnitKerjaController extends Controller
 {
     public function tambah(Request $req)
     {
-        $this->pastikanSetba($req);
+        $this->pastikanAdmin($req);
 
-        $data = $req->validate([
-            'nama'   => ['required', 'string', 'max:200'],
-            'pendek' => ['nullable', 'string', 'max:80'],
-        ], ['nama.required' => 'Nama lengkap unit kerja harus terisi.']);
+        $data = $req->validate($this->aturan(true), self::PESAN);
         $nama = $this->rapikan($data['nama']);
         $pendek = $this->rapikan($data['pendek'] ?? '') ?: $nama;
+        $kode = $data['kode_satker'] ?? null;
 
         if ($bentrok = $this->bentrok([$nama, $pendek])) {
             return $this->gagal('unit', 'Namanya sudah dipakai '.$bentrok->namaPendek().'.');
         }
 
         $unit = Satker::create([
-            'kode'        => Satker::kodeBaru($pendek),
-            'nama'        => $nama,
+            'kode' => Satker::kodeBaru($pendek),
+            'kode_satker' => $kode,
+            'nama' => $nama,
             'nama_pendek' => $pendek,
-            'jenis'       => $this->jenis($nama),
-            'aktif'       => true,
+            'aktif' => true,
         ]);
         Terlihat::lupakan();
         Aktivitas::catat('master.unit.tambah', 'Menambah unit kerja '.$pendek, [
-            'subjek' => $unit, 'rincian' => ['sesudah' => ['nama' => $nama, 'pendek' => $pendek, 'aktif' => true]],
+            'subjek' => $unit, 'rincian' => ['sesudah' => array_filter(['nama' => $nama, 'pendek' => $pendek,
+                'kode_satker' => $kode, 'aktif' => true], fn ($v) => $v !== null)],
         ]);
 
-        return $this->kembali($unit)->with('pesan', $pendek.' ditambahkan. Pilih penanggung jawabnya dari IRM.');
+        return $this->kembali($unit, $req)->with('pesan', $pendek.' ditambahkan. Pilih penanggung jawabnya dari IRM.');
     }
 
-    /**
-     * Nama yang sudah tertulis di berkas tidak diubah dari sini: berkas lama
-     * menyebut nama itu, dan kalimat yang menyebutnya disamarkan dari satuan
-     * kerja lain menurut daftar nama ini.
-     */
+    /** Nama yang sudah tertulis di berkas tidak diubah dari sini; kode satker tetap bisa dilengkapi. */
     public function simpan(Request $req, Satker $satker)
     {
-        $this->pastikanSetba($req);
+        $this->pastikanAdmin($req);
 
-        $data = $req->validate([
-            'nama'   => ['required', 'string', 'max:200'],
-            'pendek' => ['nullable', 'string', 'max:80'],
-        ], ['nama.required' => 'Nama lengkap unit kerja harus terisi.']);
-        if ($satker->dipakai()) {
-            return $this->kembali($satker)->with('gagal', 'Unit kerja ini sudah tertulis di berkas, jadi namanya tidak bisa diganti.');
-        }
-        $nama = $this->rapikan($data['nama']);
+        $kunci = $satker->dipakai();
+        $data = $req->validate($this->aturan(! $kunci, $satker), self::PESAN);
+        $nama = $this->rapikan($data['nama'] ?? '') ?: $satker->nama;
         $pendek = $this->rapikan($data['pendek'] ?? '') ?: $nama;
+        $kode = $data['kode_satker'] ?? null;
+        if ($kunci && ($nama !== $satker->nama || $pendek !== $satker->namaPendek())) {
+            return $this->kembali($satker, $req)->with('gagal', 'Unit kerja ini sudah tertulis di berkas, jadi namanya tidak bisa diganti.');
+        }
         if ($bentrok = $this->bentrok([$nama, $pendek], $satker)) {
             return $this->gagal('unit-'.$satker->id, 'Namanya sudah dipakai '.$bentrok->namaPendek().'.');
         }
 
-        $sebelum = ['nama' => $satker->nama, 'pendek' => $satker->namaPendek()];
-        $satker->update(['nama' => $nama, 'nama_pendek' => $pendek]);
+        $sebelum = ['nama' => $satker->nama, 'pendek' => $satker->namaPendek(), 'kode_satker' => $satker->kode_satker];
+        $sesudah = ['nama' => $nama, 'pendek' => $pendek, 'kode_satker' => $kode];
+        $satker->update(['nama' => $nama, 'nama_pendek' => $pendek, 'kode_satker' => $kode]);
         Terlihat::lupakan();
-        if ($beda = Aktivitas::beda($sebelum, ['nama' => $nama, 'pendek' => $pendek])) {
-            Aktivitas::catat('master.unit.ubah', 'Mengubah nama unit kerja '.$sebelum['pendek'], ['subjek' => $satker, 'rincian' => $beda]);
+        if ($beda = Aktivitas::beda($sebelum, $sesudah)) {
+            $hanyaKode = $sebelum['nama'] === $nama && $sebelum['pendek'] === $pendek;
+            Aktivitas::catat('master.unit.ubah', ($hanyaKode ? 'Mengubah kode satker ' : 'Mengubah nama unit kerja ').$sebelum['pendek'],
+                ['subjek' => $satker, 'rincian' => $beda]);
         }
 
-        return $this->kembali($satker);
+        return $this->kembali($satker, $req);
     }
 
     /**
-     * Menyalakan atau memadamkan. Unit kerja yang dipadamkan tidak lagi
-     * ditawarkan saat mencatat laporan baru; pekerjaan lamanya tetap berjalan
-     * dan penanggung jawabnya tetap bisa masuk.
+     * Unit yang dipadamkan tidak ditawarkan untuk laporan baru; pekerjaan lamanya tetap berjalan.
      */
     public function saklar(Request $req, Satker $satker)
     {
-        $this->pastikanSetba($req);
+        $this->pastikanAdmin($req);
 
         $satker->update(['aktif' => ! $satker->aktif]);
         Aktivitas::catat('master.unit.saklar', ($satker->aktif ? 'Mengaktifkan' : 'Menonaktifkan').' unit kerja '.$satker->namaPendek(), [
             'subjek' => $satker, 'rincian' => ['sebelum' => ['aktif' => ! $satker->aktif], 'sesudah' => ['aktif' => $satker->aktif]],
         ]);
 
-        return $this->kembali($satker);
+        return $this->kembali($satker, $req);
     }
 
     /**
-     * Menetapkan penanggung jawab. Yang dikirim formulir cuma NIP; nama,
-     * jabatan, dan email diambil dari IRM — "jangan tertukar atributnya".
+     * Menetapkan penanggung jawab: formulir hanya mengirim NIP; nama, jabatan, dan email diambil
+     * dari IRM.
      */
     public function penanggungJawab(Request $req, Satker $satker)
     {
-        $this->pastikanSetba($req);
+        $this->pastikanAdmin($req);
 
         $data = $req->validate(['nip' => ['required', 'string', 'max:30']]);
         $pegawai = DirektoriIrm::nip($data['nip']);
@@ -135,18 +125,16 @@ class UnitKerjaController extends Controller
         }
 
         return $this->kembali($satker)->with('pesan', $lama && $lama->nip !== $pegawai['nip']
-            ? 'Penanggung jawab '.$satker->namaPendek().' kini '.$pegawai['nama'].'. Akun '.$lama->name.' dinonaktifkan.'
+            ? 'Penanggung jawab '.$satker->namaPendek().' kini '.$pegawai['nama'].'. '.($lama->fresh()->aktif
+                ? 'Akses Satuan kerja '.$lama->name.' dihentikan; peran lainnya tetap tersedia.'
+                : $lama->name.' tidak bisa masuk lagi.')
             : $pegawai['nama'].' kini penanggung jawab '.$satker->namaPendek().'.');
     }
 
-    /**
-     * Pencarian IRM untuk jendela pemilih. Mengembalikan potongan HTML daftar
-     * hasilnya — digambar oleh templat yang sama dengan tampilan tanpa skrip,
-     * jadi keduanya tidak mungkin berbeda.
-     */
+    /** Pencarian IRM untuk jendela pemilih; templatnya sama dengan tampilan tanpa skrip. */
     public function cariIrm(Request $req, Satker $satker)
     {
-        $this->pastikanSetba($req);
+        $this->pastikanAdmin($req);
 
         return view('data-master.hasil-irm', $this->hasilIrm($satker, (string) $req->query('q', '')));
     }
@@ -157,30 +145,48 @@ class UnitKerjaController extends Controller
         $mencari = mb_strlen(trim($q)) >= 2;
 
         return [
-            'unit'     => $unit,
-            'q'        => trim($q),
-            'mencari'  => $mencari,
-            'hasil'    => $mencari ? DirektoriIrm::cari($q) : DirektoriIrm::diUnit($unit->kode),
+            'unit' => $unit,
+            'q' => trim($q),
+            'mencari' => $mencari,
+            'hasil' => $mencari ? DirektoriIrm::cari($q) : DirektoriIrm::diUnit($unit->kode),
             /* Unit kerja pegawai menurut IRM, disebut dengan nama pendeknya. */
             'pendekUnit' => Satker::pluck('nama_pendek', 'kode'),
             /* NIP → unit kerja yang dipegangnya sekarang. */
             'pemegang' => User::where('peran', PeranPengguna::SATKER->value)
                 ->where('aktif', true)->whereNotNull('nip')->with('satker')->get()
                 ->mapWithKeys(fn ($u) => [$u->nip => $u->satker]),
-            /* NIP → akun pusat aktif. Petugas Setba, UKI, … tidak bisa
-               sekaligus jadi penanggung jawab unit kerja (27 Sep). */
+            /* NIP → akun pusat aktif. Penetapan PJ menambahkan peran Satker tanpa mencabut peran
+               pusatnya. */
             'pusat' => User::where('peran', '!=', PeranPengguna::SATKER->value)
                 ->where('aktif', true)->whereNotNull('nip')->get()->keyBy('nip'),
             'error' => DirektoriIrm::error(),
         ];
     }
 
-    /* ================================================================
-       PEMBANTU
-       ================================================================ */
+    /* ---- Pembantu ---- */
 
-    private function kembali(?Satker $unit = null)
+    private const PESAN = [
+        'nama.required' => 'Nama lengkap unit kerja harus terisi.',
+        'kode_satker.regex' => 'Kode satker terdiri dari 6 angka.',
+        'kode_satker.unique' => 'Kode satker itu sudah dipakai satuan kerja lain.',
+    ];
+
+    private function aturan(bool $namaWajib, ?Satker $kecuali = null): array
     {
+        return [
+            'nama' => [$namaWajib ? 'required' : 'nullable', 'string', 'max:200'],
+            'pendek' => ['nullable', 'string', 'max:80'],
+            'kode_satker' => ['nullable', 'regex:/^\d{6}$/', Rule::unique('satkers', 'kode_satker')->ignore($kecuali?->id)],
+        ];
+    }
+
+    /** Kembali ke daftar Unit kerja, baris yang diubah disorot, filternya tetap. */
+    private function kembali(?Satker $unit = null, ?Request $req = null)
+    {
+        if ($k = PusatData::alamatKembali($req?->input('kembali'))) {
+            return redirect($k.($unit ? (str_contains($k, '?') ? '&' : '?').'kartu=unit-'.$unit->id : ''));
+        }
+
         return redirect()->route('master', array_filter([
             'tab' => 'unit',
             'kartu' => $unit ? 'unit-'.$unit->id : null,
@@ -208,22 +214,9 @@ class UnitKerjaController extends Controller
                 || in_array(mb_strtolower((string) $s->nama_pendek), $kecil, true));
     }
 
-    /** Golongan unit kerja baru, ditebak dari namanya. */
-    private function jenis(string $nama): string
+    private function pastikanAdmin(Request $req): void
     {
-        $n = mb_strtolower($nama);
-
-        return match (true) {
-            str_starts_with($n, 'sekretariat') => 'sekretariat',
-            str_starts_with($n, 'pusat')       => 'pusat',
-            str_starts_with($n, 'politeknik')  => 'politeknik',
-            default                            => 'balai',
-        };
-    }
-
-    private function pastikanSetba(Request $req): void
-    {
-        abort_unless($req->user()->peran->kelolaMaster(), 403,
-            'Data master hanya bisa diubah Setba.');
+        abort_unless($req->user()->peranAktif()->kelolaMaster(), 403,
+            'Data master hanya bisa diubah Admin DTI.');
     }
 }

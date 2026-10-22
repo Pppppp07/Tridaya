@@ -4,101 +4,73 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>@yield('judul', 'Monitoring TLHP') · Tridaya</title>
-  <meta name="application-name" content="Tridaya">
-  <link rel="icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}" sizes="16x16 32x32 48x48">
-  <link rel="icon" type="image/svg+xml" href="{{ asset('brand/tridaya/favicon.svg') }}?v={{ filemtime(public_path('brand/tridaya/favicon.svg')) }}" sizes="any">
-  <link rel="apple-touch-icon" href="{{ asset('brand/tridaya/apple-touch-icon.png') }}?v={{ filemtime(public_path('brand/tridaya/apple-touch-icon.png')) }}">
-  <link rel="preload" href="{{ asset('fonts/manrope-variable.ttf') }}" as="font" type="font/ttf" crossorigin>
-  {{-- Aset statis biasa, tanpa langkah build. simtlhp.css disalin dari
-       prototipe; yang khusus Laravel ada di simtlhp-tambahan.css. --}}
-  <link rel="stylesheet" href="{{ asset('css/simtlhp.css') }}?v={{ filemtime(public_path('css/simtlhp.css')) }}">
-  <link rel="stylesheet" href="{{ asset('css/simtlhp-tambahan.css') }}?v={{ filemtime(public_path('css/simtlhp-tambahan.css')) }}">
-  <link rel="stylesheet" href="{{ asset('css/simtlhp-tema.css') }}?v={{ filemtime(public_path('css/simtlhp-tema.css')) }}">
-  <script src="{{ asset('js/simtlhp.js') }}?v={{ filemtime(public_path('js/simtlhp.js')) }}" defer></script>
+  <title>@yield('judul', 'Monitoring TLHP') · {{ config('app.display_name') }}</title>
+  <meta name="application-name" content="{{ config('app.display_name') }}">
+  @include('bagian.ikon-aplikasi')
+  @include('bagian.aset')
 </head>
-{{-- "Kurangi animasi" di Profil → Tampilan (28 Sep): seluruh animasi dan
-     peralihan dimatikan untuk akun ini, di perangkat mana pun — aturannya di
-     simtlhp.css (src/akun.css prototipe). --}}
+{{-- "Kurangi animasi" (Profil → Tampilan) mematikan animasi akun ini di semua perangkat. --}}
 <body @if(auth()->user()?->setelan('animasi') === 'kurang') data-animasi="kurang" @endif
-  @auth data-mode-menu="{{ auth()->user()->setelan('menu') }}" data-akun-id="{{ auth()->id() }}" data-tampilan-url="{{ route('akun.tampilan') }}" @endauth>
-{{-- Gerak tiba di layar (26 Sep) — padanan data-masuk di kerangka prototipe:
-     selama 0,7 detik sesudah halaman siap, bagian-bagian halamannya naik
-     bergiliran (aturannya di simtlhp.css, "GERAK SELURUH SISTEM"). Dipasang
-     sebelum isi halamannya tergambar. Tidak dipasang kalau yang dimuat halaman
-     yang sama — sesudah formulir dikirim atau filter diganti — sebab di
-     prototipe layarnya tetap berdiri dan tidak diputar ulang. --}}
-{{-- Skrip sebaris membawa `nonce` permintaan ini — tanpa itu ditolak
-     Content-Security-Policy (KepalaAman, 27 Sep). --}}
+  @auth data-mode-menu="{{ auth()->user()->setelan('menu') }}" data-akun-id="{{ auth()->id() }}" data-tampilan-url="{{ route('akun.tampilan') }}"
+    data-sesi-batas="{{ \App\Support\Sesi::batasDiam() }}" data-sesi="{{ route('sesi.sisa') }}" data-sesi-berakhir="{{ route('sesi.berakhir') }}"
+    data-sesi-keluar="{{ route('keluar') }}" data-sesi-masuk="{{ route('masuk') }}" @endauth>
+{{-- Gerak tiba di layar 0,7 detik (`data-masuk`); tidak dipasang bila yang dimuat halaman yang
+     sama. --}}
+{{-- Skrip sebaris wajib membawa `nonce` permintaan ini (CSP, KepalaAman). --}}
 <script nonce="{{ $nonce ?? '' }}">(function(){var b=document.body;try{var r=document.referrer?new URL(document.referrer):null;if(r&&r.origin===location.origin&&r.pathname===location.pathname)return}catch(e){}b.setAttribute('data-masuk','');addEventListener('DOMContentLoaded',function(){setTimeout(function(){b.removeAttribute('data-masuk')},700)})})()</script>
 @use('App\Enums\PeranPengguna', 'P')
 @auth
-  {{-- Lebar menu dibaca dari pengaturan akun sebelum halamannya tergambar,
-       supaya menunya tidak melompat. Tanpa pilihan,
-       rel di bawah 1121 px — sama dengan Prototipe/src/navigasi.js.
-       Kalau simtlhp.js gagal dimuat, kontrolnya tidak pernah dipasang dan rel
-       tidak bisa dilebarkan. Maka rel dilepas lagi begitu halamannya selesai
-       dimuat tanpa kontrol itu, supaya nama menu tetap mudah dibaca. --}}
+  {{-- Lebar menu dibaca sebelum halaman tergambar supaya tidak melompat. Bila simtlhp.js gagal
+       dimuat, rel dilepas lagi supaya nama menu terbaca. --}}
   <script nonce="{{ $nonce ?? '' }}">(function(){var b=document.body,m=b.dataset.modeMenu;if(m==='ringkas'||(m==='otomatis'&&!matchMedia('(min-width:1121px)').matches))b.classList.add('nav-ringkas');addEventListener('load',function(){var k=document.querySelector('[data-kontrol-nav]');if(k&&k.hidden)b.classList.remove('nav-ringkas')})})()</script>
   @php
     $u = auth()->user();
-    $peran = $u->peran;
+    $peran = $u->peranAktif();
     $bingkai = \App\Support\Rangka::untuk($u);
     $akun = \App\Support\Rangka::pengguna($u);
 
-    /* Menu datar tanpa kelompok, sama dengan prototipe. Butir yang tidak
-       berlaku bagi sebuah peran dihilangkan, bukan diganti nama lain. */
+    /* Menu datar; butir yang tidak berlaku bagi peran dihilangkan. */
     $menu = [
-      /* `aktif` menyalakan menunya sebagai halaman itu sendiri ("page");
-         `induk` menyalakannya untuk halaman turunannya ("true") — rincian
-         rekomendasi menyalakan Rekomendasi, rincian laporan dan Catat laporan
-         baru menyalakan Daftar laporan (21 Sep). */
+      /* `aktif` = halaman itu sendiri ("page"); `induk` = halaman turunannya ("true"). */
       ['rute' => 'rekomendasi.index', 'aktif' => ['rekomendasi.index'], 'induk' => ['rekomendasi.show'],
         'ikon' => 'FileText', 'nama' => 'Rekomendasi',
         'tanda' => $bingkai['perluKerja'], 'ket' => $bingkai['perluKerja'].' perlu Anda kerjakan'],
-      ['rute' => 'laporan.index', 'aktif' => ['laporan.index'], 'induk' => ['laporan.show', 'laporan.baru'],
+      ['rute' => 'laporan.index', 'aktif' => ['laporan.index'], 'induk' => ['laporan.show', 'laporan.baru', 'laporan.historis.*'],
         'ikon' => 'Files', 'nama' => 'Daftar laporan'],
     ];
     if (in_array($peran, [P::SETBA, P::PIMPINAN, P::ADMIN], true)) {
       array_unshift($menu, ['rute' => 'ringkasan', 'aktif' => ['ringkasan'], 'ikon' => 'LayoutGrid', 'nama' => 'Dashboard']);
     }
     if ($peran->kelolaMaster()) {
-      $menu[] = ['rute' => 'master', 'aktif' => ['master*'], 'ikon' => 'ListChecks', 'nama' => 'Data master',
+      $menu[] = ['rute' => 'master', 'aktif' => ['master*'], 'ikon' => 'ListChecks', 'nama' => 'Data Master',
         'tanda' => $bingkai['tanpaPj'], 'genting' => true,
-        'ket' => $bingkai['tanpaPj'].' unit kerja belum punya penanggung jawab'];
+        'ket' => $bingkai['tanpaPj'].' satuan kerja belum punya penanggung jawab'];
     }
-    /* Log aktivitas (27 Sep) — DTI, dan Admin. Bang Kamal tentang DTI: "Log
-       aktivitas, sebatas itu. Terus data master enggak." */
+    /* Log aktivitas — DTI dan Admin. */
     if ($peran->bacaLog()) {
       $menu[] = ['rute' => 'log', 'aktif' => ['log*'], 'ikon' => 'History', 'nama' => 'Log aktivitas'];
     }
-    /* Pemberitahuan bukan butir menu lagi (18 Sep) — lonceng di batang atas
-       tugasnya sama persis, dan tampil di semua lebar layar. */
   @endphp
 
   {{-- Batang atas hanya muncul di layar sempit — pembuka laci navigasi. --}}
   <div class="nav-atas">
     <button class="buka-nav" type="button" data-buka-nav aria-label="Buka menu" aria-expanded="false" aria-controls="nav-utama"><x-ikon n="Menu" :s="18" /></button>
     <b>@yield('judul')</b>
-    <x-logo-tridaya :simbol-saja="true" class="tridaya-ponsel" />
+    <x-logo-infax :simbol-saja="true" class="infax-ponsel" />
   </div>
   <div class="tirai-nav" data-tutup-nav aria-hidden="true"></div>
 
-  {{-- Selama laci ponsel terbuka, skrip menjadikannya dialog (role, aria-modal)
-       dan mengunci halaman di belakangnya. Klik di area kosongnya
-       menciutkan/melebarkan menu di komputer dan tablet. --}}
+  {{-- Selama laci ponsel terbuka skrip menjadikannya dialog dan mengunci halaman di
+       belakangnya. Klik area kosongnya menciutkan/melebarkan menu di layar lebar. --}}
   <nav class="nav" id="nav-utama" aria-label="Menu utama" tabindex="-1">
     <p class="nav-ruang">Dalam ruang kerja</p>
     <div class="brand">
-      <x-logo-tridaya />
-      {{-- Laci di ponsel juga bisa ditutup dari dalam, bukan cuma dengan
-           mengetuk bayangan di sebelahnya. --}}
+      <x-logo-infax />
       <button type="button" class="tutup-nav" data-tutup-nav aria-label="Tutup menu"><x-ikon n="X" :s="18" /></button>
     </div>
     <p class="nav-deskripsi">Pemantauan Tindak Lanjut<br>BPSDM</p>
 
-    {{-- Kontrol lebar di samping label ruang kerja; di rel turun di bawah
-         simbol. Area kosong menu dan pintasan [ tetap berfungsi. --}}
+    {{-- Kontrol lebar menu; area kosong menu dan pintasan [ tetap berfungsi. --}}
     <div class="kontrol-nav" data-kontrol-nav hidden>
       <button type="button" class="ciut" data-ciut-nav aria-expanded="true" aria-controls="nav-utama"
         aria-label="Ciutkan menu" title="Ciutkan menu — atau klik area kosong menu, atau tekan [">
@@ -113,8 +85,7 @@
         $kini = request()->routeIs(...$m['aktif']) ? 'page'
           : (! empty($m['induk']) && request()->routeIs(...$m['induk']) ? 'true' : null);
       @endphp
-      {{-- Angkanya disebut artinya — di rel, tulisan menu tinggal sepuluh
-           piksel dan angkanya berdiri tanpa keterangan. --}}
+      {{-- Angka di menu disebut artinya (di rel tulisannya terlalu kecil). --}}
       <a @class(['menu', 'genting' => ! empty($m['genting']) && $tanda > 0]) href="{{ route($m['rute']) }}"
         title="{{ $tanda > 0 ? $m['nama'].' — '.$m['ket'] : $m['nama'] }}"
         @if($tanda > 0) aria-label="{{ $m['nama'] }}, {{ $m['ket'] }}" @endif
@@ -156,8 +127,7 @@
 
       <div class="alat">
         @if($peran === P::SETBA && ! request()->routeIs('laporan.baru'))
-          {{-- Di layar sempit tinggal ikonnya; namanya tetap dibaca pembaca
-               layar dan muncul sebagai keterangan saat ditunjuk (22 Sep). --}}
+          {{-- Di layar sempit tinggal ikon; namanya tetap dibaca pembaca layar. --}}
           <a class="btn btn-p" href="{{ route('laporan.baru') }}"
             title="{{ $bingkai['drafLaporan'] ? 'Lanjutkan draf laporan' : 'Catat laporan baru' }}">
             @if($bingkai['drafLaporan'])
@@ -179,10 +149,8 @@
         <span class="lbl tanggal-hari">
           <x-ikon n="Clock" :s="13" /> {{ \App\Support\Tampil::tgl(now()) }}
         </span>
-        {{-- Lonceng membuka panel di bawahnya (26 Sep) — padanan PanelPemberitahuan;
-             tanpa skrip tetap link ke layar Pemberitahuan. Angkanya
-             menghitung pemberitahuan BARU (belum dibaca dan belum pernah tampil di
-             daftarnya); menyala saat panelnya terbuka atau layarnya dibuka. --}}
+        {{-- Lonceng membuka panel (tanpa skrip: link ke Pemberitahuan). Angkanya =
+             pemberitahuan BARU. --}}
         <span class="kb-wadah">
           <a class="lonceng" href="{{ route('pemberitahuan') }}" title="Pemberitahuan" data-buka-pemberitahuan
             aria-haspopup="dialog" aria-expanded="false" aria-controls="kb-panel"
@@ -194,8 +162,7 @@
           </a>
           <div id="kb-panel" class="kb-panel" role="dialog" aria-label="Pemberitahuan" hidden data-panel-pemberitahuan></div>
         </span>
-        {{-- Tombol pengguna membuka menu akun (28 Sep) — padanan MenuAkun
-             prototipe. Tanpa skrip tetap link ke Profil & pengaturan. --}}
+        {{-- Tombol pengguna membuka menu akun (tanpa skrip: link ke Profil & pengaturan). --}}
         @php
           $sebutanAkun = $peran === P::SATKER ? 'Satuan kerja · '.($u->satker?->namaPendek() ?? '') : $akun['peran'];
           $tabAkun = request()->routeIs('akun') ? (in_array(request('tab'), \App\Http\Controllers\AkunController::TAB, true) ? request('tab') : 'profil') : null;
@@ -224,6 +191,19 @@
                 @if($u->email)<span>{{ $u->email }}</span>@endif
               </span>
             </div>
+            @if(count($u->semuaPeran()) > 1)
+              <div class="ak-menu-isi ak-peran-pilih">
+                <b>Peran aktif</b>
+                @foreach($u->semuaPeran() as $p)
+                  <form method="post" action="{{ route('akun.peran-aktif') }}">@csrf
+                    <input type="hidden" name="peran" value="{{ $p->value }}">
+                    <button type="submit" class="ak-butir" @if($p === $peran) disabled aria-current="true" @endif>
+                      <x-ikon :n="$p === $peran ? 'Check' : 'ArrowRight'" :s="15" />{{ $p->pendek() }}
+                    </button>
+                  </form>
+                @endforeach
+              </div>
+            @endif
             <nav class="ak-menu-isi" aria-label="Akun">
               @foreach($butirAkun as [$k, $nama, $ikon])
                 <a class="ak-butir" href="{{ route('akun', ['tab' => $k]) }}" @if($tabAkun === $k) aria-current="page" @endif>
@@ -243,14 +223,13 @@
     </header>
     <div class="tampilan-pesan" role="status" aria-live="polite" data-tampilan-pesan hidden></div>
 
-    @if(session('pesan') || session('gagal') || $errors->any())
-      <div class="body pesanbingkai">
-        @if(session('pesan'))
-          <div class="pesan ok"><x-ikon n="Check" :s="16" /><span>{{ session('pesan') }}</span></div>
-        @endif
-        @if(session('gagal') || $errors->any())
-          <div class="pesan bad"><x-ikon n="AlertTriangle" :s="16" /><span>{{ session('gagal') ?? $errors->first() }}</span></div>
-        @endif
+    @include('bagian.pesan')
+
+    @if($peran === P::PIMPINAN && request()->routeIs('ringkasan', 'rekomendasi.*', 'laporan.*'))
+      @php $dipimpin = $u->daftarSatkerDipimpin(); @endphp
+      <div class="pesan{{ $dipimpin ? '' : ' warn' }}" style="margin:16px 24px 0" role="status">
+        <x-ikon n="Building2" :s="16" />
+        <span>@if($dipimpin)<b>{{ $dipimpin }}</b> · Data dan proses tindak lanjut Satker yang Anda pimpin.@else<b>Satker belum ditentukan.</b> Hubungi Admin DTI untuk menetapkan Satker yang Anda pimpin.@endif</span>
       </div>
     @endif
 
@@ -260,6 +239,21 @@
   @if($s = $bingkai['popup'])
     @include('bagian.pemberitahuan-popup', ['k' => $s['pemberitahuan'], 'jumlah' => $s['jumlah']])
   @endif
+
+  {{-- Peringatan sebelum keluar otomatis (simtlhp-sesi.js). --}}
+  <div class="tirai tirai-tanya" data-sesi-peringatan hidden>
+    <div class="lembar tanya" role="alertdialog" aria-modal="true" aria-labelledby="sesi-judul" aria-describedby="sesi-ket">
+      <div class="kep"><span class="ic-kotak besar kuning"><x-ikon n="Clock" :s="20" /></span><b id="sesi-judul">Sesi akan berakhir</b></div>
+      <div class="bdn">
+        <p class="apa" id="sesi-ket">Tidak ada aktivitas di akun ini. Anda akan keluar otomatis dalam <b data-sesi-hitung>1:00</b>.</p>
+        <div class="pesan warn" style="margin:0"><span>Isian yang belum dikirim atau disimpan sebagai draf akan hilang.</span></div>
+      </div>
+      <div class="kak">
+        <button type="button" class="btn btn-p" data-sesi-lanjut><x-ikon n="Check" :s="15" /> Tetap masuk</button>
+        <form method="post" action="{{ route('keluar') }}">@csrf<button type="submit" class="btn"><x-ikon n="LogOut" :s="15" /> Keluar</button></form>
+      </div>
+    </div>
+  </div>
 @else
   @yield('isi')
 @endauth

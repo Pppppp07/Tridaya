@@ -9,13 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Migrasi ganti nama 29 Sep (kolom tautan → link, kabar_dilihat_pada →
- * notifikasi_dilihat_pada, kunci JSON surel/sembul/gerak/tautan). Kata Hizkia:
- * "untuk penamaan kolom di database atau lainnya juga coba sesuaikan ulang
- * penamaannya". Diuji bolak-balik: data berbentuk baru dikembalikan ke bentuk
- * lama lewat down(), lalu dibawa lagi lewat up() — hasilnya harus persis sama.
- */
+/** Migrasi ganti nama (tautan → link, kabar_dilihat_pada → notifikasi_dilihat_pada, kunci JSON). */
 class MigrasiGantiNamaTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;

@@ -1,24 +1,13 @@
-{{-- Satu baris filter — padanan `Pemilah` di DasborUji.jsx.
-
-     Keping yang muat di barisnya ditampilkan; sisanya — dan SELURUH pilihan,
-     berkelompok dan bisa dicari — ada di menu "+N lainnya". Berapa yang muat
-     diukur skrip dari lebar barisnya sendiri (salinan tak terlihat `dsb-ukur`),
-     jadi tetap satu baris di layar mana pun. Tanpa skrip seluruh keping
-     tampil dan barisnya melipat.
-
-     Daftar pendek (paling banyak 8) tampil utuh — yang kosong cuma
-     dipudarkan. Daftar panjang hanya menampilkan yang punya data pada
-     filter lain saat ini, atau yang sedang dipilih.
-
-     Masukan: $id, $judul, $satuan, $opsi, $pilih, $tunggal, $hitung (peta atau
-     null), $aksi (awalan perbuatan: "tahun", "satker", "lain:intern"), $buang
-     (kunci baris tambahan, atau null). --}}
+{{-- Satu baris filter: keping yang muat ditampilkan, sisanya dan seluruh pilihan di menu "+N
+     lainnya". Yang muat diukur skrip. --}}
 @php
   use App\Support\Dasbor;
 
   $satuan ??= 'pilihan';
   $tunggal ??= false;
   $buang ??= null;
+  /* Akun satuan kerja dan pimpinan: hanya Satker yang dipantau, tanpa "Semua". */
+  $tanpaSemua ??= false;
   $nOf = fn ($k) => $hitung === null ? null : ($hitung[$k] ?? 0);
   $on = fn ($k) => in_array($k, $pilih, true);
   $calon = count($opsi) <= 8 || $hitung === null ? $opsi
@@ -46,11 +35,20 @@
   }
   $grup = array_values($grup);
 @endphp
+@if($tanpaSemua && count($opsi) === 1)
+  <div class="dsb-pemilah">
+    <div class="dsb-keping" role="group" aria-labelledby="{{ $id }}">
+      <span class="keping-tetap" title="{{ $opsi[0]['panjang'] ?? $opsi[0]['lengkap'] ?? $opsi[0]['nama'] }}">{{ $opsi[0]['lengkap'] ?? $opsi[0]['nama'] }}</span>
+    </div>
+  </div>
+@else
 <div class="dsb-pemilah" data-pemilah data-satuan="{{ $satuan }}" data-setel="{{ $setel }}" data-tunggal="{{ $tunggal ? '1' : '' }}"
   data-jumlah="{{ count($opsi) }}" data-dipilih="{{ json_encode(array_values($pilih)) }}">
   <div class="dsb-keping" role="group" aria-labelledby="{{ $id }}" data-keping-baris>
-    <button type="submit" name="ubah" value="{{ $semuaUbah }}" class="semua" aria-pressed="{{ $pilih ? 'false' : 'true' }}"
-      title="Seluruh {{ $satuan }}">Semua</button>
+    @unless($tanpaSemua)
+      <button type="submit" name="ubah" value="{{ $semuaUbah }}" class="semua" aria-pressed="{{ $pilih ? 'false' : 'true' }}"
+        title="Seluruh {{ $satuan }}">Semua</button>
+    @endunless
     @foreach($calon as $o)
       @php $x = $keping($o, false); @endphp
       <button type="submit" name="ubah" value="{{ $nilaiUbah($o['k']) }}" aria-pressed="{{ $x['on'] ? 'true' : 'false' }}"
@@ -69,7 +67,9 @@
   </div>
   {{-- Salinan tak terlihat, semata untuk mengukur lebar tiap keping. --}}
   <div class="dsb-keping dsb-ukur" aria-hidden="true">
-    <button type="button" class="semua" aria-pressed="{{ $pilih ? 'false' : 'true' }}" data-semua tabindex="-1">Semua</button>
+    @unless($tanpaSemua)
+      <button type="button" class="semua" aria-pressed="{{ $pilih ? 'false' : 'true' }}" data-semua tabindex="-1">Semua</button>
+    @endunless
     @foreach($calon as $o)
       @php $x = $keping($o, true); @endphp
       <button type="button" aria-pressed="{{ $x['on'] ? 'true' : 'false' }}" data-keping tabindex="-1"
@@ -80,9 +80,7 @@
     @if($buang)<button type="button" class="buang-baris" data-buang tabindex="-1"><x-ikon n="X" :s="14" /></button>@endif
   </div>
 
-  {{-- Daftar lengkap — padanan `MenuPilihan`: berkelompok, kotak cari kalau
-       isinya banyak, jumlah tindak lanjut tiap pilihan, dan pilih/kosongkan
-       sekaligus. Melayang di bawah tombolnya; dibuka dan ditempatkan skrip. --}}
+  {{-- Daftar lengkap pilihan: berkelompok, bisa dicari, berjumlah, pilih/kosongkan sekaligus. --}}
   <div id="{{ $id }}-menu" class="dsb-menu" role="dialog" aria-label="Pilih {{ mb_strtolower($judul) }}" hidden data-menu>
     <div class="kepala-menu">
       <div class="judul-menu">
@@ -132,3 +130,4 @@
     </div>
   </div>
 </div>
+@endif

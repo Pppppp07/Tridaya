@@ -3,18 +3,17 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Support\Sso\Penyedia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Perangkat yang sedang masuk dengan sebuah akun (28 Sep) — Profil →
- * Keamanan. Dibaca dari tabel sesi, jadi hanya ada bila SESSION_DRIVER=
- * database (bawaan aplikasi ini sejak 27 Sep).
- *
- * Id sesi tidak pernah ditulis ke halaman: yang ditampilkan dan dikirim balik
- * hanya kuncinya — HMAC id itu dengan APP_KEY. Tanpa itu, siapa pun yang bisa
- * membaca halamannya bisa mengambil alih sesi di perangkat lain.
+ * Perangkat yang sedang masuk (Profil → Keamanan), dari tabel sesi (SESSION_DRIVER=database). Id
+ * sesi tidak pernah ditulis ke halaman — hanya HMAC-nya dengan APP_KEY.
  */
 class Sesi
 {
@@ -28,15 +27,110 @@ class Sesi
         return substr(hash_hmac('sha256', $id, (string) config('app.key')), 0, 24);
     }
 
+    /* ---- Batas diam: keluar otomatis sesudah sekian menit tanpa aktivitas ---- */
+
+    /** Kunci sesi: [id user, waktu permintaan terakhir yang dihitung sebagai aktivitas]. */
+    public const AKTIVITAS = 'aktivitas_terakhir';
+
+    /** Dalam detik; tidak boleh melebihi umur simpan sesi. */
+    public static function batasDiam(): int
+    {
+        return 60 * max(1, min((int) config('simtlhp.sesi.batas_diam', 10), (int) config('session.lifetime', 120)));
+    }
+
+    public static function menitDiam(): int
+    {
+        return intdiv(self::batasDiam(), 60);
+    }
+
+    /** Jam sungguhan, bukan tanggal demo. Uji memakai jam Carbon. */
+    public static function detikKini(): int
+    {
+        return app()->runningUnitTests() ? now()->getTimestamp() : time();
+    }
+
+    /** Waktu aktivitas terakhir milik user ini; 0 bila belum ada. */
+    public static function aktivitasTerakhir(Request $r): int
+    {
+        [$id, $waktu] = array_pad((array) $r->session()->get(self::AKTIVITAS), 2, 0);
+
+        return $id === $r->user()?->id ? (int) $waktu : 0;
+    }
+
+    public static function catatAktivitas(Request $r, int $waktu): void
+    {
+        $r->session()->put(self::AKTIVITAS, [$r->user()?->id, $waktu]);
+    }
+
+    public static function sisaDiam(Request $r): int
+    {
+        $terakhir = self::aktivitasTerakhir($r);
+
+        return $terakhir ? max(0, self::batasDiam() - (self::detikKini() - $terakhir)) : self::batasDiam();
+    }
+
+    /** Halaman tujuan sesudah masuk lagi — hanya alamat di aplikasi ini. */
+    public static function alamatKembali(Request $r): ?string
+    {
+        $jalur = $r->input('kembali');
+        if (! is_string($jalur)) {
+            $jalur = null;
+            if ($r->isMethod('GET') && ! $r->expectsJson()) {
+                $jalur = $r->getRequestUri();
+            } elseif ($ref = parse_url((string) $r->headers->get('referer'))) {
+                if (($ref['host'] ?? null) === $r->getHost()) {
+                    $jalur = ($ref['path'] ?? '/').(isset($ref['query']) ? '?'.$ref['query'] : '');
+                }
+            }
+        }
+        if (! is_string($jalur) || strlen($jalur) > 2000 || ! str_starts_with($jalur, '/')
+            || str_starts_with($jalur, '//') || str_contains($jalur, '\\')) {
+            return null;
+        }
+        $dasar = $r->getBasePath();
+        $relatif = $dasar !== '' && str_starts_with($jalur, $dasar.'/') ? substr($jalur, strlen($dasar)) : $jalur;
+        if (preg_match('#^/(masuk|keluar|sesi|sso-login)(/|\?|$)#', $relatif)) {
+            return null;
+        }
+
+        return $r->getSchemeAndHttpHost().$jalur;
+    }
+
+    /** Bukan flash: cek lonceng di latar tidak boleh menghabiskan pesannya sebelum halaman masuk tampil. */
+    public static function tandaiBerakhir(Request $r, ?string $kembali, ?int $oleh = null): void
+    {
+        $r->session()->put('sesi_berakhir', true);
+        if ($kembali) {
+            $r->session()->put('url.intended', $kembali);
+        }
+        /* Pemilik halaman tujuan: orang lain yang masuk di peramban ini diantar ke beranda. */
+        if ($oleh) {
+            $r->session()->put('url.intended_oleh', $oleh);
+        }
+    }
+
+    /** Akhiri sesi yang diam melewati batas; tercatat sebagai keluar otomatis. */
+    public static function akhiriKarenaDiam(Request $r, User $u, int $diam): Response
+    {
+        $kembali = self::alamatKembali($r);
+        $lewatSso = (bool) $r->session()->get('masuk_lewat_sso');
+        Aktivitas::catat('keluar', 'Keluar otomatis: '.self::menitDiam().' menit tanpa aktivitas', [
+            'oleh' => $u, 'rincian' => ['cara' => 'otomatis', 'batas_menit' => self::menitDiam(), 'diam_menit' => intdiv($diam, 60)],
+        ]);
+        Auth::logout();
+        $r->session()->invalidate();
+        $r->session()->regenerateToken();
+        self::tandaiBerakhir($r, $kembali, $u->id);
+        $ke = ($lewatSso ? Penyedia::alamatKeluar() : null) ?: route('masuk');
+
+        return $r->expectsJson()
+            ? response()->json(['sesi' => 'berakhir', 'ke' => $ke], 401)
+            : redirect()->away($ke);
+    }
+
     /**
-     * Sesi akun ini yang masih hidup; yang sedang dipakai paling atas.
-     *
-     * `detik` = berapa lama tidak dipakai. Dihitung dengan jam yang sama
-     * dengan penulis sesinya — Laravel mencatat `last_activity` dari
-     * Carbon::now(), yang ikut tanggal demo (SIMTLHP_HARI_INI). Memakai
-     * time() di sini membuat semua sesi tampak kedaluwarsa di demo.
-     *
-     * @return Collection<int, object{kunci:string, ini:bool, perangkat:array{nama:string, ponsel:bool}, ip:?string, detik:int}>
+     * Sesi akun ini yang masih hidup; yang sedang dipakai paling atas. `detik` memakai jam Laravel
+     * (ikut tanggal demo), sama dengan penulis `last_activity`.
      */
     public static function daftar(User $u, Request $r): Collection
     {
@@ -45,25 +139,44 @@ class Sesi
         }
         $kini = (string) $r->session()->getId();
         $sekarang = now()->getTimestamp();
-        $batas = $sekarang - 60 * (int) config('session.lifetime', 120);
+        $batas = $sekarang - self::batasDiam();
 
         return self::tabel()->where('user_id', $u->id)->where('last_activity', '>=', $batas)
             ->orderByDesc('last_activity')->get(['id', 'ip_address', 'user_agent', 'last_activity'])
             ->map(fn ($x) => (object) [
-                'kunci'     => self::kunci((string) $x->id),
-                'ini'       => hash_equals($kini, (string) $x->id),
+                'kunci' => self::kunci((string) $x->id),
+                'ini' => hash_equals($kini, (string) $x->id),
                 'perangkat' => Perangkat::sebut($x->user_agent),
-                'ip'        => $x->ip_address,
-                'detik'     => max(0, $sekarang - (int) $x->last_activity),
+                'ip' => $x->ip_address,
+                'detik' => max(0, $sekarang - (int) $x->last_activity),
             ])
             ->sortByDesc('ini')->values();
     }
 
     /**
-     * Keluarkan satu sesi lain menurut kuncinya, atau semuanya ("semua").
-     * Sesi yang sedang dipakai tidak pernah ikut.
-     *
-     * @return Collection<int, string> nama perangkat yang dikeluarkan
+     * Sesi akun orang lain, dilihat Admin DTI (Pengguna → Detail); tanpa kunci — diakhiri sekaligus
+     * lewat Akun::putuskanSesi.
+     */
+    public static function milik(User $u): Collection
+    {
+        if (! self::tersedia()) {
+            return collect();
+        }
+        $sekarang = now()->getTimestamp();
+        $batas = $sekarang - self::batasDiam();
+
+        return self::tabel()->where('user_id', $u->id)->where('last_activity', '>=', $batas)
+            ->orderByDesc('last_activity')->get(['ip_address', 'user_agent', 'last_activity'])
+            ->map(fn ($x) => (object) [
+                'perangkat' => Perangkat::sebut($x->user_agent),
+                'ip' => $x->ip_address,
+                'detik' => max(0, $sekarang - (int) $x->last_activity),
+                'waktu' => Carbon::createFromTimestamp((int) $x->last_activity),
+            ])->values();
+    }
+
+    /**
+     * Keluarkan satu sesi lain menurut kuncinya, atau "semua"; sesi yang sedang dipakai tidak ikut.
      */
     public static function putus(User $u, Request $r, string $kunci): Collection
     {

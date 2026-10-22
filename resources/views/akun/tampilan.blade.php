@@ -1,7 +1,6 @@
 @php
   use App\Support\Setelan;
 
-  /* Tab Tampilan — padanan `TabTampilanAkun` prototipe. */
   $modeNav = [
     ['otomatis', 'Otomatis', 'Lebar di layar besar, ringkas di layar sedang.'],
     ['lebar', 'Selalu lebar', 'Nama menu selalu terlihat.'],
@@ -37,7 +36,7 @@
   </div>
 <div class="ak-blok">
   <h3>Menu samping</h3>
-  <p class="ak-ket">Pilihan menu samping mengikuti akun Anda.</p>
+  <p class="ak-ket">Atur lebar menu samping. Pilihan ini tersimpan untuk akun Anda.</p>
   <div class="ak-pilih" role="radiogroup" aria-label="Menu samping">
     @foreach($modeNav as [$k, $nama, $ket])
       <label class="dm-opsi"><input type="radio" name="menu" value="{{ $k }}" @checked(old('menu', $setelan['menu']) === $k)><b>{{ $nama }}</b><span>{{ $ket }}</span></label>
@@ -47,7 +46,7 @@
 
   <div class="ak-blok">
     <h3>Animasi</h3>
-    <p class="ak-ket">Untuk akun Anda, di perangkat mana pun.</p>
+    <p class="ak-ket">Atur animasi latar dan transisi antarmuka untuk akun Anda.</p>
     <div class="ak-pilih" role="radiogroup" aria-label="Animasi">
       @foreach($animasi as [$k, $nama, $ket])
         <label class="dm-opsi">

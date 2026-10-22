@@ -10,14 +10,7 @@ use Illuminate\Support\Str;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Kolom "Catatan terakhir" di tabel tindak lanjut, sejak 21 Sep.
- *
- * Kata Hizkia: "catatannya berdasarkan catatan riwayat tindak lanjut saja, dan
- * keterangan langkah berikutnya dihilangkan saja". Jadi isinya kolom Catatan
- * pada baris "Terbaru" di tab Riwayat baris itu — tidak ditimpa, cuma dibaca
- * dari riwayat yang menyimpan semuanya.
- */
+/** Kolom "Catatan terakhir" = catatan baris Terbaru di Progres. */
 class CatatanTerakhirTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -72,7 +65,7 @@ class CatatanTerakhirTest extends TestCase
         $isi = $this->halaman('jakarta', $r);
 
         $this->assertSame(['—'], $this->sel($isi));
-        $this->assertStringContainsString('title="Belum ada peristiwa di riwayat tindak lanjut"', $isi);
+        $this->assertStringContainsString('title="Belum ada peristiwa di Progres tindak lanjut"', $isi);
     }
 
     public function test_satuan_kerja_cuma_membaca_catatan_barisnya_sendiri(): void

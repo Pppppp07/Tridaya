@@ -1,22 +1,21 @@
 @php
   use App\Enums\PeranPengguna as P;
 
-  /* Tab Pemberitahuan — padanan `TabPemberitahuanAkun` prototipe. Saklar yang
-     mati tidak ikut terkirim; AkunController membacanya sebagai "mati". */
-  $satker = $u->peran === P::SATKER;
+  /* Saklar yang mati tidak terkirim; AkunController membacanya sebagai "mati". */
+  $satker = $u->peranAktif() === P::SATKER;
   $tanpaEmail = ! $u->email;
   $ketEmail = match (true) {
       $tanpaEmail => 'Akun ini belum memiliki email.',
       $satker     => 'Pemberitahuan untuk '.($u->satker?->namaPendek() ?? 'unit Anda').' dikirim juga ke '.$u->email.'.',
-      default     => 'Pemberitahuan untuk '.$u->peran->pendek().' dikirim juga ke '.$u->email.'.',
+      default     => 'Pemberitahuan untuk '.$u->peranAktif()->pendek().' dikirim juga ke '.$u->email.'.',
   };
 @endphp
 <form method="post" action="{{ route('akun.setelan') }}">
   @csrf
   <input type="hidden" name="bagian" value="pemberitahuan">
   <x-dm-kepala judul="Pemberitahuan" ket="Atur cara pemberitahuan dikirim ke Anda."
-    :info="['Pemberitahuan dibuat setiap kali berkas yang terkait dengan Anda dikirim, diteruskan, dinilai, atau dikembalikan.',
-      'Membuka pemberitahuan langsung menampilkan bagian yang berubah.']" />
+    :info="['Pengaturan pop-up, sorotan pembaruan di daftar Rekomendasi, dan pengiriman email untuk pemberitahuan akun Anda.',
+      'Pemberitahuan di ikon lonceng tetap tersedia meskipun pop-up atau email dimatikan.']" />
   <div class="ak-blok">
     <ul class="ak-atur">
       <li>
@@ -33,13 +32,17 @@
       </li>
       <li>
         <label class="ak-baris">
+          <span class="teks"><b>Sorot pembaruan di daftar Rekomendasi</b><span>Rekomendasi yang baru diperbarui tampil paling atas dan diberi titik merah sampai dibuka. Menekan barisnya langsung menunjukkan bagian yang berubah.</span></span>
+          <input type="checkbox" role="switch" class="ak-saklar" name="pembaruan" value="1" @checked($setelan['pembaruan'])>
+        </label>
+      </li>
+      <li>
+        <label class="ak-baris">
           <span class="teks">
             <b>Kirim juga ke email</b>
             <span>{{ $ketEmail }}</span>
-            {{-- Muncul begitu saklarnya dimatikan (skrip); tanpa skrip, bila
-                 memang tersimpan mati. --}}
             @if($satker && ! $tanpaEmail)
-              <span class="awas" data-awas-email @if($setelan['email']) hidden @endif>Sebaiknya tetap aktif — Setba mengandalkan email ini untuk menghubungi unit Anda.</span>
+              <span class="awas" data-awas-email @if($setelan['email']) hidden @endif>Jika dimatikan, pemberitahuan hanya tersedia di aplikasi.</span>
             @endif
           </span>
           <input type="checkbox" role="switch" class="ak-saklar" name="email" value="1"

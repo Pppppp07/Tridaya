@@ -5,13 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Satu temuan bisa mengenai beberapa satuan kerja sekaligus.
- *
- * Kolom `temuans.satker_id` tunggal memaksa satu temuan dipecah jadi beberapa
- * baris supaya bisa menyebut semua satuan kerjanya — dan sesudah dipecah,
- * nilai temuannya ikut terhitung berkali-kali.
- */
+/** Satu temuan bisa mengenai beberapa satuan kerja. */
 return new class extends Migration
 {
     public function up(): void
@@ -35,10 +29,8 @@ return new class extends Migration
                     );
                 });
 
-            /* Tiga langkah, dan urutannya mengikat. MySQL menolak membuang
-               indeks yang masih dipakai kunci asing; SQLite menolak membuang
-               kolom yang masih dipakai indeks. Jadi: lepas kuncinya, buang
-               indeksnya, baru buang kolomnya. */
+            /* Urutan mengikat: lepas kunci asing, buang indeks, baru buang kolom (MySQL dan
+               SQLite berbeda aturan). */
             Schema::table('temuans', function (Blueprint $table) {
                 $table->dropForeign(['satker_id']);
             });
@@ -58,8 +50,7 @@ return new class extends Migration
                   ->constrained('satkers')->nullOnDelete();
         });
 
-        // Kembalikan satu satuan kerja saja — yang pertama. Turun tangga ini
-        // memang tidak bisa utuh: bentuk lamanya tidak sanggup menyimpannya.
+        // Turun tangga hanya bisa mengembalikan satuan kerja pertama.
         DB::table('temuan_satker')->orderBy('temuan_id')->orderBy('id')
             ->get()->groupBy('temuan_id')->each(function ($baris, $temuanId) {
                 DB::table('temuans')->where('id', $temuanId)

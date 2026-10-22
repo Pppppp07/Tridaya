@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // "Tindak lanjut auditi, berisi rekam jejak" — SOP menuntut jejaknya,
-        // bukan hasil akhirnya saja. Karena itu tabel ini hanya bertambah.
+        // Rekam jejak tindak lanjut: tabel ini hanya bertambah.
         Schema::create('tindak_lanjuts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rekomendasi_id')->constrained('rekomendasis')->cascadeOnDelete();

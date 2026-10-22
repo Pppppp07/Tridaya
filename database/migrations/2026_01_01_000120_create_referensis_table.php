@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Satu tabel untuk semua daftar pilihan yang datar: bentuk tindak
-        // lanjut, kategori internal, jenis dokumen, alasan sah untuk TD.
+        // Satu tabel untuk semua daftar pilihan datar.
         Schema::create('referensis', function (Blueprint $table) {
             $table->id();
             $table->string('jenis', 30);

@@ -2,16 +2,16 @@
   use App\Support\Perangkat;
   use App\Support\Tampil;
 
-  /* Tab Keamanan — padanan `TabKeamananAkun` prototipe: password, perangkat
-     yang sedang masuk (tabel sesi), dan sepuluh kejadian masuk terakhir —
-     termasuk percobaan yang gagal dengan email akun ini. */
+  /* Perangkat yang sedang masuk dan sepuluh kejadian masuk terakhir (termasuk percobaan gagal
+     dengan email akun ini). Tidak ada ganti password: akun dikelola eHRM PU. */
   $kejadian = fn ($x) => match ($x->aksi) {
       'masuk'         => match ($x->rincian['cara'] ?? null) {
           'sso'   => 'Masuk lewat SSO',
           'password' => 'Masuk dengan password',
           default => 'Masuk',
       },
-      'keluar'        => 'Keluar',
+      'keluar'        => ($x->rincian['cara'] ?? null) === 'otomatis'
+          ? 'Keluar otomatis — '.($x->rincian['batas_menit'] ?? '').' menit tanpa aktivitas' : 'Keluar',
       'masuk.dikunci' => 'Dikunci sementara — terlalu banyak salah',
       default         => 'Gagal masuk — password salah',
   };
@@ -20,51 +20,17 @@
     'ket' => 'Perangkat itu harus masuk ulang. Perangkat yang sedang Anda pakai tidak ikut keluar.',
     'tombol' => 'Ya, keluarkan', 'nada' => 'jingga', 'balik' => false];
 @endphp
-<x-dm-kepala judul="Keamanan" ket="Password, perangkat aktif, dan riwayat masuk akun Anda."
-  :info="['Jika ada perangkat atau percobaan masuk yang tidak Anda kenali, keluarkan perangkat tersebut, ganti password, lalu hubungi DTI.',
-    'Sesi berakhir otomatis jika lama tidak digunakan. Aplikasi ini tidak memakai cookie “Remember me”.']" />
+<x-dm-kepala judul="Keamanan" ket="Perangkat aktif dan riwayat masuk akun Anda."
+  :info="['Daftar perangkat yang masih login dan riwayat login atau logout akun Anda.',
+    'Mengeluarkan perangkat mengakhiri sesi pada perangkat tersebut. Sesi juga berakhir otomatis setelah '.\App\Support\Sesi::menitDiam().' menit tanpa aktivitas.']" />
 
 @if($gagal > 0)
   <div class="ak-blok">
     <div class="pesan warn" role="status"><x-ikon n="AlertTriangle" :s="16" /><span>
       Ada {{ $gagal }} percobaan masuk gagal dengan email Anda sejak masuk sebelumnya.
-      Bukan Anda? Segera ganti password dan hubungi DTI.</span></div>
+      Bukan Anda? Segera hubungi Admin DTI.</span></div>
   </div>
 @endif
-
-<div class="ak-blok">
-  <h3>Password</h3>
-  @if($password)
-    <p class="ak-ket">Digunakan saat masuk dengan email dan password. Minimal 10 karakter, berisi huruf dan angka.
-      @if($sso)Jika Anda selalu masuk lewat SSO, password ini tidak digunakan.@endif
-      <x-info :teks="['Setelah diganti, perangkat lain yang sedang memakai akun ini akan dikeluarkan.']" /></p>
-    {{-- Diperiksa server, bukan browser (novalidate): kalimat salahnya sama
-         dengan prototipe, bukan kalimat bawaan browser. --}}
-    <form class="ak-password" method="post" action="{{ route('akun.password') }}" novalidate data-form-password>
-      @csrf
-      @if($errors->password->any())
-        <div class="pesan bad" role="alert"><x-ikon n="AlertTriangle" :s="16" /><span>{{ $errors->password->first() }}</span></div>
-      @endif
-      <label class="fld"><span>Password saat ini <span class="wajib">*</span></span>
-        <input type="password" name="current_password" autocomplete="current-password" required></label>
-      <label class="fld"><span>Password baru <span class="wajib">*</span></span>
-        <input type="password" name="password" autocomplete="new-password" required></label>
-      <label class="fld"><span>Konfirmasi password baru <span class="wajib">*</span></span>
-        <input type="password" name="password_confirmation" autocomplete="new-password" required></label>
-      <p class="dm-wajib"><span class="wajib">*</span> wajib diisi</p>
-      <div class="aksi">
-        <button type="submit" class="btn btn-p"><x-ikon n="KeyRound" :s="15" /> Ganti password</button>
-        {{-- Dimunculkan skrip; tanpa skrip password-nya tetap tersamar. --}}
-        <label class="ak-tampak" hidden data-tampak-password><input type="checkbox"> Tampilkan password</label>
-      </div>
-      @if(session('pesan_password'))
-        <span class="ak-tersimpan" role="status"><x-ikon n="CheckCircle2" :s="15" /> {{ session('pesan_password') }}</span>
-      @endif
-    </form>
-  @else
-    <p class="ak-ket" style="margin-bottom:0">Anda masuk lewat {{ $sso ?? 'SSO PU' }}. Password diatur di eHRM, bukan di aplikasi ini.</p>
-  @endif
-</div>
 
 <div class="ak-blok">
   <div class="ak-blok-kepala">

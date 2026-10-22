@@ -1,13 +1,8 @@
-@extends('rangka')
+@extends($rangkaMasuk ?? 'rangka')
 @section('judul', ($akses ?? true) ? 'Tidak memiliki akses' : 'Gagal masuk')
 @section('isi')
-{{-- Pegawai yang berhasil masuk lewat SSO PU tapi tidak diberi akses di Data
-     master — belum didaftarkan, atau sudah dinonaktifkan (27 Sep). SSO
-     membuktikan siapa orangnya; Data master yang memutus boleh tidaknya.
-     Sejak 29 Sep pesannya mengikuti kata Hizkia ("anda tidak memiliki akses
-     untuk sistem ini, hubungi Admin atau pihak berwenang atas sistem ini"), dan
-     kegagalan teknis SSO (`akses` = false) tidak lagi disebut "tidak punya
-     akses". Percobaannya tercatat di log aktivitas. --}}
+{{-- Pegawai yang lolos SSO tapi tidak diberi akses di Data master (belum didaftarkan atau
+     dinonaktifkan). --}}
 <x-latar-masuk />
 <main class="msk tunggal">
   <section class="msk-sambut"><x-merek-masuk /></section>
@@ -23,7 +18,7 @@
           $id && $id->unit ? ['l' => 'Unit', 'v' => e($id->unit)] : null,
           ['l' => 'Keterangan', 'v' => e($alasan)],
         ]))" />
-        <p class="msk-teks">Saat menghubungi Admin, sebutkan NIP Anda. Akses diberikan lewat Data master &rarr; Pengguna.</p>
+        <p class="msk-teks">Saat menghubungi Admin, sebutkan NIP atau email akun Anda. Admin mengatur akses di Data Master &rarr; User &amp; akses.</p>
       @else
         <span class="ic-kotak besar kuning msk-ikon-atas"><x-ikon n="AlertTriangle" :s="20" /></span>
         <h1>Gagal masuk</h1>

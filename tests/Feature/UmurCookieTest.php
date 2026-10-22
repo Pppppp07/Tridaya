@@ -6,12 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-/**
- * Tanggal demo mematok jam aplikasi di masa lalu, tapi cookie tetap harus
- * berumur menurut jam sungguhan (27 Sep). Tanpa itu cookie sesi tiba sudah
- * kedaluwarsa, tiap halaman membuka sesi baru, formulir ditolak 419, dan
- * pop-up pemberitahuan tampil lagi di tiap halaman. Lihat UmurCookieNyata.
- */
+/** Cookie harus berumur menurut jam sungguhan walau tanggal demo memundurkan jam aplikasi. */
 class UmurCookieTest extends TestCase
 {
     use RefreshDatabase;

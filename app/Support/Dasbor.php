@@ -10,71 +10,55 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Hitungan Ringkasan (dasbor) — padanan `Prototipe/src/dasbor-uji.js`, fungsi
- * demi fungsi, dengan nama yang sama. Murni: tidak menyentuh basis data dan
- * tidak mengubah model; seluruh aturan domain (nilai diakui, posisi berkas,
- * status BPK) dipinjam dari model, jadi angkanya sama dengan layar lain.
- *
- * SATUAN HITUNGNYA TINDAK LANJUT SATUAN KERJA (Hizkia, 24 Sep 2026: ringkasan
- * utama "seharusnya fokus utama ke tindak lanjut satuan kerja", bukan kemajuan
- * rekomendasi): satu satuan kerja pada satu bentuk tindak lanjut — satu baris
- * `sasarans`, satu baris lembar pemantauan Setba, pemilik rel posisi. Kepala
- * dasbor Excel mereka menghitung ini juga: "Selesai Satker 303, Belum Selesai
- * Satker 9".
- *
- * Cara memfilternya meniru Power BI: satu set filter berlaku untuk semua
- * grafik, dan tiap grafik boleh MENGABAIKAN filter miliknya sendiri — grafik
- * per tahun tetap menggambar seluruh tahun walau satu tahun sedang dipilih.
- *
- * Satu BUTIR = satu rekomendasi yang terlihat, berikut laporannya:
- *
- *     ['rek' => Rekomendasi, 'tem' => Temuan, 'lap' => Laporan,
- *      'semua' => seluruh barisnya yang terlihat, 'baris' => baris yang lolos filter]
- *
- * Filter yang memotong per baris (satuan kerja, meja, bentuk, keadaan
- * memadai, status SIPTL) cukup mempersempit `baris`; status BPK baris tetap
- * dibaca dari `semua` — sama dengan `bagianRek` prototipe, yang menurunkan
- * status bagian dari seluruh barisnya.
+ * Hitungan Dashboard. Murni: tidak menyentuh basis data; aturan domain dipinjam dari model. Satuan
+ * hitungnya tindak lanjut satuan kerja (satu baris `sasarans`). Satu set filter untuk semua grafik;
+ * tiap grafik boleh mengabaikan filternya sendiri.
+ * Butir = ['rek', 'tem', 'lap', 'semua' => seluruh baris terlihat, 'baris' => baris yang lolos
+ * filter].
  */
 class Dasbor
 {
+    /* Jenis laporan selalu satu (tanpa "Semua"): LHP dan LHA tidak digabung dalam satu angka. */
+    public const JENIS_AWAL = 'LHP';
+
     public const FILTER_KOSONG = [
-        'tahun' => [], 'jenis' => 'semua', 'satker' => [], 'hasil' => '', 'bpk' => [], 'meja' => [], 'lain' => [],
+        'tahun' => [], 'jenis' => self::JENIS_AWAL, 'satker' => [], 'hasil' => '', 'bpk' => [], 'meja' => [], 'lain' => [],
     ];
 
     /**
-     * Filter tambahan lewat "Tambah filter". Semuanya bersandar pada data
-     * master, jadi pilihan baru di master langsung jadi pilihan filter.
-     * `baris` memotong rekomendasi ke bagian yang cocok (seperti satuan kerja);
-     * yang lain memfilter rekomendasi utuh.
+     * Filter tambahan dari data master. `baris` memotong rekomendasi ke bagian yang cocok; yang
+     * lain memfilter rekomendasi utuh.
      */
     public const DIM_LAIN = [
-        'intern'   => ['nama' => 'Kategori internal', 'ket' => 'Kelompok buatan BPSDM'],
-        /* Nilainya pendek ("SPI", "Kepatuhan"), jadi keping filter aktifnya
-           diberi sebutan — tanpa itu "SPI" di bar hasil tidak jelas apa. */
-        'kategori' => ['nama' => 'Kategori temuan', 'sebut' => 'Temuan', 'ket' => 'Golongan dari pemeriksa'],
-        'sifat'    => ['nama' => 'Sifat rekomendasi', 'sebut' => 'Sifat', 'ket' => 'Administratif atau kerugian negara'],
-        'bentuk'   => ['nama' => 'Bentuk tindak lanjut', 'ket' => 'Mis. surat teguran, bukti setor', 'baris' => true],
+        'intern' => ['nama' => 'Kategori internal', 'ket' => 'Pengelompokan temuan untuk pemantauan internal BPSDM'],
+        /* Nilainya pendek, jadi keping filternya diberi sebutan. */
+        'kategori' => ['nama' => 'Kategori temuan', 'sebut' => 'Temuan', 'ket' => 'Klasifikasi temuan pada laporan pemeriksaan'],
+        'sifat' => ['nama' => 'Sifat rekomendasi', 'sebut' => 'Sifat', 'ket' => 'Jenis kewajiban yang ditetapkan dalam rekomendasi'],
+        'bentuk' => ['nama' => 'Bentuk tindak lanjut', 'ket' => 'Jenis tindakan untuk memenuhi rekomendasi', 'baris' => true],
     ];
 
     public const URUT_LAIN = ['intern', 'kategori', 'sifat', 'bentuk'];
 
-    public const URUT_BPK = ['SS', 'BS', 'BT', 'TD'];
+    public const URUT_BPK = ['SS', 'BS', 'BT'];
 
-    /* Warna grafik — sama dengan WARNA di DasborUji.jsx, diuji pengukur buta
-       warna. "proses": belum memadai yang sedang diproses Setba, UKI, atau
-       Inspektorat — abu, supaya yang menonjol hanya bagian yang menunggu
-       satuan kerja (kuning). */
+    /* Pilihan filter SIPTL: status BPK, ditambah yang belum diunggah (antrean Setba, bukan status). */
+    public const FILTER_BPK = ['SS', 'BS', 'BT', 'belumUnggah'];
+
+    /* Warna grafik (lolos uji buta warna). "proses" abu, supaya yang menonjol hanya yang
+       menunggu satuan kerja (kuning). */
     public const WARNA = [
         'M' => 'var(--d-ok)', 'BM' => 'var(--d-belum)',
-        'SS' => 'var(--d-ok)', 'BS' => 'var(--d-belum)', 'BT' => 'var(--d-bt)', 'TD' => 'var(--d-td)',
+        'SS' => 'var(--d-ok)', 'BS' => 'var(--d-belum)', 'BT' => 'var(--d-bt)', 'belumUnggah' => 'var(--d-proses)',
         'masuk' => 'var(--d-masuk)', 'tunggu' => 'var(--d-tunggu)', 'proses' => 'var(--d-proses)',
     ];
 
-    /* Tulisan di dalam potongan berwarna mengikuti terang warnanya: gelap di
-       atas hijau dan kuning, putih di atas merah tua dan abu. */
+    /* Warna tahap posisi berkas, urut rantai posisi; tokennya di simtlhp-tambahan.css. */
+    public const WARNA_MEJA = ['satker' => 'var(--d-tunggu)', 'setba' => 'var(--d-setba)', 'uki' => 'var(--d-uki)',
+        'itjen' => 'var(--d-itjen)', 'selesai' => 'var(--d-ok)'];
+
+    /* Warna tulisan di potongan berwarna mengikuti terang warnanya. */
     public const TULISAN_DI = ['M' => '#111827', 'SS' => '#111827', 'BT' => '#111827',
-        'BM' => '#FFFFFF', 'BS' => '#FFFFFF', 'TD' => '#FFFFFF'];
+        'BM' => '#FFFFFF', 'BS' => '#FFFFFF', 'belumUnggah' => '#FFFFFF'];
 
     public const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
         'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -87,9 +71,7 @@ class Dasbor
     public const PENDEK_MEJA = ['satker' => 'Satker', 'setba' => 'Setba', 'uki' => 'UKI',
         'itjen' => 'Itjen', 'selesai' => 'Selesai'];
 
-    /* ================================================================
-       BUTIR DAN BARIS
-       ================================================================ */
+    /* ---- Butir dan baris ---- */
 
     /** Rekomendasi yang terlihat → butir, urut seperti datanya. */
     public static function butir(Collection $rekomendasi): array
@@ -102,14 +84,40 @@ class Dasbor
         })->values()->all();
     }
 
+    /* Tab data di atas Dashboard: data historis (impor file pemantauan lama) dan data sistem
+       dipantau terpisah. */
+    public const DATA = [
+        'semua' => ['nama' => 'Semua data', 'ikon' => 'Layers', 'ket' => 'Data historis dan data sistem'],
+        'sistem' => ['nama' => 'Data sistem', 'ikon' => 'Monitor', 'ket' => 'Dicatat lewat Catat laporan baru'],
+        'historis' => ['nama' => 'Data historis', 'ikon' => 'History', 'ket' => 'Diimpor dari file pemantauan lama'],
+    ];
+
+    /** Butir dipangkas ke baris tab data yang dipilih; seluruh halaman, termasuk acuan "dari N", ikut. */
+    public static function dalamData(array $items, string $data): array
+    {
+        if ($data === 'semua') {
+            return $items;
+        }
+        $historis = $data === 'historis';
+        $keluar = [];
+        foreach ($items as $x) {
+            $baris = $x['semua']->filter(fn (Sasaran $b) => $b->historis() === $historis)->values();
+            if ($baris->isNotEmpty()) {
+                $keluar[] = array_merge($x, ['semua' => $baris, 'baris' => $baris]);
+            }
+        }
+
+        return $keluar;
+    }
+
     public static function meja(Sasaran $b): string
     {
         return match ($b->pos()->pemegang()) {
-            PeranPengguna::SATKER      => 'satker',
-            PeranPengguna::SETBA       => 'setba',
-            PeranPengguna::UKI         => 'uki',
+            PeranPengguna::SATKER => 'satker',
+            PeranPengguna::SETBA => 'setba',
+            PeranPengguna::UKI => 'uki',
             PeranPengguna::INSPEKTORAT => 'itjen',
-            default                    => 'selesai',
+            default => 'selesai',
         };
     }
 
@@ -135,21 +143,22 @@ class Dasbor
         return max(0, (int) $b->nilai - $b->nilaiDiakuiItjen());
     }
 
-    public static function sisaBpk(array $x, Sasaran $b): int
+    /** Angka SIPTL hanya dari yang sudah diunggah; yang lain bernilai nol di sisi ini. */
+    public static function sisaBpk(Sasaran $b): int
     {
-        return max(0, (int) $b->nilai - $b->nilaiDiakuiBpk($x['rek']));
+        return $b->statusSiptl() ? max(0, (int) $b->nilai - $b->nilaiDiakuiBpk()) : 0;
     }
 
-    /**
-     * Status BPK baris: kalau belum satu baris pun punya status sendiri,
-     * status rekomendasinya yang berlaku; kalau sudah ada, baris yang belum
-     * diunggah dihitung BT — aturan yang sama dengan `statusRek`.
-     */
-    public static function statusBpk(array $x, Sasaran $b): string
+    /** Status SIPTL baris; null bila Setba belum mencatat unggahannya (tidak dihitung, bukan BT). */
+    public static function statusBpk(Sasaran $b): ?string
     {
-        $adaBaris = $x['semua']->contains(fn ($y) => $y->status_bpk !== null);
+        return $b->statusSiptl()?->value;
+    }
 
-        return $adaBaris ? ($b->status_bpk?->value ?? 'BT') : ($x['rek']->status?->value ?? 'BT');
+    /** Sudah memadai dan menunggu Setba mencatat unggahannya ke SIPTL; bukan status BPK. */
+    public static function belumUnggah(Sasaran $b, array $x): bool
+    {
+        return $b->perluUnggah($x['lap']->sumber);
     }
 
     public static function lhp(array $x): bool
@@ -176,10 +185,10 @@ class Dasbor
     public static function nilaiLain(string $k, array $x): string
     {
         return (string) match ($k) {
-            'intern'   => $x['tem']->kategoriIntern?->nama ?? '',
+            'intern' => $x['tem']->kategoriIntern?->nama ?? '',
             'kategori' => $x['tem']->kategori?->nama ?? '',
-            'sifat'    => $x['rek']->sifat?->nama ?? '',
-            default    => '',
+            'sifat' => $x['rek']->sifat?->nama ?? '',
+            default => '',
         };
     }
 
@@ -190,22 +199,17 @@ class Dasbor
         return $t ? $t->toDateString() : '';
     }
 
-    /* ================================================================
-       FILTER
-       ================================================================ */
+    /* ---- Filter ---- */
 
     public static function adaFilter(array $f): bool
     {
-        return $f['tahun'] || $f['jenis'] !== 'semua' || $f['satker'] || $f['hasil'] !== ''
+        return $f['tahun'] || $f['satker'] || $f['hasil'] !== ''
             || $f['bpk'] || $f['meja'] || collect($f['lain'])->contains(fn ($v) => count($v) > 0);
     }
 
     /**
-     * `kecuali`: filter yang dilewati. Satuan kerja, meja, bentuk, keadaan
-     * memadai, dan status SIPTL memotong rekomendasi jadi bagian barisnya
-     * sendiri — jadi hitungan per tindak lanjut hanya melihat baris yang
-     * cocok: "belum memadai" menyisakan baris yang belum memadai, bukan
-     * seluruh rekomendasi yang salah satu barisnya belum.
+     * `kecuali`: filter yang dilewati. Filter per baris (satuan kerja, meja, bentuk, memadai,
+     * SIPTL) memotong rekomendasi jadi bagian barisnya.
      */
     public static function terapkanFilter(array $items, array $f, array $kecuali = []): array
     {
@@ -244,15 +248,15 @@ class Dasbor
                 }
             }
             if ($satker !== null || $meja !== null || $bentuk !== null || $hasil !== '' || $bpk !== null) {
-                /* Status BPK hanya ada pada LHP. LHA tidak pernah masuk SIPTL,
-                   jadi filter status BPK dengan sendirinya menyisakan LHP. */
+                /* Status BPK hanya ada pada LHP. */
                 $lhp = self::lhp($x);
                 $baris = $x['baris']->filter(function (Sasaran $b) use ($x, $satker, $meja, $bentuk, $hasil, $bpk, $lhp) {
                     return ($satker === null || isset($satker[self::satkerKunci($b)]))
                         && ($meja === null || isset($meja[self::meja($b)]))
                         && ($bentuk === null || isset($bentuk[self::bentuk($b)]))
                         && ($hasil === '' || (self::memadai($b) ? 'M' : 'BM') === $hasil)
-                        && ($bpk === null || ($lhp && isset($bpk[self::statusBpk($x, $b)])));
+                        && ($bpk === null || ($lhp && (isset($bpk[self::statusBpk($b) ?? ''])
+                            || (isset($bpk['belumUnggah']) && self::belumUnggah($b, $x)))));
                 })->values();
                 if ($baris->isEmpty()) {
                     continue;
@@ -265,11 +269,7 @@ class Dasbor
         return $keluar;
     }
 
-    /**
-     * Pilihan yang sudah tidak ada di daftarnya — unit yang dinonaktifkan dan
-     * kosong, butir master yang dibuang — tidak ikut memfilter. Tanpa ini satu
-     * pilihan yang tidak terlihat lagi bisa menyembunyikan seluruh data.
-     */
+    /** Pilihan yang sudah tidak ada di daftarnya tidak ikut memfilter. */
     public static function bersihkan(array $f, array $sah): array
     {
         $cocok = fn (array $arr, ?array $set) => $set === null ? $arr
@@ -282,27 +282,22 @@ class Dasbor
         }
 
         return array_merge($f, [
-            'tahun'  => $cocok($f['tahun'], $sah['tahun']),
+            'tahun' => $cocok($f['tahun'], $sah['tahun']),
             'satker' => $cocok($f['satker'], $sah['satker']),
-            'lain'   => $lain,
+            'lain' => $lain,
         ]);
     }
 
-    /* ================================================================
-       ANGKA KARTU
-       ================================================================ */
+    /* ---- Angka kartu ---- */
 
     /**
-     * Angka kartu ringkasan, per tindak lanjut satuan kerja: memadai dan
-     * belum, di meja siapa yang belum memadai berada, nilai dan sisanya, dan
-     * status SIPTL (LHP saja). Jumlah rekomendasi dan laporan di baliknya ikut
-     * dihitung — untuk kalimat rincian, dan untuk memilih kata "Memadai" atau
-     * "Sesuai".
+     * Angka kartu, per tindak lanjut satuan kerja: memadai/belum, meja yang belum memadai, nilai
+     * dan sisa, status SIPTL (LHP yang sudah diunggah) dan yang belum diunggah.
      */
     public static function hitungTindak(array $K): array
     {
-        $o = ['n' => 0, 'M' => 0, 'BM' => 0, 'nilai' => 0, 'sisa' => 0, 'meja' => [], 'jenisBM' => [],
-            'bpk' => ['n' => 0, 'SS' => 0, 'BS' => 0, 'BT' => 0, 'TD' => 0]];
+        $o = ['n' => 0, 'M' => 0, 'BM' => 0, 'nilai' => 0, 'sisa' => 0, 'meja' => [],
+            'bpk' => ['n' => 0, 'SS' => 0, 'BS' => 0, 'BT' => 0], 'belumUnggah' => 0];
         $rek = $lap = $lapLhp = [];
         foreach ($K as $x) {
             $lhp = self::lhp($x);
@@ -319,15 +314,14 @@ class Dasbor
                     $o['M']++;
                 } else {
                     $o['BM']++;
-                    $j = $x['lap']->sumber->value;
-                    $o['jenisBM'][$j] = ($o['jenisBM'][$j] ?? 0) + 1;
                     $m = self::meja($b);
                     $o['meja'][$m] = ($o['meja'][$m] ?? 0) + 1;
                 }
-                if ($lhp) {
-                    $st = self::statusBpk($x, $b);
+                if ($lhp && ($st = self::statusBpk($b)) !== null) {
                     $o['bpk']['n']++;
-                    $o['bpk'][$st] = ($o['bpk'][$st] ?? 0) + 1;
+                    $o['bpk'][$st]++;
+                } elseif ($lhp && self::belumUnggah($b, $x)) {
+                    $o['belumUnggah']++;
                 }
             }
         }
@@ -335,13 +329,9 @@ class Dasbor
         return $o + ['rek' => count($rek), 'lap' => count($lap), 'lapLhp' => count($lapLhp)];
     }
 
-    /**
-     * Tindak lanjut belum memadai yang berkasnya sedang di satuan kerja —
-     * menunggu tanggapannya — per satuan kerja, bersama jumlah yang belum
-     * memadai seluruhnya. Hanya satuan kerja yang punya tunggakan; urut dari
-     * yang terbanyak menunggu.
-     */
-    public static function perTunggu(array $S): array
+    /** Belum memadai yang menunggu tanggapan satuan kerja, per satuan kerja (terbanyak dulu). */
+    /** Per satuan kerja: yang belum memadai menurut posisi berkasnya (`meja`), urut terbanyak. */
+    public static function perProses(array $S): array
     {
         $peta = [];
         foreach ($S as $x) {
@@ -350,31 +340,30 @@ class Dasbor
                     continue;
                 }
                 $k = self::satkerKunci($b);
-                $peta[$k] ??= ['k' => $k, 'nama' => $b->satker?->nama ?? 'Tidak diisi', 'tunggu' => 0, 'BM' => 0];
+                $peta[$k] ??= ['k' => $k, 'nama' => $b->satker?->nama ?? 'Tidak diisi', 'BM' => 0,
+                    'meja' => array_fill_keys(array_keys(self::NAMA_MEJA), 0)];
                 $peta[$k]['BM']++;
-                if (self::meja($b) === 'satker') {
-                    $peta[$k]['tunggu']++;
-                }
+                $peta[$k]['meja'][self::meja($b)]++;
             }
         }
-        $baris = array_values(array_filter($peta, fn ($o) => $o['tunggu'] > 0));
-        usort($baris, fn ($a, $b) => [$b['tunggu'], $b['BM']] <=> [$a['tunggu'], $a['BM']]
+        $baris = array_values($peta);
+        usort($baris, fn ($a, $b) => [$b['BM'], $b['meja']['satker']] <=> [$a['BM'], $a['meja']['satker']]
             ?: self::bandingNama($a['nama'], $b['nama']));
 
         return $baris;
     }
 
     /**
-     * Tindak lanjut per tahun laporan, dibelah memadai dan belum — dan status
-     * SIPTL per tahun untuk LHP. Sama dengan baris tahun tabel keseluruhan.
+     * Per tahun laporan: memadai dan belum, serta status SIPTL untuk LHP (`siptl` = yang sudah
+     * diunggah).
      */
     public static function perTahun(array $Y): array
     {
         $peta = [];
         foreach ($Y as $x) {
             $k = self::tahun($x);
-            $peta[$k] ??= ['k' => $k, 'M' => 0, 'BM' => 0, 'nilai' => 0, 'sisa' => 0, 'lhp' => 0,
-                'SS' => 0, 'BS' => 0, 'BT' => 0, 'TD' => 0, 'sisaBpk' => 0, 'tugas' => 0];
+            $peta[$k] ??= ['k' => $k, 'M' => 0, 'BM' => 0, 'nilai' => 0, 'sisa' => 0, 'lhp' => 0, 'siptl' => 0,
+                'SS' => 0, 'BS' => 0, 'BT' => 0, 'belumUnggah' => 0, 'sisaBpk' => 0, 'tugas' => 0];
             $lhp = self::lhp($x);
             foreach ($x['baris'] as $b) {
                 $peta[$k]['tugas']++;
@@ -382,10 +371,14 @@ class Dasbor
                 $peta[$k]['nilai'] += self::nilai($b);
                 $peta[$k]['sisa'] += self::sisa($b);
                 if ($lhp) {
-                    $st = self::statusBpk($x, $b);
                     $peta[$k]['lhp']++;
-                    $peta[$k][$st]++;
-                    $peta[$k]['sisaBpk'] += self::sisaBpk($x, $b);
+                    $peta[$k]['sisaBpk'] += self::sisaBpk($b);
+                    if (($st = self::statusBpk($b)) !== null) {
+                        $peta[$k]['siptl']++;
+                        $peta[$k][$st]++;
+                    } elseif (self::belumUnggah($b, $x)) {
+                        $peta[$k]['belumUnggah']++;
+                    }
                 }
             }
         }
@@ -394,11 +387,8 @@ class Dasbor
     }
 
     /**
-     * Tindak lanjut per satuan kerja, urut dari tumpukan belum memadai
-     * terbanyak. Sisa nilai dua versi, seperti tabel per satker lembar
-     * pemantauan — yang SIPTL hanya dari LHP. Untuk tabel keseluruhan juga:
-     * nilai bagian satuan kerja, berapa rekomendasi yang melibatkannya, dan
-     * status SIPTL tiap tindak lanjut.
+     * Per satuan kerja, urut tumpukan belum memadai terbanyak; sisa nilai dua versi (SIPTL hanya
+     * LHP).
      */
     public static function perSatker(array $S): array
     {
@@ -410,16 +400,18 @@ class Dasbor
                 $k = self::satkerKunci($b);
                 $peta[$k] ??= ['k' => $k, 'nama' => $b->satker?->nama ?? 'Tidak diisi',
                     'pendek' => $b->satker?->namaPendek() ?? 'Tidak diisi',
-                    'M' => 0, 'BM' => 0, 'sisa' => 0, 'lhp' => 0, 'sisaBpk' => 0, 'nilai' => 0, 'nRek' => 0,
-                    'SS' => 0, 'BS' => 0, 'BT' => 0, 'TD' => 0];
+                    'M' => 0, 'BM' => 0, 'sisa' => 0, 'siptl' => 0, 'sisaBpk' => 0, 'nilai' => 0, 'nRek' => 0,
+                    'SS' => 0, 'BS' => 0, 'BT' => 0, 'belumUnggah' => 0];
                 $rekPer[$k][$x['rek']->id] = true;
                 $peta[$k][self::memadai($b) ? 'M' : 'BM']++;
                 $peta[$k]['nilai'] += self::nilai($b);
                 $peta[$k]['sisa'] += self::sisa($b);
-                if ($lhp) {
-                    $peta[$k]['lhp']++;
-                    $peta[$k]['sisaBpk'] += self::sisaBpk($x, $b);
-                    $peta[$k][self::statusBpk($x, $b)]++;
+                if ($lhp && ($st = self::statusBpk($b)) !== null) {
+                    $peta[$k]['siptl']++;
+                    $peta[$k]['sisaBpk'] += self::sisaBpk($b);
+                    $peta[$k][$st]++;
+                } elseif ($lhp && self::belumUnggah($b, $x)) {
+                    $peta[$k]['belumUnggah']++;
                 }
             }
         }
@@ -433,11 +425,7 @@ class Dasbor
         return $baris;
     }
 
-    /**
-     * Rekomendasi di balik satu sel tabel keseluruhan: tahun (kalau ada),
-     * satuan kerja (kalau ada), dan kolomnya — aturan yang sama persis dengan
-     * `perSatker`, supaya isi daftarnya tepat angka di selnya.
-     */
+    /** Rekomendasi di balik satu sel tabel keseluruhan — aturan sama dengan `perSatker`. */
     public static function isiSel(array $T, ?string $tahun, ?int $satker, string $kolom): array
     {
         $rp = ['nilai' => 1, 'sisa' => 1, 'sisaBpk' => 1];
@@ -453,14 +441,15 @@ class Dasbor
                     return false;
                 }
                 $v = match (true) {
-                    $kolom === 'M'       => self::memadai($b),
-                    $kolom === 'BM'      => ! self::memadai($b),
-                    $kolom === 'lhp'     => $lhp,
-                    in_array($kolom, self::URUT_BPK, true) => $lhp && self::statusBpk($x, $b) === $kolom,
-                    $kolom === 'nilai'   => self::nilai($b),
-                    $kolom === 'sisa'    => self::sisa($b),
-                    $kolom === 'sisaBpk' => $lhp ? self::sisaBpk($x, $b) : 0,
-                    default              => 1,
+                    $kolom === 'M' => self::memadai($b),
+                    $kolom === 'BM' => ! self::memadai($b),
+                    $kolom === 'siptl' => $lhp && self::statusBpk($b) !== null,
+                    $kolom === 'belumUnggah' => $lhp && self::belumUnggah($b, $x),
+                    in_array($kolom, self::URUT_BPK, true) => $lhp && self::statusBpk($b) === $kolom,
+                    $kolom === 'nilai' => self::nilai($b),
+                    $kolom === 'sisa' => self::sisa($b),
+                    $kolom === 'sisaBpk' => $lhp ? self::sisaBpk($b) : 0,
+                    default => 1,
                 };
                 if (isset($rp[$kolom])) {
                     $jumlah += (int) $v;
@@ -495,17 +484,15 @@ class Dasbor
     }
 
     /**
-     * Versi BPSDM (verifikasi Inspektorat) dan versi SIPTL (putusan BPK),
-     * berdampingan — jumlah dan nilainya — per tindak lanjut satuan kerja.
-     * BPSDM atas SELURUH pilihan; SIPTL hanya LHP, begitu juga selisih "sudah
-     * memadai tapi belum sesuai di SIPTL". Rupiahnya dibelah jadi yang sudah
-     * diakui (Memadai/SS) dan sisanya.
+     * Versi BPSDM (Inspektorat) dan versi SIPTL (BPK) berdampingan; SIPTL hanya LHP yang sudah
+     * diunggah, yang belum diunggah dihitung terpisah.
      */
     public static function hitungBanding(array $S): array
     {
         $unor = ['M' => ['n' => 0, 'rp' => 0], 'BM' => ['n' => 0, 'rp' => 0]];
         $bpk = array_fill_keys(self::URUT_BPK, ['n' => 0, 'rp' => 0]);
-        $n = $nLhp = $beda = 0;
+        $belum = ['n' => 0, 'rp' => 0];
+        $n = $nLhp = $nSiptl = $beda = $mSiptl = $mLha = 0;
         foreach ($S as $x) {
             $lhp = self::lhp($x);
             foreach ($x['baris'] as $b) {
@@ -517,29 +504,38 @@ class Dasbor
                 $unor['M']['rp'] += $nilai - $sisa;
                 $unor['BM']['rp'] += $sisa;
                 if (! $lhp) {
+                    $mLha += (int) $ok;
                     continue;
                 }
                 $nLhp++;
-                $st = self::statusBpk($x, $b);
+                $st = self::statusBpk($b);
+                if ($st === null) {
+                    if (self::belumUnggah($b, $x)) {
+                        $belum['n']++;
+                        $belum['rp'] += $nilai;
+                    }
+                    continue;
+                }
+                $nSiptl++;
+                $mSiptl += (int) $ok;
                 $bpk[$st]['n']++;
-                $sisaB = self::sisaBpk($x, $b);
+                $sisaB = self::sisaBpk($b);
                 $bpk['SS']['rp'] += $nilai - $sisaB;
                 if ($st !== 'SS') {
                     $bpk[$st]['rp'] += $sisaB;
                 }
-                if ($ok && $st !== 'SS' && $st !== 'TD') {
+                if ($ok && $st !== 'SS') {
                     $beda++;
                 }
             }
         }
 
-        return ['adaLhp' => $nLhp > 0, 'n' => $n, 'nLhp' => $nLhp, 'unor' => $unor, 'bpk' => $bpk, 'beda' => $beda];
+        /* Asal yang memadai: sudah di SIPTL (`mSiptl`), belum diunggah, atau LHA (`mLha`). */
+        return ['adaLhp' => $nLhp > 0, 'n' => $n, 'nSiptl' => $nSiptl, 'unor' => $unor, 'bpk' => $bpk, 'beda' => $beda,
+            'belumUnggah' => $belum, 'mSiptl' => $mSiptl, 'mLha' => $mLha];
     }
 
-    /**
-     * Tindak lanjut per kategori internal. Nama dan warnanya dari data
-     * master; urut dari tumpukan belum memadai terbanyak.
-     */
+    /** Per kategori internal, urut tumpukan belum memadai terbanyak. */
     public static function perKategori(array $S, array $opsi): array
     {
         $peta = [];
@@ -562,14 +558,9 @@ class Dasbor
         return $baris;
     }
 
-    /* ================================================================
-       WAKTU
-       ================================================================ */
+    /* ---- Waktu ---- */
 
-    /**
-     * Dua belas bulan terakhir, berakhir di bulan hari ini. `akhir` = tanggal
-     * penutup bulannya; bulan berjalan ditutup hari ini.
-     */
+    /** Dua belas bulan terakhir sampai bulan ini; `akhir` = tanggal penutup bulan. */
     public static function bulanTerakhir(string $hariIni, int $n = 12): array
     {
         $t = Carbon::parse($hariIni)->startOfMonth();
@@ -598,11 +589,7 @@ class Dasbor
         return $out;
     }
 
-    /**
-     * Putusan Inspektorat atas satu baris, urut tanggal. Tanda memadai pada
-     * baris hanya dipasang sesudah Inspektorat memutus, jadi jejak ini sama
-     * dengan `hasil` barisnya.
-     */
+    /** Putusan Inspektorat atas satu baris, urut tanggal. */
     public static function putusanItjen(Sasaran $b): Collection
     {
         return $b->riwayatStatus
@@ -624,11 +611,7 @@ class Dasbor
         return $k;
     }
 
-    /**
-     * Tanggal satu tindak lanjut dinyatakan memadai: putusan terakhir
-     * Inspektorat atas baris itu. Kosong kalau barisnya belum memadai, atau
-     * putusan terakhirnya bukan memadai.
-     */
+    /** Tanggal tindak lanjut dinyatakan memadai: putusan terakhir Inspektorat atas baris itu. */
     public static function tanggalMemadai(Sasaran $b): string
     {
         if (! self::memadai($b)) {
@@ -683,38 +666,8 @@ class Dasbor
         return ['masuk' => $masuk, 'selesai' => $selesai];
     }
 
-    /**
-     * Jumlah tindak lanjut belum memadai pada akhir tiap bulan — garis kecil
-     * di kartu "Belum memadai". Titik terakhir dibaca dari keadaan sekarang,
-     * supaya selalu sama dengan angka besarnya.
-     */
-    public static function tumpukan(array $K, array $bulan): array
-    {
-        $akhirI = count($bulan) - 1;
 
-        return array_map(function ($bl, $i) use ($K, $akhirI) {
-            $kini = $i === $akhirI;
-            $n = 0;
-            foreach ($K as $x) {
-                $t = self::tglMasuk($x);
-                if (! $kini && ($t === '' || $t > $bl['akhir'])) {
-                    continue;
-                }
-                foreach ($x['baris'] as $b) {
-                    if ($kini ? ! self::memadai($b) : self::keadaanPada($b, $bl['akhir']) !== 'M') {
-                        $n++;
-                    }
-                }
-            }
-
-            return $n;
-        }, $bulan, array_keys($bulan));
-    }
-
-    /**
-     * Lima tindak lanjut belum memadai dengan sisa nilai terbesar; yang
-     * bernilai sama diurutkan dari laporan yang paling lama diterima.
-     */
+    /** Lima belum memadai dengan sisa nilai terbesar. */
     public static function perluPerhatian(array $T, int $n = 5): array
     {
         $out = [];
@@ -730,11 +683,7 @@ class Dasbor
         return array_slice($out, 0, $n);
     }
 
-    /**
-     * Pembuka baku uraian ("Menteri Pekerjaan Umum agar memerintahkan Kepala
-     * BPSDM untuk …") dibuang dari TAMPILAN saja — teks utuhnya tetap di
-     * keterangan tombol dan di rincian.
-     */
+    /** Pembuka baku uraian dibuang dari tampilan saja. */
     public static function pokokUraian(?string $t): string
     {
         $t = (string) $t;
@@ -743,9 +692,7 @@ class Dasbor
         return $s === $t || $s === '' ? $t : mb_strtoupper(mb_substr($s, 0, 1)).mb_substr($s, 1);
     }
 
-    /* ================================================================
-       ISI FILTER
-       ================================================================ */
+    /* ---- Isi filter ---- */
 
     public static function daftarTahun(array $items): array
     {
@@ -756,13 +703,8 @@ class Dasbor
     }
 
     /**
-     * Satuan kerja untuk filter, mengikuti data master saat itu juga: balai
-     * wilayah disebut kotanya, urut nomor wilayah; unit lain nama pendeknya,
-     * urut data master; unit nonaktif tetap ditawarkan selama masih punya
-     * data; nama yang ada di data tapi tidak ada di master tetap ditawarkan
-     * di kelompoknya sendiri.
-     *
-     * @param  Collection  $unitKerja  satker urut data master
+     * Satuan kerja untuk filter, mengikuti data master: balai wilayah disebut kotanya; unit
+     * nonaktif tetap ditawarkan selama masih punya data.
      */
     public static function kelompokSatker(Collection $unitKerja, array $items): array
     {
@@ -815,14 +757,7 @@ class Dasbor
         return $a;
     }
 
-    /**
-     * Pilihan untuk filter tambahan. Urutan, kelompok, dan warnanya dari
-     * data master; nilai di data yang sudah tidak ada di master tetap
-     * ditawarkan; butir master nonaktif yang tidak terpakai disembunyikan.
-     * `hanyaTerpakai` untuk daftar baku yang panjang (bentuk tindak lanjut).
-     *
-     * @param  array  $master  [['nama', 'aktif', 'grup'?, 'warna'?], …]
-     */
+    /** Pilihan filter tambahan dari data master; nilai lama di data tetap ditawarkan. */
     public static function opsiLain(string $k, array $master, array $items, bool $hanyaTerpakai = false): array
     {
         $pakai = [];
@@ -863,11 +798,7 @@ class Dasbor
         return $keluar;
     }
 
-    /**
-     * Berapa tindak lanjut untuk tiap pilihan sebuah filter. `S` sudah
-     * difilter dengan filter LAIN, jadi angkanya menjawab "kalau ini dipilih
-     * juga, berapa yang tersisa".
-     */
+    /** Jumlah tiap pilihan sebuah filter, dihitung dengan filter lain. */
     public static function hitungPilihan(string $k, array $S): array
     {
         $h = [];
@@ -896,10 +827,7 @@ class Dasbor
         return $h;
     }
 
-    /**
-     * Skala sumbu: kelipatan 1, 2, atau 5 yang enak dibaca, kira-kira tiga
-     * garis. Yang dihitung selalu jumlah, jadi langkahnya paling kecil satu.
-     */
+    /** Skala sumbu: kelipatan 1, 2, atau 5, kira-kira tiga garis. */
     public static function skala(float $maks, int $garis = 3): array
     {
         $m = max(1, $maks);
@@ -928,10 +856,8 @@ class Dasbor
     }
 
     /**
-     * Pembanding nama, sama dengan `localeCompare(…, "id")` prototipe: ICU,
-     * lewat Collator. `strnatcasecmp` melompati spasi, jadi "Wilayah V
-     * Yogyakarta" terbaca "WilayahVYogyakarta" dan jatuh sesudah "Wilayah VI
-     * Surabaya" — urutan yang seri pun jadi berbeda dari prototipe.
+     * Pembanding nama memakai Collator (ICU); strnatcasecmp melompati spasi sehingga urutannya
+     * salah.
      */
     public static function bandingNama(string $a, string $b): int
     {

@@ -2,8 +2,7 @@
 
 namespace App\Enums;
 
-/* Sumber laporan menentukan tiga hal sekaligus: daftar kategori temuan,
-   cara tenggat dihitung, dan panjang jalur yang harus ditempuh. */
+/* Sumber laporan menentukan kategori temuan, cara tenggat dihitung, dan panjang jalur. */
 enum SumberLaporan: string
 {
     case LHA = 'LHA';

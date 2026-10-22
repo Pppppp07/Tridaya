@@ -1,7 +1,4 @@
-{{-- Per satuan kerja — padanan `panelSatker`. Enam teratas, sisanya lewat
-     "Semua (N)". Jumlah tindak lanjut di panel ini penyebut yang sama dengan
-     kartu; lembar mereka menaruhnya di kepala dasbor ("Selesai Satker 303,
-     Belum Selesai Satker 9"), di sinilah ia terurai per satuan kerja. --}}
+{{-- Per satuan kerja: enam teratas, sisanya lewat "Semua (N)". --}}
 @php
   $lengkap = in_array('satker', $k['semua'], true);
   $barisSatker = $lengkap ? $d['satker']
@@ -12,7 +9,7 @@
   $tabelOn = in_array('satker', $k['tabel'], true);
 @endphp
 <x-dsb-panel id="dsb-p-satker" :kelas="$kelas" judul="Per satuan kerja"
-  :info="['Satu tindak lanjut = satu satuan kerja pada satu bentuk tindak lanjut.', 'Urut dari yang '.$kecil($kataBM).' terbanyak.']"
+  :info="['Satu penugasan dihitung untuk satu satuan kerja pada satu bentuk tindak lanjut.', 'Diurutkan dari jumlah '.$kecil($kataBM).' terbanyak. Klik satuan kerja untuk memfilter seluruh Dashboard.']"
   :kosong="! $d['satker'] ? 'Tidak ada tindak lanjut pada pilihan ini.' : null"
   kunci-tabel="satker" :tabel="$tabelOn">
   @if($tugasT)
@@ -38,7 +35,7 @@
         aria-label="{{ $o['pendek'] }}: {{ $o['BM'] }} {{ $kecil($kataBM) }} dari {{ $tot }} tindak lanjut"
         data-petunjuk="{{ $petunjuk(['judul' => $o['pendek'],
           'baris' => [['warna' => $W['BM'], 'nilai' => $o['BM'], 'nama' => $kecil($kataBM)], ['warna' => $W['M'], 'nilai' => $o['M'], 'nama' => $kecil($kataM)]],
-          'ket' => $tot.' tindak lanjut · sisa nilai '.$rpk($o['sisa']).($o['lhp'] ? ' · sisa SIPTL '.$rpk($o['sisaBpk']) : '')]) }}">
+          'ket' => $tot.' tindak lanjut · sisa nilai '.$rpk($o['sisa'])]) }}">
         <span class="nm" title="{{ $o['pendek'] }}">{{ $namaSatker($o['k']) }}</span>
         <span class="jalur">
           <span class="isi" style="width:{{ $tot / $maksSatker * 100 }}%">

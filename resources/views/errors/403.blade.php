@@ -1,9 +1,7 @@
 @extends('rangka')
 @section('judul', 'Tidak bisa dibuka')
 @section('isi')
-{{-- Penolakan 403 dengan bingkai aplikasi (27 Sep), bukan halaman polos
-     bawaan. Setiap penolakan bagi akun yang sudah masuk tercatat di log
-     aktivitas (CatatAktivitas). --}}
+{{-- Penolakan 403 dalam bingkai aplikasi; tercatat di log aktivitas. --}}
 <div class="body">
   <div class="kartu" style="max-width:640px">
     <span class="ic-kotak besar kuning" style="margin-bottom:12px"><x-ikon n="Lock" :s="20" /></span>

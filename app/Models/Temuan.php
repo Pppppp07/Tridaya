@@ -14,57 +14,62 @@ class Temuan extends Model
         'kategori_temuan_id', 'kategori_intern_id', 'nilai',
     ];
 
-    public function laporan()        { return $this->belongsTo(Laporan::class); }
-    /* Satuan kerja tempat temuannya terjadi — bukan yang menanggung
-       perbaikannya. Yang menanggung ada di sasaran tiap rekomendasi, dan
-       keduanya memang bisa berbeda.
-
-       Jamak, bukan tunggal: satu temuan lazim mengenai beberapa satuan kerja
-       sekaligus. Urutannya urutan pencatatan, sama dengan di suratnya. */
-    public function satkers()        { return $this->belongsToMany(Satker::class, 'temuan_satker')->orderBy('temuan_satker.id'); }
-
-    /** Apakah temuan ini terjadi di satuan kerja tertentu. */
-    public function mengenai(?int $satkerId): bool
+    public function laporan()
     {
-        return $satkerId !== null && $this->satkers->contains('id', $satkerId);
+        return $this->belongsTo(Laporan::class);
     }
 
-    public function rekomendasi()    { return $this->hasMany(Rekomendasi::class)->orderBy('nomor_urut')->orderBy('id'); }
-    public function kategori()       { return $this->belongsTo(KategoriTemuan::class, 'kategori_temuan_id'); }
-    public function kategoriIntern() { return $this->belongsTo(Referensi::class, 'kategori_intern_id'); }
+    /* Satuan kerja tempat temuan terjadi (bisa beberapa) — bukan yang menanggung perbaikannya. */
+    public function satkers()
+    {
+        return $this->belongsToMany(Satker::class, 'temuan_satker')->orderBy('temuan_satker.id');
+    }
 
-    /* Keterangan dua kategori itu — satu bunyi untuk blok temuan di rincian
-       laporan dan Uraian temuan di rincian rekomendasi. Padanan
-       ketKategoriTemuan dan KET_KATEGORI_INTERN di prototipe. */
+    /** Apakah temuan ini terjadi di satuan kerja tertentu. */
+    public function mengenai(int|array|null $satkerId): bool
+    {
+        return $satkerId !== null && $this->satkers->whereIn('id', (array) $satkerId)->isNotEmpty();
+    }
+
+    public function rekomendasi()
+    {
+        return $this->hasMany(Rekomendasi::class)->orderBy('nomor_urut')->orderBy('id');
+    }
+
+    public function kategori()
+    {
+        return $this->belongsTo(KategoriTemuan::class, 'kategori_temuan_id');
+    }
+
+    public function kategoriIntern()
+    {
+        return $this->belongsTo(Referensi::class, 'kategori_intern_id');
+    }
+
+    /* Keterangan kedua kategori, satu bunyi untuk rincian laporan dan rincian rekomendasi. */
     public static function ketKategori(SumberLaporan $jenis): array
     {
         return [
             $jenis->melewatiSiptl()
-                ? 'Penggolongan dari BPK, mengikuti bagian laporan keuangan yang kena dampaknya.'
-                : 'Penggolongan dari Inspektorat, mengikuti sudut pemeriksaannya.',
-            'Tertulis apa adanya dari surat laporannya, jadi tidak bisa diubah sendiri.',
-            'Dipakai saat berkoordinasi dengan pemeriksa, dan saat menyusun rekap yang mereka minta.',
+                ? 'Klasifikasi temuan pada Laporan Hasil Pemeriksaan (LHP) BPK.'
+                : 'Klasifikasi temuan pada Laporan Hasil Audit (LHA) Inspektorat.',
+            'Kategori ini mengikuti laporan pemeriksaan dan dicatat terpisah dari kategori internal BPSDM.',
         ];
     }
 
     public const KET_KATEGORI_INTERN = [
-        'Penggolongan kita sendiri, dipakai mengelompokkan temuan sejenis untuk rekap internal.',
-        'Tidak ada di surat pemeriksaannya — diisi dan disetel Setba saat mencatat Laporan Baru.',
-        'Daftarnya bisa ditambah dan diganti nama lewat menu Data master.',
+        'Pengelompokan temuan untuk kebutuhan monitoring dan rekap internal BPSDM.',
+        'Kategori ini dapat berbeda dari kategori temuan yang digunakan pemeriksa pada laporan.',
     ];
 
-    /**
-     * Nilai temuan: yang tertulis di suratnya, atau — kalau kosong — jumlah
-     * tagihan rekomendasinya. Isian nilai temuan sudah dihapus dari formulir,
-     * jadi membaca medannya mentah membuat rekap berbunyi Rp 0.
-     */
+    /** Nilai temuan: dari surat, atau bila kosong jumlah tagihan rekomendasinya. */
     public function nilaiTemuan(): int
     {
         return (int) $this->nilai ?: (int) $this->rekomendasi->sum('nilai_pulih');
     }
 
     /* Sama seperti laporan — disimpulkan, tidak disimpan. */
-    public function statusSimpulan(): StatusTindakLanjut
+    public function statusSimpulan(): ?StatusTindakLanjut
     {
         return Rekomendasi::simpulkan($this->rekomendasi);
     }

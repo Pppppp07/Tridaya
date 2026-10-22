@@ -3,17 +3,8 @@
 namespace App\Support;
 
 /**
- * Enam belas bentuk tindak lanjut, beserta dokumen yang lazim diminta.
- *
- * Daftar ini satu-satunya sumbernya: dipakai penyemai untuk basis data baru dan
- * migrasi untuk basis data yang sudah berjalan, supaya keduanya tidak pernah
- * berselisih. Namanya dan urutannya sama persis dengan prototipe (`BENTUK_TL`,
- * `USUL_DOKUMEN`) — diambil dari 38 nilai berbeda di kolom bentuk tindak
- * lanjut lembar pemantauan, dari "Surat teguran" sampai "bukti inventarisasi".
- *
- * Usulan dokumen hanya usulan: Setba tetap bisa mengubah daftarnya di
- * formulir. Tujuh bentuk dulu tanpa usulan sama sekali, dan satuan kerja
- * menerima nol syarat — ketahuan saat simulasi prototipe.
+ * Enam belas bentuk tindak lanjut SOP beserta dokumen yang lazim diminta — isi awal data master
+ * (penyemai dan migrasi). Sesudahnya daftarnya diatur Admin DTI di Data Master.
  */
 class BentukTindakLanjut
 {
@@ -98,24 +89,15 @@ class BentukTindakLanjut
         ];
     }
 
-    /** Nama bentuknya saja, urut sesuai prototipe. @return list<string> */
+    /** Nama bentuknya saja, urut baku. */
     public static function nama(): array
     {
         return array_keys(self::peta());
     }
 
     /**
-     * Sebutan lama yang pernah dipakai simtlhp, dipetakan ke sebutan SOP.
-     *
-     * Dipakai migrasi untuk mengganti nama DI TEMPAT, bukan membuat baris baru:
-     * seratusan tindakan sudah menunjuk baris-baris itu, dan menggantinya
-     * dengan baris baru berarti seluruhnya kehilangan bentuknya.
-     *
-     * "Pengembangan kompetensi pejabat" tidak punya padanan di SOP. Ia tidak
-     * dihapus — sepuluh tindakan memakainya — melainkan dinonaktifkan, jadi
-     * berkas lama tetap terbaca sementara berkas baru tidak bisa memilihnya.
-     *
-     * @return array<string,?string> nama lama => nama SOP, null berarti nonaktif
+     * Sebutan lama → sebutan SOP, untuk ganti nama di tempat (tindakan lama tetap menunjuk
+     * barisnya).
      */
     public static function petaLama(): array
     {

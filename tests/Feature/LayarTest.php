@@ -2,19 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\RekomendasiController;
 use App\Models\Laporan;
 use App\Models\Rekomendasi;
+use App\Support\Rangka;
+use App\Support\Terlihat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Tiap layar terbuka untuk tiap peran yang berhak — dan yang tidak berhak
- * ditolak, bukan dibiarkan melihat halaman kosong.
- *
- * Uji paling murah yang ada, dan yang paling sering menangkap: satu nama view
- * yang salah ketik atau satu pembantu yang terhapus langsung terlihat di sini.
- */
+/** Tiap layar terbuka untuk peran yang berhak; yang tidak berhak ditolak. */
 class LayarTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -35,7 +33,7 @@ class LayarTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('peranBiasa')]
+    #[DataProvider('peranBiasa')]
     public function test_layar_utama_terbuka(string $email): void
     {
         $this->masuk($email);
@@ -67,8 +65,11 @@ class LayarTest extends TestCase
     {
         $this->masuk('setba@contoh.test');
         $this->get('/ringkasan')->assertOk()->assertSee('Ringkasan utama');
-        $this->get('/data-master')->assertOk()->assertSee('Kategori internal');
+        $this->get('/data-master')->assertForbidden();
         $this->get('/laporan/baru')->assertOk()->assertSee('Surat laporan');
+
+        $this->masuk('admin@contoh.test');
+        $this->get('/data-master')->assertOk()->assertSee('User &amp; akses', false);
 
         $this->masuk('medan');
         $this->get('/data-master')->assertForbidden();
@@ -85,31 +86,26 @@ class LayarTest extends TestCase
         $this->get('/ringkasan')->assertRedirect(route('masuk'));
     }
 
-    /**
-     * Kepala daftar Rekomendasi dan Daftar laporan ditukar di tempat oleh
-     * skrip (29 Sep). Enter di kotak carinya memakai tombol bawaan tanpa
-     * nama — bukan keping pertama, yang diam-diam melepas pilihan jenis
-     * laporan atau keadaan yang sedang menyala.
-     */
+    /** Enter di kotak cari daftar memakai tombol bawaan tanpa nama. */
     public function test_filter_daftar_ditukar_di_tempat_dan_enter_tidak_melepas_pilihan(): void
     {
         $this->masuk('setba@contoh.test');
 
-        /* Halaman yang diminta skrip untuk ditukar sebagian tidak memakai
-           pop-up pemberitahuan — kalau dipakai, pemberitahuannya tercatat
-           sudah dimunculkan padahal tidak pernah tampil. */
+        /* Halaman yang ditukar sebagian tidak memakai pop-up pemberitahuan. */
         $this->get('/rekomendasi?keadaan=tunggu', ['X-Requested-With' => 'XMLHttpRequest'])
             ->assertOk()->assertSee('data-ganti-di-tempat', false)->assertDontSee('data-popup', false);
-        \App\Support\Rangka::lupakan();
+        Rangka::lupakan();
         $this->get('/rekomendasi')->assertOk()->assertSee('data-popup', false);
 
         foreach (['/rekomendasi', '/laporan'] as $alamat) {
-            \App\Support\Rangka::lupakan();
+            Rangka::lupakan();
             $html = $this->get($alamat)->assertOk()->getContent();
             $this->assertMatchesRegularExpression('/<form id="filter"[^>]*\sdata-ganti-di-tempat/', $html);
             $this->assertSame(1, preg_match('/<form id="filter".*?<\/form>/s', $html, $form));
             $this->assertSame(1, preg_match('/<button type="submit"[^>]*>/', $form[0], $pertama));
             $this->assertStringNotContainsString('name=', $pertama[0], "Tombol kirim pertama di $alamat harus tanpa nama.");
+            $this->assertMatchesRegularExpression('/\shidden(?:\s|>)/', $pertama[0], "Tombol Enter di $alamat tidak boleh terlihat atau mengambil ruang.");
+            $this->assertStringNotContainsString('disabled', $pertama[0], "Enter di $alamat tetap harus mengirim filter yang dipilih.");
         }
     }
 
@@ -122,17 +118,29 @@ class LayarTest extends TestCase
             ->assertSee('Sedang menunggu')
             ->assertSee('Urusan SIPTL');
 
-        /* 19 dari 49 rekomendasi menunggu Setba pada data contoh — angka yang
+        /* 18 dari 49 rekomendasi menunggu Setba pada data contoh — angka yang
            sama tertulis di menu dan di keranjang pertama. */
-        $this->assertSame(19, $this->perluDikerjakan('setba@contoh.test'));
+        $this->assertSame(18, $this->perluDikerjakan('setba@contoh.test'));
+    }
+
+    public function test_peran_pemantau_tanpa_filter_perlu_dikerjakan(): void
+    {
+        foreach (['pimpinan@contoh.test', 'dti@contoh.test'] as $email) {
+            $this->masuk($email)->get('/rekomendasi')->assertOk()
+                ->assertDontSee('Perlu dikerjakan')
+                ->assertSee('Sedang menunggu')
+                ->assertSee('Sudah selesai');
+            /* Tautan lama ke keranjang itu jatuh ke semua rekomendasi. */
+            $this->get('/rekomendasi?keadaan=kerja')->assertOk()->assertDontSee('Perlu dikerjakan');
+        }
     }
 
     private function perluDikerjakan(string $email): int
     {
         $u = $this->akun($email);
-        $terlihat = \App\Support\Terlihat::untuk($u);
+        $terlihat = Terlihat::untuk($u);
 
-        return $terlihat->rekomendasi()->with(\App\Http\Controllers\RekomendasiController::MUAT_DAFTAR)->get()
+        return $terlihat->rekomendasi()->with(RekomendasiController::MUAT_DAFTAR)->get()
             ->map(fn ($r) => $terlihat->pangkasRekomendasi($r))
             ->filter(fn ($r) => $r->diMeja($u->peran, $u->satker_id))
             ->count();

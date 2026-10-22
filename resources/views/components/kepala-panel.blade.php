@@ -1,9 +1,7 @@
 @props(['no' => null, 'judul' => '', 'kosong' => '', 'ringkas' => '', 'ok' => false])
 
-{{-- Kepala panel yang sedang ditampilkan — padanan `KepalaPanel`: judul utuh,
-     ringkasan satu baris, keadaannya, dan tombol Hapus (slot `aksi`). Bukan
-     tombol: panelnya dipilih lewat tabnya. Judulnya ikut berubah selagi judul
-     temuan atau uraiannya diketik (skrip, `data-kep-judul`). --}}
+{{-- Kepala panel yang sedang tampil: judul, ringkasan, keadaan, dan tombol Hapus (slot `aksi`).
+     Judulnya ikut berubah selagi diketik. --}}
 <div class="fb-kep">
   <div class="fb-alih fb-diam">
     @if($no !== null)<span class="fb-no">{{ $no }}</span>@endif

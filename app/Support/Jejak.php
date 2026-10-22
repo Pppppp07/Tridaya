@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\PosisiBerkas;
+use App\Enums\StatusTindakLanjut;
 use App\Models\Rekomendasi;
 use App\Models\RiwayatBerkas;
 use App\Models\RiwayatStatus;
@@ -12,12 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
- * Penulis tunggal perubahan berkas — padanan `geserBerkas`, `jejakBaris`,
- * `ubahBarisSiptl`, dan `ubahRek` prototipe.
- *
- * Satu tempat, supaya tidak ada jalur mengubah posisi atau penilaian yang lolos
- * tanpa tercatat. Pengendali dan perintah terjadwal memanggil kelas ini, tidak
- * menulis kolomnya sendiri.
+ * Penulis tunggal perubahan berkas: tidak ada jalur mengubah posisi atau penilaian tanpa tercatat.
  */
 class Jejak
 {
@@ -34,11 +30,8 @@ class Jejak
     }
 
     /**
-     * Satu baris riwayat aktivitas rekomendasi — dan, sejak 27 Sep, satu baris
-     * log aktivitas dengan kalimat yang sama. Riwayat memakai tanggal
-     * peristiwanya (tanggal surat boleh mundur); log memakai waktu kejadian
-     * sebenarnya, beserta akun, alamat, dan perangkat yang menekan tombolnya.
-     * Keduanya di dalam transaksi pemanggilnya: gagal satu, batal semua.
+     * Satu baris riwayat rekomendasi sekaligus satu baris log aktivitas. Riwayat memakai tanggal
+     * peristiwa (boleh mundur); log memakai waktu sebenarnya. Keduanya di transaksi pemanggil.
      */
     public static function riwayat(Rekomendasi $r, string $oleh, string $teks, $tanggal = null): RiwayatBerkas
     {
@@ -58,9 +51,8 @@ class Jejak
     }
 
     /**
-     * Satu perubahan penilaian pada satu baris. Yang tidak berubah tidak
-     * dicatat — kecuali `paksa`: putusan selalu tercatat walau hasilnya sama,
-     * karena suratnya tetap terbit.
+     * Satu perubahan penilaian; yang tidak berubah tidak dicatat, kecuali `paksa` (suratnya tetap
+     * terbit).
      */
     public static function status(Sasaran $x, string $sumber, ?string $dari, ?string $ke, string $oleh,
         ?string $catatan, $tanggal = null, ?string $aksiId = null, ?string $jenisAksi = null, bool $paksa = false): void
@@ -75,6 +67,8 @@ class Jejak
             'dari'       => (string) $dari,
             'ke'         => (string) $ke,
             'oleh'       => $oleh,
+            /* Akun yang menekan tombol; kosong bila perintah terjadwal. */
+            'oleh_id'    => auth()->id(),
             'tanggal'    => self::tanggal($tanggal),
             'catatan'    => $catatan ?: null,
             'aksi_id'    => $aksiId,
@@ -83,11 +77,8 @@ class Jejak
     }
 
     /**
-     * Memindah baris yang sedang di meja `$dari` — hanya milik satuan kerja dan
-     * bentuk tindak lanjut yang disebut. Rekomendasi tidak berpindah ke mana
-     * pun; yang bergerak barisnya.
-     *
-     * @return Collection<int, Sasaran> baris yang dipindah
+     * Pindahkan baris yang sedang di meja `$dari`, hanya milik satuan kerja dan bentuk tindak
+     * lanjut yang disebut.
      */
     public static function geser(Rekomendasi $r, PosisiBerkas $dari, PosisiBerkas $ke,
         ?int $satkerId = null, ?int $tindakanId = null): Collection
@@ -107,14 +98,14 @@ class Jejak
     }
 
     /**
-     * Status BPK rekomendasi dirangkum ulang dari barisnya sesudah tiap
-     * penulisan SIPTL — `rekomendasis.status` tidak pernah diisi dari formulir.
+     * Status BPK rekomendasi dirangkum ulang dari barisnya; tidak pernah diisi dari formulir. Kolomnya
+     * tidak boleh kosong, jadi yang belum ada di SIPTL disimpan BT — tampilan membaca barisnya.
      */
     public static function rangkumStatus(Rekomendasi $r): void
     {
         $r->unsetRelation('sasaran');
         $r->barisSemua = null;
-        $r->update(['status' => $r->statusRek()]);
+        $r->update(['status' => $r->statusRek() ?? StatusTindakLanjut::BT]);
     }
 
     /** "Balai Wil. I Medan" — sebutan pelaku satuan kerja. */

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PeranPengguna;
+use App\Models\DrafLaporan;
 use App\Models\Rekomendasi;
 use App\Models\Satker;
 use App\Models\User;
@@ -15,13 +16,7 @@ use Illuminate\Support\Facades\Notification;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Data master unit kerja dan penanggung jawabnya (18 Sep).
- *
- * Kata Bang Kamal: "Master unit kerja nggak ada nih"; penanggung jawab "ketik
- * dari IRM akunnya … data sama emailnya otomatis … jangan tertukar
- * atributnya"; "Cukup satu orang aja yang nginput"; dan "Notif email lah!"
- */
+/** Data master unit kerja dan penanggung jawabnya (dari IRM). */
 class UnitKerjaTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -30,7 +25,7 @@ class UnitKerjaTest extends TestCase
     {
         parent::setUp();
         $this->siapkanDataContoh();
-        $this->masuk('setba@contoh.test');
+        $this->masuk('admin@contoh.test');
     }
 
     private function unit(string $kode): Satker
@@ -41,6 +36,8 @@ class UnitKerjaTest extends TestCase
     /** Formulir laporan baru di langkah temuan — tempat satuan kerja dipilih. */
     private function formTemuan(): string
     {
+        /* Referensi dikelola Admin DTI; laporan tetap dicatat Setba. */
+        $this->masuk('setba@contoh.test');
         /* Formulirnya satu halaman: pemilih satuan kerja terperiksa sudah
            tampil begitu suratnya terisi. */
         $this->post(route('laporan.baru.simpan'), [
@@ -66,11 +63,11 @@ class UnitKerjaTest extends TestCase
                 [$aktif->first()->name, $aktif->first()->email, $s->kode]);
         }
 
-        $isi = $this->get(route('master'))->assertOk()->getContent();
+        $isi = $this->get(route('master', ['tab' => 'unit']))->assertOk()->getContent();
         $bandung = $this->unit('BALAI-4-BANDUNG')->penanggungJawab;
         $this->assertStringContainsString($bandung->name, $isi);
         $this->assertStringContainsString('NIP '.DirektoriIrm::nipTampil($bandung->nip), $isi);
-        $this->assertStringContainsString('Semua unit aktif punya penanggung jawab', $isi);
+        $this->assertStringContainsString('Semua satuan kerja aktif punya penanggung jawab aktif', $isi);
     }
 
     public function test_unit_kerja_baru_mulai_tanpa_penanggung_jawab_dan_ditawarkan_di_formulir(): void
@@ -82,10 +79,11 @@ class UnitKerjaTest extends TestCase
 
         $kupang = Satker::where('nama_pendek', 'Balai Wil. X Kupang')->firstOrFail();
         $this->assertTrue($kupang->aktif);
-        $this->assertSame('balai', $kupang->jenis);
+        /* Jenis unit (balai, pusat, …) tidak disimpan lagi. */
+        $this->assertArrayNotHasKey('jenis', $kupang->getAttributes());
         $this->assertNull($kupang->penanggungJawab);
         $this->assertStringContainsString('1 belum punya penanggung jawab',
-            $this->get(route('master'))->getContent());
+            $this->get(route('master', ['tab' => 'unit']))->assertOk()->getContent());
 
         /* Nama kembar ditolak. */
         $this->post(route('master.unit.tambah'), ['nama' => 'Apa saja', 'pendek' => 'balai wil. iv bandung'])
@@ -111,17 +109,51 @@ class UnitKerjaTest extends TestCase
         $this->assertSame('Balai Wil. I Medan', $medan->fresh()->nama_pendek);
     }
 
+    public function test_kode_satker_resmi_bisa_dilengkapi_walau_nama_terkunci(): void
+    {
+        $medan = $this->unit('BALAI-1-MEDAN');
+        $bandung = $this->unit('BALAI-4-BANDUNG');
+
+        /* Jendela unit yang terkunci tetap terbuka: nama hanya dibaca, kode bisa diisi. */
+        $isi = $this->get(route('master', ['tab' => 'unit', 'jendela' => 'unit-'.$medan->id]))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/name="nama"[^>]*readonly/', $isi);
+        $this->assertStringContainsString('name="kode_satker"', $isi);
+
+        $this->post(route('master.unit.simpan', $medan), [
+            'nama' => $medan->nama, 'pendek' => $medan->nama_pendek, 'kode_satker' => '694101',
+        ])->assertSessionHasNoErrors()->assertSessionMissing('gagal');
+        $this->assertSame('694101', $medan->fresh()->kode_satker);
+        $this->assertSame('Balai Wil. I Medan', $medan->fresh()->nama_pendek);
+        $this->assertDatabaseHas('log_aktivitas', ['aksi' => 'master.unit.ubah', 'ringkasan' => 'Mengubah kode satker Balai Wil. I Medan']);
+
+        /* Bukan 6 angka atau sudah dipakai unit lain: ditolak. */
+        foreach (['69410', '69410A', '694101'] as $salah) {
+            $this->post(route('master.unit.simpan', $bandung), [
+                'nama' => $bandung->nama, 'pendek' => $bandung->nama_pendek, 'kode_satker' => $salah,
+            ])->assertSessionHasErrors('kode_satker');
+        }
+        $this->assertNull($bandung->fresh()->kode_satker);
+
+        /* Tampil di tabel, bisa dicari, dan ikut diekspor. */
+        $this->assertStringContainsString('694101', $this->get(route('master', ['tab' => 'unit', 'cari' => '694101']))->getContent());
+        $csv = $this->get(route('master.unit.unduh'))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Kode satker', $csv);
+        $this->assertStringContainsString('694101', $csv);
+    }
+
     public function test_unit_kerja_nonaktif_tidak_ditawarkan_tapi_pekerjaannya_tetap(): void
     {
         $medan = $this->unit('BALAI-1-MEDAN');
         $jalan = Rekomendasi::all()->filter(fn ($r) => $r->dituju($medan->id))->count();
         $keping = 'data-pendek="Balai Wil. I Medan"';
-        $this->assertSame(1, substr_count($this->formTemuan(), $keping));
+        /* Daftar aktif digunakan oleh pemilih temuan dan tindak lanjut;
+           yang diuji adalah ketersediaannya, bukan jumlah salinan markup. */
+        $this->assertStringContainsString($keping, $this->formTemuan());
 
-        $this->post(route('master.unit.saklar', $medan))->assertRedirect();
+        $this->masuk('admin@contoh.test')->post(route('master.unit.saklar', $medan))->assertRedirect();
         $this->assertFalse($medan->fresh()->aktif);
 
-        $this->assertSame(0, substr_count($this->get(route('laporan.baru'))->getContent(), $keping));
+        $this->assertSame(0, substr_count($this->masuk('setba@contoh.test')->get(route('laporan.baru'))->assertOk()->getContent(), $keping));
         $this->assertSame($jalan, Rekomendasi::all()->filter(fn ($r) => $r->dituju($medan->id))->count());
 
         /* Penanggung jawabnya tetap bisa masuk dan melihat pekerjaannya. */
@@ -202,8 +234,7 @@ class UnitKerjaTest extends TestCase
         [$satu, $dua] = $r->semuaBaris()->pluck('satker_id')->unique()->values()->all();
 
         $pemberitahuan = Pemberitahuan::tulis($r, 'Dikirim ulang untuk pemberkasan ulang', [PeranPengguna::SATKER], 'r-riwayat', [$satu]);
-        /* Email dikirim sesudah jawaban sampai ke browser (27 Sep) — di sini
-           akhir permintaannya ditiru. */
+        /* Email dikirim sesudah jawaban sampai ke browser — di sini akhir permintaannya ditiru. */
         Notification::assertNothingSent();
         $this->app->terminate();
 
@@ -219,9 +250,7 @@ class UnitKerjaTest extends TestCase
     }
 
     /**
-     * Pemilih satuan kerja tiap tindak lanjut menyebut siapa yang akan
-     * diberi tahu — dan unit kerja yang belum punya penanggung jawab disebut
-     * terang-terangan.
+     * Pemilih satuan kerja menyebut siapa yang diberi tahu; unit tanpa penanggung jawab disebut.
      */
     public function test_formulir_menyebut_siapa_yang_diberi_tahu(): void
     {
@@ -233,7 +262,7 @@ class UnitKerjaTest extends TestCase
         $medan = $this->unit('BALAI-1-MEDAN');
         $this->formTemuan();
 
-        $d = \App\Models\DrafLaporan::where('user_id', auth()->id())->firstOrFail()->isian;
+        $d = DrafLaporan::where('user_id', auth()->id())->firstOrFail()->isian;
         $t = $d['temuan'][0];
         $r = $t['rekom'][0];
         $this->post(route('laporan.baru.simpan'), ['aksi' => 'simpan', 'tem' => [$t['id'] => [
@@ -263,14 +292,19 @@ class UnitKerjaTest extends TestCase
             Terlihat::teksUntuk('Rekomendasi dikirim ke Balai Wil. X Kupang', $this->unit('BALAI-1-MEDAN')));
     }
 
-    public function test_hanya_setba_yang_mengatur_unit_kerja(): void
+    public function test_hanya_admin_dti_yang_mengatur_satuan_kerja_dan_penanggung_jawab(): void
     {
         $bandung = $this->unit('BALAI-4-BANDUNG');
-        $this->masuk('medan');
-        $this->post(route('master.unit.tambah'), ['nama' => 'Coba'])->assertForbidden();
-        $this->post(route('master.unit.saklar', $bandung))->assertForbidden();
-        $this->post(route('master.unit.pj', $bandung), ['nip' => '1'])->assertForbidden();
+        $pj = $bandung->penanggungJawab->id;
+        foreach (['setba@contoh.test', 'dti@contoh.test', 'medan'] as $akun) {
+            $this->masuk($akun);
+            $this->post(route('master.unit.tambah'), ['nama' => 'Coba'])->assertForbidden();
+            $this->post(route('master.unit.saklar', $bandung))->assertForbidden();
+            $this->post(route('master.unit.pj', $bandung), ['nip' => '1'])->assertForbidden();
+        }
         $this->assertTrue($bandung->fresh()->aktif);
+        $this->assertSame($pj, $bandung->fresh()->penanggungJawab->id);
+        $this->assertFalse(Satker::where('nama', 'Coba')->exists());
     }
 
     public function test_profil_satuan_kerja_menyebut_penanggung_jawabnya(): void

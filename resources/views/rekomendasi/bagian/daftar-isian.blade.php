@@ -1,9 +1,5 @@
-{{-- Daftar isian satu baris per butir — padanan DaftarIsian. Selalu ada
-     setidaknya satu baris; baris kosong diabaikan saat disimpan. Sejak 25 Sep
-     bentuknya sama dengan daftar dokumen di formulir Catat laporan baru: tombol
-     × di ujung barisnya, "Tambah dokumen" sebagai link di bawahnya. Nomor
-     pada nama isian dan tombol hapusnya ditulis ulang skrip tiap kali barisnya
-     bertambah atau berkurang (`pasangDaftarIsian`). --}}
+{{-- Daftar isian satu baris per butir; selalu ada setidaknya satu baris, baris kosong diabaikan
+     saat disimpan. --}}
 @php $sebut = $sebut ?? 'dokumen'; @endphp
 <div class="fb-dok" data-daftar-isian data-nama="{{ $nama }}" data-sebut="{{ $sebut }}">
   @foreach(array_values($nilai) as $i => $v)

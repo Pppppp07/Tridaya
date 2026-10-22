@@ -5,18 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Bentuk tindak lanjut yang dituntut sebuah rekomendasi.
- *
- * Satu rekomendasi bisa menuntut lebih dari satu bentuk — menyetor ke kas
- * negara dan sekaligus memperbaiki dokumen administrasinya — dan tiap bentuk
- * bisa dibebankan ke satuan kerja yang berbeda, dengan rencana aksi, catatan
- * Setba, dan daftar dokumennya sendiri.
+ * Bentuk tindak lanjut yang dituntut rekomendasi; tiap bentuk bisa dibebankan ke satuan kerja
+ * berbeda dengan rencana aksi dan dokumennya sendiri.
  */
 class Tindakan extends Model
 {
     protected $fillable = [
-        'rekomendasi_id', 'bentuk_id', 'urutan',
-        'tgl_renaksi', 'target_selesai', 'catatan', 'dokumen',
+        'rekomendasi_id', 'bentuk_id', 'bentuk_teks', 'keterangan_paket', 'urutan',
+        'tgl_renaksi', 'klasifikasi_renaksi', 'target_selesai', 'catatan', 'dokumen',
     ];
 
     protected $casts = [
@@ -29,19 +25,16 @@ class Tindakan extends Model
     public function bentuk()      { return $this->belongsTo(Referensi::class, 'bentuk_id'); }
     public function sasaran()     { return $this->hasMany(Sasaran::class)->orderBy('id'); }
 
-    /**
-     * Rencana aksi yang berlaku untuk bentuk tindak lanjut ini. Kosong berarti
-     * ikut tanggal rekomendasinya.
-     */
+    /** Rencana aksi bentuk ini; kosong = ikut tanggal rekomendasinya. */
     public function renaksi(): ?\Carbon\CarbonInterface
     {
         return $this->tgl_renaksi ?? $this->rekomendasi?->tenggat_jawab;
     }
 
-    /** Nama bentuknya, atau sebutan baku kalau belum diisi. */
+    /** Nama bentuknya; data historis di luar daftar memakai teks aslinya; sebutan baku bila kosong. */
     public function namaBentuk(): string
     {
-        return $this->bentuk?->nama ?? 'Tindak lanjut';
+        return $this->bentuk?->nama ?? ($this->bentuk_teks ?: 'Tindak lanjut');
     }
 
     public function totalNilai(): int

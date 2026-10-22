@@ -2,14 +2,12 @@
   use App\Support\Aktivitas;
   use App\Support\Tampil;
 
-  /* Tab Aktivitas saya — padanan `TabAktivitasAkun` prototipe: log aktivitas
-     milik akun ini saja, tanpa masuk dan keluar (tab Keamanan). */
+  /* Log aktivitas milik akun ini, tanpa masuk/keluar (itu di tab Keamanan). */
 @endphp
 <x-dm-kepala judul="Aktivitas akun" ket="Aktivitas Anda di aplikasi ini, terbaru di atas."
-  :info="['Catatannya sama dengan Log aktivitas milik DTI: tidak bisa diubah atau dihapus siapa pun.',
-    'Masuk dan keluar ada di tab Keamanan.']" />
-{{-- Satu formulir GET: mengganti pilihan langsung mengirimnya (skrip, sama
-     dengan Log aktivitas), tanpa skrip lewat tombol Terapkan. --}}
+  :info="['Catatan tindakan akun Anda di aplikasi, beserta waktu dan objek yang terkait.',
+    'Filter membatasi catatan yang ditampilkan. Riwayat login dan logout tersedia di tab Keamanan.']" />
+{{-- Formulir GET: pilihan langsung terkirim lewat skrip; tanpa skrip lewat tombol Terapkan. --}}
 <form method="get" action="{{ route('akun') }}" class="lg-filter" data-log-filter>
   <input type="hidden" name="tab" value="aktivitas">
   <label class="lg-pilih"><span>Waktu</span>

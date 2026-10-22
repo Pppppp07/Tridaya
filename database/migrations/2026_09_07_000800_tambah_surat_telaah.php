@@ -4,18 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Telaah punya hasil dan suratnya sendiri.
- *
- * Bentuk lamanya hanya menyimpan catatan. Padahal telaah UKI keluar sebagai
- * LHV bernomor, dan kesimpulannya — memadai atau belum — adalah yang mengisi
- * `sasarans.hasil`. Tanpa kolom `hasil`, kesimpulan itu hanya hidup di dalam
- * kalimat catatan dan tidak bisa dihitung, disaring, atau dijumlahkan.
- *
- * Gantungannya juga pindah ke sasaran: yang ditelaah adalah berkas satu satuan
- * kerja. Kata Mbak Puspi di rapat 26 Agustus, "yang akan divalidasi oleh UKI
- * adalah tempatnya Medan" — bukan rekomendasinya seutuhnya.
- */
+/** Telaah punya hasil dan suratnya sendiri. */
 return new class extends Migration
 {
     public function up(): void

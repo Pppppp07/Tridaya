@@ -2,24 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PeranPengguna;
 use App\Models\Notifikasi;
+use App\Models\Rekomendasi;
+use App\Models\Satker;
 use App\Support\Pemberitahuan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Pemberitahuan: siapa menerima apa, dan kapan sebuah pemberitahuan baru, belum
- * dibaca, atau sudah dibaca.
- *
- * Dirombak 26 Sep (Hizkia: "logika kondisi Notifikasi saat di klik atau belum
- * dilihat … yang sudah dilihat, riwayat notifikasi"). Membuka pemberitahuan kini
- * MENANDAINYA dibaca — dulu hanya "Tandai semua terbaca", supaya pemberitahuan yang
- * dibuka sekilas tidak hilang. Sekarang pemberitahuan yang dibaca tidak hilang (tab
- * "Semua"), dan bisa ditandai belum dibaca lagi dari barisnya. Angka lonceng
- * menghitung pemberitahuan BARU: belum dibaca dan belum pernah tampil di daftarnya.
- */
+/** Pemberitahuan: siapa menerima apa, dan kapan baru, belum dibaca, atau sudah dibaca. */
 class PemberitahuanTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -75,10 +68,7 @@ class PemberitahuanTest extends TestCase
     }
 
     /**
-     * Bagian rincian tertutup sejak awal (17 Sep), jadi pemberitahuan tentang SATU
-     * satuan kerja ikut membawa satuan kerjanya — halamannya membuka tiket dan
-     * baris itu lalu menyorotnya. Pemberitahuan SIPTL dulu punya kartunya sendiri;
-     * sekarang diantar ke tabel tindak lanjut.
+     * Pemberitahuan tentang satu satuan kerja membawa satuan kerjanya (membuka tiket dan barisnya).
      */
     public function test_pemberitahuan_satu_satuan_kerja_membawa_satuan_kerjanya(): void
     {
@@ -86,6 +76,7 @@ class PemberitahuanTest extends TestCase
             ->first(fn ($k) => $k->satker()->count() === 1);
         $this->assertNotNull($pemberitahuan, 'data contoh harus punya pemberitahuan SIPTL untuk satu satuan kerja');
         $pimpinan = $this->akun('pimpinan@contoh.test');
+        $pimpinan->forceFill(['pimpinan_satker_ids' => [$pemberitahuan->satker()->first()->id]])->save();
 
         $tujuan = $this->actingAs($pimpinan)->get(route('pemberitahuan.buka', $pemberitahuan))
             ->assertRedirect()->headers->get('Location');
@@ -98,11 +89,10 @@ class PemberitahuanTest extends TestCase
     /** Satuan kerja dituju barisnya sendiri, walau pemberitahuannya untuk beberapa satuan kerja. */
     public function test_satuan_kerja_diantar_ke_barisnya_sendiri(): void
     {
-        $pemberitahuan = Notifikasi::all()->first(fn ($k) => in_array('satker', $k->untuk_peran, true)
-            && $k->blok === 'r-tindaklanjut');
-        $this->assertNotNull($pemberitahuan, 'data contoh harus punya pemberitahuan tindak lanjut untuk satuan kerja');
-        $satker = \App\Models\User::where('peran', 'satker')->where('aktif', true)
-            ->whereIn('satker_id', $pemberitahuan->satker()->pluck('satkers.id'))->firstOrFail();
+        $satker = \App\Models\User::where('peran', 'satker')->where('aktif', true)->whereNotNull('satker_id')->firstOrFail();
+        $lain = Satker::whereKeyNot($satker->satker_id)->firstOrFail();
+        $pemberitahuan = Pemberitahuan::tulis(Rekomendasi::firstOrFail(), 'Dikirim ulang untuk pemberkasan ulang',
+            [PeranPengguna::SATKER], 'r-riwayat', [$satker->satker_id, $lain->id]);
 
         $tujuan = $this->actingAs($satker)->get(route('pemberitahuan.buka', $pemberitahuan))
             ->assertRedirect()->headers->get('Location');
@@ -111,12 +101,7 @@ class PemberitahuanTest extends TestCase
         $this->assertSame((string) $satker->satker_id, $kueri['satker'] ?? null);
     }
 
-    /**
-     * Kata Hizkia (18 Sep): lonceng di sebelah profil "tugasnya sama", jadi
-     * butir Pemberitahuan di menu samping dibuang. Sejak 26 Sep lonceng
-     * membuka panel (tanpa skrip tetap link ke layarnya); angkanya
-     * menghitung pemberitahuan BARU, dan menyala saat layarnya dibuka.
-     */
+    /** Tidak ada butir Pemberitahuan di menu samping; lonceng membuka panel. */
     public function test_pemberitahuan_dibuka_lewat_lonceng_bukan_menu_samping(): void
     {
         $setba = $this->akun('setba@contoh.test');
@@ -126,8 +111,7 @@ class PemberitahuanTest extends TestCase
         foreach (['pemberitahuan' => true, 'rekomendasi.index' => false] as $rute => $menyala) {
             $isi = $this->actingAs($setba)->get(route($rute))->assertOk()->getContent();
 
-            /* Sampai </nav> PERTAMA — menu akun di batang atas (28 Sep) juga
-               punya <nav>, dan lonceng terletak sebelum menu itu. */
+            /* Sampai </nav> PERTAMA — menu akun juga punya <nav>. */
             $nav = Str::betweenFirst($isi, '<nav class="nav"', '</nav>');
             $this->assertStringNotContainsString('href="'.route('pemberitahuan').'"', $nav);
 
@@ -139,14 +123,12 @@ class PemberitahuanTest extends TestCase
         }
     }
 
-    /**
-     * Angka lonceng = pemberitahuan BARU. Panel yang dibuka memberi lencana "Baru" pada
-     * yang baru, lalu mencatat semuanya sudah dilihat: angkanya hilang, titik
-     * belum dibacanya tetap.
-     */
+    /** Angka lonceng = pemberitahuan BARU; panel yang dibuka mencatat semuanya sudah dilihat. */
     public function test_panel_menandai_dilihat_dan_angka_lonceng_hilang(): void
     {
         $setba = $this->akun('setba@contoh.test');
+        /* Data contoh tanpa pemberitahuan hari ini; satu datang sekarang. */
+        Pemberitahuan::tulis(Rekomendasi::firstOrFail(), 'Berkas dikirim ke Setba', [PeranPengguna::SETBA]);
         $baru = Pemberitahuan::jumlahBaru($setba);
         $belum = Pemberitahuan::belumDibaca($setba);
         $this->assertGreaterThan(0, $baru);
@@ -202,15 +184,6 @@ class PemberitahuanTest extends TestCase
         $this->actingAs($medan)->post(route('pemberitahuan.tandai', $bukan), ['baca' => 1])->assertForbidden();
     }
 
-    public function test_pemberitahuan_kiriman_sistem_belum_terbaca_siapa_pun(): void
-    {
-        /* Penyapu draf berjalan sesudah penyemaian: pemberitahuannya tidak punya
-           pelaku, jadi Setba pun harus membacanya. */
-        $sapuan = Notifikasi::where('aksi', 'like', 'Terkirim otomatis%')->first();
-        $this->assertNotNull($sapuan, 'Data contoh perlu memuat kiriman otomatis.');
-        $this->assertSame(0, $sapuan->dibaca()->count());
-    }
-
     /** Kotak popup hanya untuk pemberitahuan baru, sekali per sesi. */
     public function test_popup_hanya_untuk_pemberitahuan_baru_sekali(): void
     {
@@ -227,7 +200,7 @@ class PemberitahuanTest extends TestCase
         $this->assertNull($ringkas['popup']);
     }
 
-    /** Lambang dan warna dari kalimatnya — sama dengan RUPA_PEMBERITAHUAN prototipe. */
+    /** Lambang dan warna dari kalimatnya. */
     public function test_rupa_pemberitahuan_dibaca_dari_kalimatnya(): void
     {
         $rupa = fn (string $aksi) => Pemberitahuan::rupa(new Notifikasi(['aksi' => $aksi]));
@@ -236,20 +209,22 @@ class PemberitahuanTest extends TestCase
         $this->assertSame(['nada' => 'hijau', 'ikon' => 'CheckCircle2'], $rupa('Hasil verifikasi Inspektorat dicatat — memadai'));
         $this->assertSame(['nada' => 'hijau', 'ikon' => 'Landmark'], $rupa('Status SIPTL dicatat — Sudah sesuai'));
         $this->assertSame(['nada' => 'merah', 'ikon' => 'Landmark'], $rupa('Status SIPTL dicatat — Belum sesuai'));
-        $this->assertSame(['nada' => 'kuning', 'ikon' => 'Clock'], $rupa('Terkirim otomatis ke Setba — draf belum dikirim lebih dari 7 hari'));
         $this->assertSame(['nada' => 'kuning', 'ikon' => 'RotateCcw'], $rupa('Dikirim ulang ke Balai Wil. II Palembang untuk pemberkasan ulang'));
         $this->assertSame(['nada' => 'biru', 'ikon' => 'FileText'], $rupa('Rekomendasi baru untuk Anda — Penyetoran'));
-        $this->assertSame(['nada' => 'biru', 'ikon' => 'TrendingUp'], $rupa('Kemajuan tindak lanjut — 1 dari 2 dokumen'));
         /* Kata di dalam catatan yang dikutip tidak ikut menentukan. */
         $this->assertSame(['nada' => 'biru', 'ikon' => 'Send'],
             $rupa('Berkas dikirim ke Setba — 3 dari 3 dokumen terpenuhi. Catatan: “Sudah memadai.”'));
+        /* Catatan pemeriksa yang menyebut SIPTL tidak membuatnya urusan SIPTL. */
+        $this->assertSame(['nada' => 'hijau', 'ikon' => 'CheckCircle2'],
+            $rupa('Verifikasi selesai — memadai, surat 1/2026 — Oke sudah sesuai update di SIPTL'));
     }
 
     /** Halaman Pemberitahuan: satu daftar per hari, yang terbaru di atas. */
     public function test_halaman_dikelompokkan_per_hari(): void
     {
         $setba = $this->akun('setba@contoh.test');
-        $isi = $this->actingAs($setba)->get(route('pemberitahuan', ['tab' => 'semua']))->assertOk()->getContent();
+        Pemberitahuan::tulis(Rekomendasi::firstOrFail(), 'Berkas dikirim ke Setba', [PeranPengguna::SETBA]);
+        $isi =$this->actingAs($setba)->get(route('pemberitahuan', ['tab' => 'semua']))->assertOk()->getContent();
 
         $this->assertStringContainsString('<h4 class="kb-hari-kep">Hari ini</h4>', $isi);
         $this->assertStringContainsString('<h4 class="kb-hari-kep">15 Agu 2026</h4>', $isi);

@@ -10,14 +10,7 @@ use Illuminate\Support\Str;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Riwayat status tindak lanjut sebagai tab di baris tabel, sejak 21 Sep.
- *
- * Kata Hizkia: "tampilan ini ditampilkan kedalam table tindak lanjut satuan
- * kerja sesuai dengan satuan kerjanya … jadi tombol lihat riwayat dipindahkan
- * ke samping tombol bukti, kerjakan". Dulu kartu tersendiri di bawah tabel,
- * dengan tombol pemilih pasangan dan skrip penukar.
- */
+/** Progres sebagai tab di baris tabel tindak lanjut. */
 class RiwayatDalamBarisTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -70,6 +63,8 @@ class RiwayatDalamBarisTest extends TestCase
         $this->assertStringNotContainsString('data-pilih-riwayat', $isi);
         $this->assertStringNotContainsString('data-lihat-riwayat', $isi);
         $this->assertStringNotContainsString('Lihat riwayat', $isi);
+        $this->assertStringNotContainsString('class="tl-alur', $isi);
+        $this->assertStringNotContainsString('aria-label="Alur verifikasi tindak lanjut"', $isi);
     }
 
     public function test_tab_riwayat_hanya_berisi_baris_itu(): void
@@ -117,9 +112,8 @@ class RiwayatDalamBarisTest extends TestCase
 
     public function test_pemberitahuan_penerusan_berkas_menuju_riwayat(): void
     {
-        /* Pemberitahuan "diteruskan ke UKI/Inspektorat" dulu menunjuk kartu riwayat
-           lewat r-perkembangan; kini tab Riwayat di baris satuan kerjanya. */
-        $this->assertSame('Riwayat status tindak lanjut', Pemberitahuan::BAGIAN['r-perkembangan']);
-        $this->assertSame('Riwayat status tindak lanjut', Pemberitahuan::BAGIAN['r-riwayat']);
+        /* Pemberitahuan "diteruskan" menunjuk tab Progres di baris satuan kerjanya. */
+        $this->assertSame('Progres tindak lanjut', Pemberitahuan::BAGIAN['r-perkembangan']);
+        $this->assertSame('Progres tindak lanjut', Pemberitahuan::BAGIAN['r-riwayat']);
     }
 }

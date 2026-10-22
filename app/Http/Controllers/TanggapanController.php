@@ -7,44 +7,46 @@ use App\Aksi\SimpanTanggapan;
 use App\Enums\PeranPengguna;
 use App\Enums\PosisiBerkas;
 use App\Models\Sasaran;
-use App\Rules\LinkAman;
+use App\Rules\LinkBukti;
+use App\Support\Aktivitas;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Satuan kerja mengisi tindak lanjut satu baris: simpan draf, atau kirim ke
- * Setba. Syaratnya sama persis dengan tombol di PanelBalai prototipe —
- * diperiksa ulang di sini, karena tombol yang mati di browser bukan penjaga.
+ * Satuan kerja mengisi tindak lanjut satu baris: simpan draf atau kirim ke Setba. Syaratnya
+ * diperiksa ulang di sini — tombol mati di browser bukan penjaga.
  */
 class TanggapanController extends Controller
 {
     public function simpan(Request $req, Sasaran $sasaran)
     {
         $u = auth()->user();
-        abort_unless($u->peran === PeranPengguna::SATKER && $sasaran->satker_id === $u->satker_id, 403,
+        abort_unless($u->peranAktif() === PeranPengguna::SATKER && $sasaran->satker_id === $u->satker_id, 403,
             'Baris ini bukan milik satuan kerja Anda.');
         abort_unless($sasaran->pos() === PosisiBerkas::SATKER, 422,
             'Berkas ini sudah tidak di meja satuan kerja.');
 
         $data = $req->validate([
-            'aksi'              => ['required', 'in:draf,kirim'],
-            'uraian'            => ['required', 'string', 'max:5000'],
-            'tanggal'           => ['nullable', 'date', 'before_or_equal:today'],
-            'bukti'             => ['array'],
-            'bukti.*.nama'      => ['nullable', 'string', 'max:255'],
-            'bukti.*.link'    => ['nullable', 'string', 'max:500', new LinkAman],
-            'bukti.*.jenis'     => ['nullable', 'string', 'max:255'],
-            'bukti.*.untuk'     => ['nullable', 'integer'],
-            'setoran'           => ['array'],
-            'setoran.*.jenis'   => ['nullable', 'in:setor,perbaikan'],
-            'setoran.*.nilai'   => ['nullable', 'string', 'max:30'],
+            'aksi' => ['required', 'in:draf,kirim'],
+            'uraian' => ['required', 'string', 'max:5000'],
+            'tanggal' => ['nullable', 'date', 'before_or_equal:today'],
+            'bukti' => ['array', 'max:100'],
+            'bukti.*' => ['array'],
+            'bukti.*.nama' => ['nullable', 'string', 'max:255'],
+            'bukti.*.link' => ['nullable', 'string', 'max:500', new LinkBukti],
+            'bukti.*.jenis' => ['nullable', 'string', 'max:255'],
+            'bukti.*.untuk' => ['nullable', 'integer'],
+            'setoran' => ['array', 'max:100'],
+            'setoran.*' => ['array'],
+            'setoran.*.jenis' => ['nullable', 'in:setor,perbaikan'],
+            'setoran.*.nilai' => ['nullable', 'string', 'max:30'],
             'setoran.*.tanggal' => ['nullable', 'date'],
-            'setoran.*.ssbp'    => ['nullable', 'string', 'max:100'],
-            'setoran.*.ntpn'    => ['nullable', 'string', 'max:32'],
-            'setoran.*.notaKppn'=> ['nullable', 'string', 'max:100'],
-            'setoran.*.noBa'    => ['nullable', 'string', 'max:100'],
-            'setoran.*.berkas'  => ['nullable', 'string', 'max:255'],
-            'setoran.*.link'  => ['nullable', 'string', 'max:500', new LinkAman],
+            'setoran.*.ssbp' => ['nullable', 'string', 'max:100'],
+            'setoran.*.ntpn' => ['nullable', 'string', 'max:32'],
+            'setoran.*.notaKppn' => ['nullable', 'string', 'max:100'],
+            'setoran.*.noBa' => ['nullable', 'string', 'max:100'],
+            'setoran.*.berkas' => ['nullable', 'string', 'max:255'],
+            'setoran.*.link' => ['nullable', 'string', 'max:500', new LinkBukti],
         ], [
             'uraian.required' => 'Uraian tindak lanjut harus terisi.',
         ]);
@@ -61,9 +63,8 @@ class TanggapanController extends Controller
             'jenis' => 'setor', 'nilai' => '', 'tanggal' => '', 'ssbp' => '', 'ntpn' => '', 'notaKppn' => '', 'noBa' => '', 'berkas' => '', 'link' => '',
         ]))->values()->all();
 
-        /* Butir dianggap terpenuhi begitu link-nya lengkap — tidak ada centang
-           terpisah yang bisa berbeda dari kenyataan berkasnya. Dihitung di
-           sini, bukan dipercaya dari browser. */
+        /* Butir terpenuhi begitu link-nya lengkap; dihitung di sini, bukan dipercaya dari
+           browser. */
         $belum = $rek->permintaanUntuk($sasaran->satker_id, $sasaran->tindakan_id)->flatMap->item->where('terpenuhi', false);
         $sah = fn ($b) => $b['nama'] !== '' && $b['link'] !== '';
         $penuhi = $belum->filter(fn ($i) => collect($bukti)->contains(fn ($b) => (int) $b['untuk'] === $i->id && $sah($b)))
@@ -80,18 +81,20 @@ class TanggapanController extends Controller
 
         if ($data['aksi'] === 'draf') {
             SimpanTanggapan::draf($rek, $sasaran, $isi);
+            /* Draf tidak muncul di Progres; Setba membacanya di rincian baris dan lonceng. */
+            Aktivitas::catat('tanggapan.draf', 'Menyimpan draf tindak lanjut', ['subjek' => $rek]);
 
             return back();
         }
 
-        $sisaDok = $belum->count() - count($penuhi);
+        /* Dokumen yang diminta boleh dikirim bertahap (cicil); sisanya tetap terbuka untuk kiriman
+           berikutnya. Yang menahan hanya isian yang sudah dimulai tapi belum lengkap. */
         $buktiKurang = collect($bukti)->reject($sah)->count();
         $setorKurang = collect($setoran)->reject(fn ($x) => Kemajuan::setorSah($x))->count();
         $kurang = match (true) {
-            $sisaDok > 0     => "{$sisaDok} dokumen masih kurang, berkas belum bisa dikirim.",
             $buktiKurang > 0 => "{$buktiKurang} link belum lengkap, berkas belum bisa dikirim.",
             $setorKurang > 0 => "{$setorKurang} baris pemulihan belum lengkap — lengkapi atau hapus dulu.",
-            default          => null,
+            default => null,
         };
         if ($kurang) {
             throw ValidationException::withMessages(['kirim' => $kurang]);

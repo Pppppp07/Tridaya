@@ -3,11 +3,8 @@
 namespace App\Support\Sso;
 
 /**
- * Siapa orangnya menurut SSO — satu paket atribut dari eHRM (27 Sep).
- *
- * Bang Kamal: "kalau ngambil atribut ya nama, NIP, gitu kan. Ini jangan
- * tertukar atributnya." Karena itu atributnya selalu dibaca bersama dari satu
- * jawaban penyedia SSO, tidak pernah dirakit dari dua sumber.
+ * Identitas menurut SSO — atributnya selalu dibaca bersama dari satu jawaban penyedia, tidak
+ * dirakit dari dua sumber.
  */
 final class Identitas
 {
@@ -22,8 +19,8 @@ final class Identitas
     ) {}
 
     /**
-     * Dari klaim penyedia SSO menurut peta nama klaim (config
-     * simtlhp.sso.oidc.klaim). Nama klaim boleh bertitik untuk yang bersarang.
+     * Dari klaim penyedia menurut peta klaim (config simtlhp.sso.oidc.klaim); nama klaim boleh
+     * bertitik.
      */
     public static function dariKlaim(array $klaim, array $peta): self
     {

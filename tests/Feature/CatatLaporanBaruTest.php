@@ -17,12 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\PakaiDataContoh;
 use Tests\TestCase;
 
-/**
- * Mencatat laporan baru: dua langkah — isi laporan di satu halaman dengan
- * temuan, rekomendasi, dan tindak lanjut sebagai tab, lalu tinjau dan kirim —
- * draf yang tidak hilang, dan satu laporan yang pecah jadi penugasan terpisah
- * untuk tiap satuan kerja.
- */
+/** Catat laporan baru: isi dan tinjau, draf yang tidak hilang, dan pengajuan. */
 class CatatLaporanBaruTest extends TestCase
 {
     use PakaiDataContoh, RefreshDatabase;
@@ -51,9 +46,8 @@ class CatatLaporanBaruTest extends TestCase
     }
 
     /**
-     * Isian temuan pertama, seperti yang terkirim dari halaman isian: seluruh
-     * panel ikut, bernama tem[id temuan][…]. `$ubah` menimpa sebagian isian
-     * tindak lanjut pertamanya.
+     * Isian temuan pertama seperti terkirim dari halaman isian (tem[id][…]); `$ubah` menimpa
+     * sebagian isian tindak lanjut pertamanya.
      */
     private function isianTemuan(array $ubah = []): array
     {
@@ -161,16 +155,14 @@ class CatatLaporanBaruTest extends TestCase
         $html = $this->get(route('laporan.baru'))->assertOk()
             /* Dua langkah, bukan tiga. */
             ->assertSee('Isi laporan')->assertSee('Tinjau &amp; kirim', false)
-            /* Isian wajib bertanda bintang, dijelaskan sekali di atas — tanpa
-               tulisan "tidak wajib". */
+            /* Isian wajib berbintang, dijelaskan sekali — tanpa tulisan "tidak wajib". */
             ->assertSee('wajib diisi')->assertDontSee('tidak wajib')
             /* Tombol Tambah di ujung tiap deret tab. */
             ->assertSee('Tambah temuan')->assertSee('Tambah rekomendasi')->assertSee('Tambah tindak lanjut')
             ->assertSee('role="tablist"', false)
             ->getContent();
 
-        /* Enter di isian satu baris memakai tombol kirim pertama: yang itu
-           cuma menyimpan, bukan "Kembali ke beranda". */
+        /* Enter di isian satu baris hanya menyimpan, bukan "Kembali ke beranda". */
         $this->assertLessThan(strpos($html, 'value="tinggalkan"'), strpos($html, 'value="simpan"'));
     }
 
@@ -234,8 +226,8 @@ class CatatLaporanBaruTest extends TestCase
             ->assertSee('Temuan 1 belum lengkap: satuan kerja di rekomendasi a')
             ->assertSee('Tunjukkan');
 
-        /* "Tunjukkan" membuka temuan, rekomendasi, dan tab tindak lanjutnya,
-           lalu alamatnya menunjuk panel itu dan kursornya ditaruh di sana. */
+        /* "Tunjukkan" membuka bagian yang kurang, alamatnya menunjuk panel itu, kursor ditaruh
+           di sana. */
         $this->post(route('laporan.baru.simpan'), ['aksi' => 'tunjukkan'])
             ->assertRedirect(route('laporan.baru').'#fb-tl-'.$r.'-0')
             ->assertSessionHas('fokus', true);
@@ -280,8 +272,7 @@ class CatatLaporanBaruTest extends TestCase
         $this->get(route('laporan.baru'))->assertOk()
             ->assertSee('Melanjutkan draf yang disimpan');
 
-        /* Isiannya utuh. Draf yang dilanjutkan dibuka di halaman isian, dengan
-           bagian surat mengikuti kelengkapannya — seperti di prototipe. */
+        /* Draf dilanjutkan di halaman isian dengan isian utuh. */
         $d = $this->draf();
         $this->assertSame('77/LHP/XVIII/09/2026', $d['surat']['nomor']);
         $this->assertSame('Honorarium Narasumber Dibayarkan Melebihi Standar Biaya', $d['temuan'][0]['judul']);
@@ -323,12 +314,7 @@ class CatatLaporanBaruTest extends TestCase
             ->assertSee('Menarik kelebihan pembayaran dan menyetorkannya ke kas negara.');
     }
 
-    /**
-     * Formulir kosong bukan draf (28 Sep, laporan Hizkia): "Kembali ke beranda"
-     * dari formulir kosong dulu menyimpan draf kosong — tombol batang atas jadi
-     * "Lanjutkan draf laporan" dan formulirnya menyebut "Melanjutkan draf",
-     * tanpa isi dan tanpa tombol Kosongkan.
-     */
+    /** Formulir kosong bukan draf. */
     public function test_formulir_kosong_yang_ditinggalkan_bukan_draf(): void
     {
         /* Langkah di tengah formulir kosong menyimpan keadaan kerjanya, tapi itu
@@ -343,8 +329,7 @@ class CatatLaporanBaruTest extends TestCase
         $this->assertSame(0, DrafLaporan::count());
         $this->assertFalse(LogAktivitas::where('aksi', 'laporan.draf')->exists());
 
-        /* Sisa draf kosong dari sebelum perbaikan tidak dianggap draf, dan
-           dibuang begitu formulirnya dibuka. */
+        /* Sisa draf kosong lama dibuang saat formulir dibuka. */
         DrafLaporan::create(['user_id' => auth()->id(), 'isian' => ['ditinggal' => true, 'disimpan' => '2026-08-17', 'versi' => 2]]);
         Rangka::lupakan();
         $this->get(route('rekomendasi.index'))->assertOk()
@@ -399,9 +384,7 @@ class CatatLaporanBaruTest extends TestCase
             ->assertForbidden();
     }
 
-    /* ================================================================
-       KIRIMAN DARI SKRIP (29 Sep): ditukar di tempat, tanpa memuat ulang
-       ================================================================ */
+    /* ---- Kiriman dari skrip: ditukar di tempat ---- */
 
     /** Tanda yang dikirim simtlhp.js (kirimLatar) bersama tiap kirimannya. */
     private const SKRIP = ['X-Requested-With' => 'XMLHttpRequest'];
@@ -445,11 +428,7 @@ class CatatLaporanBaruTest extends TestCase
         $this->assertSame(0, DrafLaporan::count());
     }
 
-    /**
-     * Formulir yang baru dibuka, belum ada draf: isian temuan pada kiriman
-     * pertama tidak terbuang lagi. Dulu pengenal temuannya acak di tiap
-     * permintaan, jadi satuan kerja yang pertama dicentang hilang lagi.
-     */
+    /** Formulir baru tanpa draf: isian temuan pada kiriman pertama tidak terbuang. */
     public function test_isian_temuan_pada_kiriman_pertama_tidak_terbuang(): void
     {
         $this->get(route('laporan.baru'))->assertOk()->assertSee('name="tem[t0][satker][]"', false);
@@ -473,5 +452,114 @@ class CatatLaporanBaruTest extends TestCase
 
         Rangka::lupakan();
         $this->get(route('rekomendasi.index'))->assertOk()->assertSee('data-popup', false);
+    }
+
+    /** Bentuk dipilih dari Data Master; yang diketik bebas tidak lagi menambah daftarnya. */
+    public function test_bentuk_tindak_lanjut_dipilih_dari_data_master(): void
+    {
+        $bentuk = fn (string $nama) => Referensi::where('jenis', 'bentuk_tl')->where('nama', $nama)->firstOrFail();
+        $bentuk('Sosialisasi')->update(['aktif' => false]);
+        $teguran = $bentuk('Surat teguran');
+        $teguran->update(['dokumen' => ['Surat teguran bernomor', 'Bukti penyampaian']]);
+
+        $this->isiSurat();
+        $isi = $this->get(route('laporan.baru'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('<datalist id="bentuk-tl"', $isi);
+        $this->assertMatchesRegularExpression('/<select[^>]*name="tem\[[^\]]+\]\[rekom\]\[[^\]]+\]\[tindakan\]\[[^\]]+\]\[bentuk\]"/', $isi);
+        $this->assertStringContainsString('>Surat teguran</option>', $isi);
+        $this->assertStringNotContainsString('>Sosialisasi</option>', $isi);
+
+        /* Tindak lanjut baru: bentuk aktif pertama beserta dokumen usulannya dari Data Master. */
+        $d = $this->draf();
+        $tk = $d['temuan'][0]['rekom'][0]['tindakan'][0];
+        $this->assertSame((string) $teguran->id, $tk['bentuk']);
+        $this->assertSame(['Surat teguran bernomor', 'Bukti penyampaian'], $tk['dokumen']);
+
+        /* Ganti bentuk: dokumen usulan yang belum disunting ikut berganti. */
+        $setor = $bentuk('Bukti setor ke kas negara');
+        $kirimTl = fn (array $tl) => $this->post(route('laporan.baru.simpan'), ['aksi' => 'simpan', 'tem' => [$d['temuan'][0]['id'] => [
+            'rekom' => [$d['temuan'][0]['rekom'][0]['id'] => ['tindakan' => [$tk['id'] => $tl]]]]]]);
+        $kirimTl(['bentuk' => (string) $setor->id, 'dokumen' => $tk['dokumen']]);
+        $tk2 = $this->draf()['temuan'][0]['rekom'][0]['tindakan'][0];
+        $this->assertSame((string) $setor->id, $tk2['bentuk']);
+        $this->assertSame($setor->dokumen, $tk2['dokumen']);
+
+        /* Ketikan bebas tidak dikenal: bentuknya kosong dan Data Master tidak bertambah. */
+        $jumlah = Referensi::count();
+        $kirimTl(['bentuk' => 'Bentuk karangan sendiri', 'dokumen' => $tk2['dokumen']]);
+        $this->assertSame('', $this->draf()['temuan'][0]['rekom'][0]['tindakan'][0]['bentuk']);
+        $this->assertSame($jumlah, Referensi::count());
+    }
+
+    /** Ref LHP terisi dari Nomor di surat temuannya, sampai disunting atau dikosongkan. */
+    public function test_ref_lhp_terisi_dari_nomor_temuan_sampai_disunting(): void
+    {
+        $this->isiSurat();
+        $d = $this->draf();
+        $tid = $d['temuan'][0]['id'];
+        $kirim = fn (array $tem) => $this->post(route('laporan.baru.simpan'), ['aksi' => 'simpan', 'tem' => [$tid => $tem]]);
+        $ref = fn () => array_column($this->draf()['temuan'][0]['rekom'], 'ref_lhp');
+
+        $kirim(['nomor' => '2.3', 'rekom' => [$d['temuan'][0]['rekom'][0]['id'] => ['ref_lhp' => '']]]);
+        $this->assertSame(['2.3.a'], $ref());
+
+        /* Rekomendasi berikutnya mendapat huruf berikutnya. */
+        $this->post(route('laporan.baru.simpan'), ['aksi' => 'tambah-rek:'.$tid]);
+        $this->assertSame(['2.3.a', '2.3.b'], $ref());
+
+        /* Nomor berubah: yang otomatis ikut, yang disunting tetap. */
+        [$r1, $r2] = array_column($this->draf()['temuan'][0]['rekom'], 'id');
+        $kirim(['nomor' => '2.4', 'rekom' => [$r1 => ['ref_lhp' => '2.3.a'], $r2 => ['ref_lhp' => 'II.4.4.f']]]);
+        $this->assertSame(['2.4.a', 'II.4.4.f'], $ref());
+
+        /* Dikosongkan juga dihormati: tidak diisi lagi. */
+        $kirim(['nomor' => '2.5', 'rekom' => [$r1 => ['ref_lhp' => ''], $r2 => ['ref_lhp' => 'II.4.4.f']]]);
+        $this->assertSame(['', 'II.4.4.f'], $ref());
+        $this->assertStringNotContainsString('data-ref-otomatis="1"', $this->get(route('laporan.baru'))->getContent());
+    }
+
+    /** Isian yang dikosongkan tersimpan kosong; isian yang tidak dikirim tetap. */
+    public function test_isian_yang_dikosongkan_tersimpan_kosong(): void
+    {
+        $this->isiSurat();
+        $this->isiTemuan('simpan');
+        $d = $this->draf();
+        $t = $d['temuan'][0];
+        $r = $t['rekom'][0];
+        $tk = $r['tindakan'][0];
+        $medan = Satker::where('nama_pendek', 'Balai Wil. I Medan')->firstOrFail();
+        $poli = Satker::where('nama_pendek', 'Politeknik PU')->firstOrFail();
+
+        $this->post(route('laporan.baru.simpan'), [
+            'aksi' => 'simpan',
+            'surat' => ['nomor' => ''],
+            'tem' => [$t['id'] => [
+                'judul' => '', 'sebab' => '', 'satker' => $t['satker'],
+                'rekom' => [$r['id'] => [
+                    'uraian' => '',
+                    'tindakan' => [$tk['id'] => [
+                        'catatan' => '', 'target' => '', 'satker' => array_column($tk['satker'], 'satker'),
+                        'nilai' => [$medan->id => ''],
+                    ]],
+                ]],
+            ]],
+        ])->assertRedirect(route('laporan.baru'));
+
+        $d = $this->draf();
+        $t2 = $d['temuan'][0];
+        $tk2 = $t2['rekom'][0]['tindakan'][0];
+        $nilai = collect($tk2['satker'])->pluck('nilai', 'satker');
+        $this->assertSame('', $d['surat']['nomor']);
+        $this->assertSame('', $t2['judul']);
+        $this->assertSame('', $t2['sebab']);
+        $this->assertSame('', $t2['rekom'][0]['uraian']);
+        $this->assertSame('', $tk2['catatan']);
+        $this->assertSame('', $tk2['target']);
+        $this->assertSame('', $nilai[$medan->id]);
+
+        /* Yang tidak dikirim tetap seperti tersimpan. */
+        $this->assertSame('2026-08-01', $d['surat']['tgl_surat']);
+        $this->assertSame($t['akibat'], $t2['akibat']);
+        $this->assertSame('12500000', $nilai[$poli->id]);
     }
 }

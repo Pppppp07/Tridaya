@@ -1,10 +1,5 @@
-{{-- Sisa nilai terbesar sebagai TABEL (Hizkia, 24 Sep: "pada bagian ini
-     mungkin akan lebih baik dalam bentuk table"), satu baris per TINDAK
-     LANJUT satuan kerja: apa, satuan kerja mana, menunggu siapa, dan berapa
-     sisanya. Klik barisnya (atau uraiannya) untuk membuka rincian
-     rekomendasinya — tombol Kembali di sana mendarat di sini lagi. Di panel
-     sempit (ponsel) kolom Kode disembunyikan dan "Menunggu" pindah ke bawah
-     nama satuan kerja. --}}
+{{-- Sisa nilai terbesar sebagai tabel, satu baris per tindak lanjut satuan kerja. Klik barisnya
+     membuka rinciannya. --}}
 @php use App\Support\Dasbor; @endphp
 <x-dsb-panel id="dsb-p-perlu" :kelas="$kelas" judul="Sisa nilai terbesar"
   :info="'Lima tindak lanjut '.$kecil($kataBM).' dengan sisa nilai terbesar. Klik barisnya untuk membuka rinciannya.'"
@@ -23,9 +18,7 @@
       <tbody>
         @foreach($d['perlu'] as ['x' => $x, 'b' => $b, 'sisa' => $sisa])
           @php
-            /* "Kenapa rekomendasi ini belum selesai, nyangkut di mana" (Mbak
-               Puspi): satuan kerjanya, dan siapa yang ditunggu sekarang menurut
-               posisi berkas baris itu (Satker, Setba, UKI, Itjen). */
+            /* Satuan kerjanya dan siapa yang ditunggu sekarang menurut posisi baris itu. */
             $mejaIni = Dasbor::meja($b);
             $ditunggu = $mejaIni === 'selesai' ? '' : Dasbor::PENDEK_MEJA[$mejaIni];
           @endphp

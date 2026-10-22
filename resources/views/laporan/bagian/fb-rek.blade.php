@@ -1,8 +1,5 @@
-{{-- Panel satu rekomendasi — padanan `bagianRek`. Urutannya seperti membaca
-     LHP: bunyinya, rujukannya, sifatnya, lalu tindak lanjut yang diminta.
-     Nilai dan angsuran menyusul di bawah karena angkanya dijumlah dari tindak
-     lanjut, dan hanya tampil bila sifatnya menuntut uang.
-     Masukan: $t, $r, $j, $tampilR. --}}
+{{-- Panel satu rekomendasi, urut seperti membaca LHP. Nilai dan angsuran hanya tampil bila
+     sifatnya menuntut setoran. --}}
 @php
   use App\Support\Tampil;
 
@@ -11,12 +8,12 @@
   $nPen = $form->barisRek($r);
   $nilai = $form->nilaiRek($r);
   $sifatR = $sifat->firstWhere('id', (int) $r['sifat']);
-  /* Keterangan "menuntut penyetoran" dari data master yang menentukan, bukan
-     nama sifatnya. */
+  /* Yang menentukan keterangan "menuntut penyetoran" dari data master, bukan nama sifatnya. */
   $uang = (bool) $sifatR?->perlu_nilai;
   $ref = trim($r['ref_lhp']);
-  /* Disalin dari suratnya, tidak dirakit sendiri — bentuknya berbeda tiap
-     tahun LHP. Ref IDT-nya dirakit dari tahun, nomor surat, dan kode ini. */
+  /* Draf lama tanpa tanda: otomatis bila kosong atau sama dengan usulannya (aturan server). */
+  $refOtomatis = $r['ref_otomatis'] ?? ($ref === '' || $ref === $form->refUsulan((string) $t['nomor'], $j));
+  /* Disalin dari surat (bentuknya berbeda tiap tahun); Ref IDT dirakit dari kode ini. */
   $tahun = substr($d['surat']['tgl_surat'] ?: '', 0, 4);
   $noSurat = explode('/', $d['surat']['nomor'])[0] ?? '';
   $ringkasR = implode(' · ', array_filter([
@@ -52,18 +49,18 @@
         placeholder="Apa yang harus dilakukan satuan kerja" data-ikut-judul="rek:{{ $r['id'] }}">{{ $r['uraian'] }}</textarea>
     </x-baris-isi>
     <x-baris-isi label="Ref LHP" untuk="{{ $idR }}-ref"
-      :info="['Salin persis dari laporannya, mis. 10.a atau II.4.4.f.', 'Kosongkan bila nomor temuan dan huruf rekomendasi sudah cukup.']">
+      :info="['Nomor rujukan rekomendasi dalam laporan pemeriksaan, misalnya 1.1.a.', 'Awalnya terisi dari nomor temuan dan huruf rekomendasi. Sesuaikan jika rujukan pada surat berbeda; jika dikosongkan, rujukan otomatis digunakan.']">
       <div class="fb-sebaris">
-        <input id="{{ $idR }}-ref" type="text" name="{{ $nama }}[ref_lhp]" class="mono fb-pendek" value="{{ $r['ref_lhp'] }}" placeholder="II.4.4.f">
+        <input id="{{ $idR }}-ref" type="text" name="{{ $nama }}[ref_lhp]" class="mono fb-pendek" value="{{ $r['ref_lhp'] }}" placeholder="II.4.4.f"
+          data-ref-lhp="{{ $h }}" data-ref-otomatis="{{ $refOtomatis ? 1 : 0 }}">
         @if($tahun && $noSurat && $ref !== '')
           <span class="fb-catatan">Ref IDT <span class="mono">{{ $tahun }}.{{ $noSurat }}.{{ $ref }}</span></span>
         @endif
       </div>
     </x-baris-isi>
-    {{-- Sifatnya yang menentukan apakah ada nilai yang ditagih, jadi mengganti
-         sifat langsung menyegarkan halaman. --}}
-    <x-baris-isi label="Sifat" untuk="{{ $idR }}-sifat" :wajib="true" info="Memisahkan yang menuntut setoran uang dari yang cukup perbaikan.">
-      <select id="{{ $idR }}-sifat" name="{{ $nama }}[sifat]" class="fb-sedang" aria-required="true" data-sifat data-kirim>
+    {{-- Mengganti sifat langsung menyegarkan halaman. --}}
+    <x-baris-isi label="Sifat" untuk="{{ $idR }}-sifat" :wajib="true" info="Jenis kewajiban rekomendasi. Sifat yang memerlukan pemulihan nilai menampilkan isian nilai untuk tiap Satker.">
+      <select id="{{ $idR }}-sifat" name="{{ $nama }}[sifat]" class="fb-sedang" aria-required="true" data-sifat>
         @foreach($sifat->filter(fn ($x) => $x->aktif || (string) $r['sifat'] === (string) $x->id) as $x)
           <option value="{{ $x->id }}" data-uang="{{ $x->perlu_nilai ? 1 : 0 }}"
             @selected((string) $r['sifat'] === (string) $x->id)>{{ $x->nama }}{{ $x->aktif ? '' : ' (nonaktif)' }}</option>
@@ -80,7 +77,7 @@
         <div role="tablist" aria-label="Tindak lanjut rekomendasi {{ $h }}" class="fb-tabs">
           @foreach($tl as $k => $x)
             <x-tab-isi :kecil="true" id="fb-tab-tl-{{ $r['id'] }}-{{ $k }}" panel="fb-tl-{{ $r['id'] }}-{{ $k }}"
-              aksi="tl:{{ $r['id'] }}:{{ $k }}" :aktif="$k === $kAktif" :no="$k + 1" :teks="trim($x['bentuk'])"
+              aksi="tl:{{ $r['id'] }}:{{ $k }}" :aktif="$k === $kAktif" :no="$k + 1" :teks="$form->namaBentuk((string) $x['bentuk'])"
               kosong="Bentuk belum diisi" :ok="$form->tindakanOk($x)" />
           @endforeach
         </div>
@@ -94,27 +91,23 @@
       <input type="hidden" name="ui[tl][{{ $r['id'] }}]" value="{{ $kAktif }}" data-ui-tl>
     </div>
 
-    {{-- Angkanya dijumlah ulang oleh skrip selagi nilai tiap satuan kerja
-         diketik; tanpa skrip, sesudah kiriman berikutnya. --}}
+    {{-- Dijumlah ulang skrip selagi diketik; tanpa skrip sesudah kiriman berikutnya. --}}
     @if($uang)
-      <x-baris-isi label="Nilai dipulihkan" kunci="{{ $idR }}-nilai" :gabung="true"
-        info="Dijumlah dari nilai tiap satuan kerja di tindak lanjutnya — tidak diketik sendiri.">
+      <x-baris-isi label="Nilai yang harus dipulihkan" kunci="{{ $idR }}-nilai" :gabung="true"
+        info="Total nilai yang harus dipulihkan, dihitung dari nilai tiap satuan kerja pada seluruh bentuk tindak lanjut. Angka ini bukan jumlah pemulihan yang sudah dilakukan.">
         <div class="fb-hitung">
           <b class="mono" data-nilai-rek>{{ $nilai > 0 ? Tampil::rupiah($nilai) : 'Rp 0' }}</b>
           <span data-nilai-kosong @if($nilai) hidden @endif>isi nilai tiap satuan kerja di tindak lanjutnya</span>
         </div>
       </x-baris-isi>
     @endif
-    {{-- Rencana angsuran hanya berlaku kalau ada nilai yang ditagih. Selalu
-         dirender supaya bisa muncul begitu nilainya diketik. --}}
+    {{-- Selalu dirender supaya bisa muncul begitu nilainya diketik. --}}
     <div data-angsur-rek @if($nilai <= 0) hidden @endif>
       <x-baris-isi label="Rencana angsuran" untuk="{{ $idR }}-angsur">
         <div class="fb-sebaris">
           <div class="cacah fb-cacah">
             <input id="{{ $idR }}-angsur" type="text" name="{{ $nama }}[angsur]" class="mono" inputmode="numeric"
               value="{{ $r['angsur'] }}" placeholder="sekaligus" data-angsur>
-            {{-- Diketik boleh, dinaik-turunkan juga boleh: angkanya kecil dan
-                 sering dicoba-coba dulu. --}}
             <span class="tombol">
               <button type="submit" name="aksi" value="angsur:naik:{{ $t['id'] }}:{{ $r['id'] }}" aria-label="Tambah satu angsuran"
                 @disabled($angsur >= 24) data-angsur-naik><x-ikon n="ChevronUp" :s="13" /></button>
@@ -129,10 +122,10 @@
             <input type="checkbox" name="{{ $nama }}[kunci]" value="1" @checked($r['kunci'] && $angsur) @disabled(! $angsur) data-angsur-kunci>
             <span>Kunci pada jumlah rencana</span>
             <x-info :teks="! $angsur
-              ? 'Isi jumlah angsurannya dulu.'
+              ? 'Isi jumlah rencana angsuran untuk menggunakan pilihan ini.'
               : ($r['kunci']
-                ? 'Satuan kerja tidak bisa menyetor lebih banyak dari jumlah yang direncanakan.'
-                : 'Satuan kerja boleh menyetor lebih atau kurang dari rencana.')" />
+                ? 'Jumlah transaksi angsuran dibatasi sesuai rencana. Batas ini mengatur jumlah transaksi, bukan nilai rupiahnya.'
+                : 'Jumlah transaksi angsuran dapat berbeda dari rencana. Nilai yang harus dipulihkan tetap mengikuti penugasan.')" />
           </label>
         </div>
       </x-baris-isi>

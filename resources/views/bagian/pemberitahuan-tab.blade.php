@@ -1,10 +1,9 @@
-{{-- Deret "Belum dibaca" · "Semua" — padanan `DeretTabPemberitahuan`. Tanpa skrip
-     berupa link ke tab itu; dengan skrip berganti di tempat, dan isi "Belum
-     dibaca" dibekukan saat tabnya dipilih (yang baru ditandai dibaca tetap di
-     tempatnya sampai tabnya dipilih lagi). --}}
+{{-- Deret "Belum dibaca" · "Semua": tanpa skrip berupa link, dengan skrip berganti di tempat.
+     `$saring`: angka mengikuti jenis yang dipilih, jadi tidak ikut ditimpa angka belum dibaca global. --}}
+@php $saring ??= false; @endphp
 <div class="kb-tab" role="tablist" aria-label="Filter pemberitahuan">
-  <a role="tab" href="{{ route('pemberitahuan', ['tab' => 'belum']) }}" aria-selected="{{ $tab === 'belum' ? 'true' : 'false' }}"
-    aria-controls="{{ $idIsi }}" data-tab-pemberitahuan="belum">Belum dibaca <span class="n" data-jml-belum>{{ $belum }}</span></a>
-  <a role="tab" href="{{ route('pemberitahuan', ['tab' => 'semua']) }}" aria-selected="{{ $tab === 'semua' ? 'true' : 'false' }}"
+  <a role="tab" href="{{ route('pemberitahuan', array_filter(['tab' => 'belum', 'jenis' => $jenis ?? null])) }}" aria-selected="{{ $tab === 'belum' ? 'true' : 'false' }}"
+    aria-controls="{{ $idIsi }}" data-tab-pemberitahuan="belum">Belum dibaca <span class="n" @if($saring) data-jml-saring @else data-jml-belum @endif>{{ $belum }}</span></a>
+  <a role="tab" href="{{ route('pemberitahuan', array_filter(['tab' => 'semua', 'jenis' => $jenis ?? null])) }}" aria-selected="{{ $tab === 'semua' ? 'true' : 'false' }}"
     aria-controls="{{ $idIsi }}" data-tab-pemberitahuan="semua">Semua <span class="n">{{ $semua }}</span></a>
 </div>

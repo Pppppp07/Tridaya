@@ -4,13 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Permintaan perubahan menyebut BARIS satuan kerja yang dimaksudnya.
- *
- * Tanpa itu, permintaan "tarik pengiriman" pada rekomendasi yang dipikul tiga
- * satuan kerja tidak menyebut kiriman siapa yang ditarik — dan yang memutus
- * harus menebak.
- */
+/** Permintaan perubahan menyebut baris satuan kerja yang dimaksud. */
 return new class extends Migration
 {
     public function up(): void
